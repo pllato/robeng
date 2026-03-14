@@ -338,27 +338,26 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;letter-spacing:.03em">ELC Roblox English</div>
   </div>
   <nav class="nav">
-    <div class="ni active" data-p="home" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Главная <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" data-p="staff" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👥</span>Преподаватели</div>
+    <div class="nav-sec">Главное</div>
+    <div class="ni" data-p="today" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">☀️</span>Сегодня <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Дашборд</div>
+    <div class="ni admin-only" data-p="subjects" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📚</span>Предметы</div>
+    <div class="ni admin-only" data-p="teachers" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👥</span>Преподаватели</div>
     <div class="ni" data-p="availability" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🕐</span>Доступность</div>
     <div class="nav-sec">Расписание</div>
     <div class="ni" data-p="schedule" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📅</span>Расписание</div>
     <div class="ni admin-only" data-p="freeSlots" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✦</span>Свободные слоты</div>
-    <div class="nav-sec">Ученики и работа</div>
+    <div class="nav-sec">Ученики</div>
     <div class="ni" data-p="students" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎓</span>Ученики</div>
-    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Общий чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni" data-p="tasks" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✅</span>Задачи <span id="tasks-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="nav-sec">Система</div>
     <div class="ni admin-only" data-p="users" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👤</span>Пользователи</div>
     <div class="ni" data-p="reports" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📊</span>Отчёты</div>
     <div class="ni" data-p="videoreviews" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎥</span>Видео уроков <span id="video-badge" style="display:none;background:var(--am);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" id="ni-more" data-p="more" onclick="toggleMore()"><span style="font-size:14px;width:18px;text-align:center">•••</span>Ещё</div>
-    <div id="more-menu" style="display:none">
-      <div class="ni admin-only" data-p="subjects" onclick="nav(this)" style="padding-left:28px"><span style="font-size:13px;width:18px;text-align:center">📚</span>Предметы</div>
-      <div class="ni admin-only" data-p="journal" onclick="nav(this)" style="padding-left:28px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Журнал</div>
-      <div class="ni admin-only" data-p="trash" onclick="nav(this)" style="padding-left:28px"><span style="font-size:13px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-      <div class="ni admin-only" data-p="backups" onclick="nav(this)" style="padding-left:28px"><span style="font-size:13px;width:18px;text-align:center">💾</span>Резервные копии</div>
-    </div>
+    <div class="ni admin-only" data-p="journal" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📋</span>Журнал</div>
+    <div class="ni admin-only" data-p="trash" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni admin-only" data-p="backups" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💾</span>Резервные копии</div>
   </nav>
   <div class="role-box">
     <div class="role-lbl">Роль</div>
@@ -367,7 +366,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 </div>
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title" id="ttl">Главная</div>
+    <div class="topbar-title" id="ttl">Дашборд</div>
     <div class="tbr">
       <span style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
         <span class="fb-dot" id="fb-dot"></span><span id="fb-lbl">…</span>
@@ -383,11 +382,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   </div>
   <div class="content">
     <!-- DASHBOARD -->
-    <div class="panel active" id="panel-home">
-      <div class="stats-row" id="home-stats" style="margin-bottom:16px"></div>
-      <div id="home-today"></div>
-    </div>
-    <div class="panel" id="panel-dashboard" style="display:none">
+    <div class="panel active" id="panel-dashboard">
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
@@ -573,17 +568,6 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           </div>
         </div>
       </div>
-    </div>
-    <!-- STAFF -->
-    <div class="panel" id="panel-staff">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="view-toggle">
-          <button class="vt-btn active" id="stf-teachers" onclick="setStaffTab('teachers')">👥 Преподаватели</button>
-          <button class="vt-btn" id="stf-subjects" onclick="setStaffTab('subjects')">📚 Предметы</button>
-        </div>
-        <button class="btn btn-a btn-sm" id="stf-add-btn" onclick="staffAddAction()">+ Преподаватель</button>
-      </div>
-      <div id="staff-content"></div>
     </div>
     <!-- VIDEO REVIEWS -->
     <div class="panel" id="panel-videoreviews">
@@ -1169,10 +1153,10 @@ function applyRole(role, teacherId){
 
   // Teacher: redirect if on forbidden page
   const cur = curPanel();
-  const teacherAllowed = ['home','today','dashboard','schedule','availability','students','reports','videoreviews','tasks','teamchat'];
+  const teacherAllowed = ['today','dashboard','schedule','availability','students','reports','videoreviews','tasks','teamchat'];
   if(role==='teacher' && !teacherAllowed.includes(cur)){
-    const homeNi = document.querySelector('.ni[data-p="home"]');
-    if(homeNi) { nav(homeNi); return; }
+    const schedNi = document.querySelector('.ni[data-p="schedule"]');
+    if(schedNi) { nav(schedNi); return; }
   }
 
   // Update pending requests badge
@@ -1220,7 +1204,7 @@ fbAuth.onAuthStateChanged(user=>{
         applyScheduledAvail();
         deduplicateEnrollments();
         applyRole(role, teacherId);
-        updateWL();renderHome();
+        updateWL();renderDashboard();
         updateTrashBadge();
         updateVideoBadge();
         updateTasksBadge();
@@ -1243,7 +1227,7 @@ fbAuth.onAuthStateChanged(user=>{
       dbRef.once('value').then(snap2=>{
         const data=snap2.val();
         if(data){S=data;if(!S.journal)S.journal=[];if(!S.scheduleHistory)S.scheduleHistory={};}
-        applyScheduledAvail();deduplicateEnrollments();updateWL();renderHome();startDbListener();
+        applyScheduledAvail();deduplicateEnrollments();updateWL();renderDashboard();startDbListener();
       });
     });
   } else {
@@ -1320,12 +1304,10 @@ function countFree(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-const TITLES={home:'Главная',today:'Сегодня',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Дашборд',staff:'Преподаватели',more:'Ещё',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
-const ACTS={home:'',today:'',tasks:'',teamchat:'',dashboard:'+',staff:'',more:'',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
+const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Дашборд',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
+const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
 function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'dashboard';}
 function nav(el){
-  // Close more menu
-  if(el&&el.dataset&&el.dataset.p!=='more'&&moreOpen){toggleMore();}
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
@@ -1339,11 +1321,9 @@ function nav(el){
 }
 function mainAct(){const p=curPanel();if(p==='teachers')openTeacherModal();else openStudentModal();}
 function renderPanel(p){
-  if(p==='home'){renderHome();return;}
   if(p==='today'){renderToday();return;}
   if(p==='tasks'){renderTasks();return;}
   if(p==='teamchat'){initTeamChat();updateChatBadge(0);return;}
-  if(p==='staff'){renderStaff();return;}
   if(p==='dashboard')renderDashboard();
   else if(p==='subjects')renderSubjects();
   else if(p==='teachers'){fillSubjSel();renderTeachers();}
@@ -3511,112 +3491,6 @@ function renderVideoReviews(){
     }
     el.innerHTML=html;
   }).catch(()=>{el.innerHTML='<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Ошибка загрузки</div></div>';});
-}
-
-// ── HOME (merged dashboard + today) ──────────────────────────────
-function renderHome(){
-  const statsEl=document.getElementById('home-stats');
-  const todayEl=document.getElementById('home-today');
-  if(!statsEl||!todayEl)return;
-
-  // Render stats
-  const today=new Date().toISOString().slice(0,10);
-  const dates=dateRange(dashPeriod);
-
-  if(currentRole==='teacher'&&currentTeacherId){
-    const tid=currentTeacherId;
-    const t=teacher(tid);
-    const todayDay=(new Date().getDay()+6)%7;
-    const myEnrolls=S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&enrollActive(e,today)&&!e.inactive);
-    const myStudentIds=[...new Set(myEnrolls.map(e=>e.studentId))];
-    let myMisses=0;
-    myEnrolls.forEach(e=>{dates.forEach(dt=>{const k=`${e.id}_${dt}`;if((S.attendance||{})[k]==='miss'&&!(S.makeups||{})[k])myMisses++;});});
-    let rptSent=0,rptTotal=0;
-    myEnrolls.forEach(e=>{const weeks=new Set(lessonDatesInRange(e,dateRange(30)).map(dt=>weekKey(dt)));rptTotal+=weeks.size;weeks.forEach(wk=>{if((S.reportsSent||{})[`${e.id}_${wk}`])rptSent++;});});
-    const vs=calcVideoStats(myEnrolls.map(e=>e.id),dateRange(30));
-    statsEl.innerHTML=`
-      <div class="stat"><div class="stat-lbl">Моих учеников</div><div class="stat-val cg">${myStudentIds.length}</div><div class="stat-sub">Активных</div></div>
-      <div class="stat"><div class="stat-lbl">Пропуски</div><div class="stat-val" style="color:var(--rd)">${myMisses}</div><div class="stat-sub">Не отработаны</div></div>
-      <div class="stat"><div class="stat-lbl">Отчёты</div><div class="stat-val" style="color:var(--tl)">${rptSent}/${rptTotal}</div><div class="stat-sub">За 30 дней</div></div>
-      <div class="stat" style="border-color:var(--acb)"><div class="stat-lbl">🎥 Видео</div><div style="font-size:12px;line-height:2;margin-top:4px"><span style="color:var(--gn)">✅ ${vs.approved}</span> &nbsp;<span style="color:var(--rd)">❌ ${vs.rejected}</span> &nbsp;<span style="color:var(--am)">⏳ ${vs.pending}</span></div></div>`;
-  } else {
-    // Admin stats
-    const activeEnrolls=S.enrollments.filter(e=>enrollActive(e,today)&&!e.inactive);
-    const activeStudentIds=[...new Set(activeEnrolls.map(e=>e.studentId))];
-    let totalMisses=0;
-    activeEnrolls.forEach(e=>{dates.forEach(dt=>{const k=`${e.id}_${dt}`;if((S.attendance||{})[k]==='miss'&&!(S.makeups||{})[k])totalMisses++;});});
-    const SLOT_DAYS=[0,1,2,3,4,5];
-    let occ=0,tot=0;
-    S.teachers.filter(t=>t.status==='active').forEach(t=>{
-      const av=getTeacherAvailForDate(t.id,today);
-      SLOT_DAYS.forEach(d=>{for(let ti=0;ti<TIMES.length;ti++){if(av[d]&&av[d][ti]){tot+=MAX_PER_SLOT;occ+=enrollmentsAt(t.id,d,ti,today).length;}}});
-    });
-    const occPct=tot?Math.round(occ/tot*100):0;
-    const vs=calcVideoStats(activeEnrolls.map(e=>e.id),dates);
-    statsEl.innerHTML=`
-      <div class="stat"><div class="stat-lbl">Активных учеников</div><div class="stat-val cg">${activeStudentIds.length}</div><div class="stat-sub">Сейчас</div></div>
-      <div class="stat"><div class="stat-lbl">Пропуски</div><div class="stat-val" style="color:var(--rd)">${totalMisses}</div><div class="stat-sub">Не отработаны</div></div>
-      <div class="stat"><div class="stat-lbl">Занятость</div><div class="stat-val cv">${occPct}%</div><div class="stat-sub">${occ} из ${tot}</div></div>
-      <div class="stat"><div class="stat-lbl">Преподавателей</div><div class="stat-val ct">${S.teachers.filter(t=>t.status==='active').length}</div><div class="stat-sub">Активных</div></div>
-      <div class="stat" style="border-color:var(--acb)"><div class="stat-lbl">🎥 Видео</div><div style="font-size:12px;line-height:2;margin-top:4px"><span style="color:var(--gn)">✅ ${vs.approved}</span> &nbsp;<span style="color:var(--rd)">❌ ${vs.rejected}</span> &nbsp;<span style="color:var(--am)">⏳ ${vs.pending}</span></div></div>`;
-  }
-
-  // Render today list into home-today
-  todayEl.id='today-panel-list';
-  renderToday();
-  todayEl.id='home-today';
-  // Add section title
-  if(todayEl.innerHTML&&!todayEl.innerHTML.includes('empty')){
-    const div=document.createElement('div');
-    div.className='sec-title';div.style.marginBottom='12px';div.style.marginTop='8px';
-    div.textContent='Дела на сегодня';
-    todayEl.insertBefore(div,todayEl.firstChild);
-  }
-}
-
-// ── STAFF (teachers + subjects in one panel) ──────────────────────
-let staffTab='teachers';
-function setStaffTab(tab){
-  staffTab=tab;
-  document.getElementById('stf-teachers')?.classList.toggle('active',tab==='teachers');
-  document.getElementById('stf-subjects')?.classList.toggle('active',tab==='subjects');
-  const btn=document.getElementById('stf-add-btn');
-  if(btn)btn.textContent=tab==='teachers'?'+ Преподаватель':'+ Предмет';
-  renderStaff();
-}
-function staffAddAction(){
-  if(staffTab==='teachers') openUserModal();
-  else openSubjectModal();
-}
-function openUserModal(){
-  // Redirect to users panel add
-  nav(document.querySelector('.ni[data-p="users"]'));
-  setTimeout(()=>openAddUser(),100);
-}
-function renderStaff(){
-  const el=document.getElementById('staff-content');if(!el)return;
-  // Temporarily swap the target element
-  if(staffTab==='teachers'){
-    const orig=document.getElementById('teachers-list');
-    if(orig){const save=orig.id;orig.id='_tmp_tlist';el.innerHTML='';orig.id=save;}
-    el.id='teachers-list';
-    renderTeachers();
-    el.id='staff-content';
-  } else {
-    el.id='subjects-list';
-    renderSubjects();
-    el.id='staff-content';
-  }
-}
-
-// ── MORE menu toggle ──────────────────────────────────────────────
-let moreOpen=false;
-function toggleMore(){
-  moreOpen=!moreOpen;
-  const m=document.getElementById('more-menu');
-  const btn=document.getElementById('ni-more');
-  if(m)m.style.display=moreOpen?'':'none';
-  if(btn)btn.style.background=moreOpen?'var(--bg3)':'';
 }
 
 // ── TASKS ─────────────────────────────────────────────────────────

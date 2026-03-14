@@ -498,6 +498,18 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           <option value="mwf">Только Пн Ср Пт</option>
           <option value="tts">Только Вт Чт Сб</option>
         </select>
+        <span class="fl">Возраст:</span>
+        <select class="fsel" id="fs-age" onchange="renderFreeSlots()">
+          <option value="">Любой</option>
+          <option value="young">До 7 лет</option>
+          <option value="older">Старше 7 лет</option>
+        </select>
+        <span class="fl">Уровень:</span>
+        <select class="fsel" id="fs-level" onchange="renderFreeSlots()">
+          <option value="">Любой</option>
+          <option value="beginner">Начальный</option>
+          <option value="continuing">Продолжающий</option>
+        </select>
         <span class="fl">Время:</span>
         <select class="fsel" id="fs-time" onchange="renderFreeSlots()"><option value="">Любое</option></select>
       </div>
@@ -2357,6 +2369,8 @@ function renderFreeSlots(){
   const subjF=document.getElementById('fs-subj').value;
   const daysF=document.getElementById('fs-days').value;
   const timeF=document.getElementById('fs-time').value;
+  const ageF=document.getElementById('fs-age').value;
+  const levelF=document.getElementById('fs-level').value;
   const PATTERNS=[
     {key:'mwf',days:[0,2,4],label:'Пн · Ср · Пт',color:'var(--ac2)'},
     {key:'tts',days:[1,3,5],label:'Вт · Чт · Сб',color:'var(--gn)'},
@@ -2372,18 +2386,45 @@ function renderFreeSlots(){
         if(!pat.days.every(d=>av[d]&&av[d][ti]))return;
         const maxOcc=Math.max(...pat.days.map(d=>countAtSlot(t.id,d,ti)));
         const free=Math.max(0,MAX_PER_SLOT-maxOcc);
+
+        // Get existing students in this slot
+        const today=new Date().toISOString().slice(0,10);
+        const slotEnrs=S.enrollments.filter(e=>
+          String(e.teacherId)===String(t.id)&&!e.inactive&&enrollActive(e,today)&&
+          e.slots.some(sl=>pat.days.includes(sl.day)&&sl.ti===ti)
+        );
         const names=[];
-        pat.days.forEach(d=>S.enrollments.filter(e=>e.teacherId===t.id&&e.slots.some(sl=>sl.day===d&&sl.ti===ti)).forEach(e=>{const s=student(e.studentId);if(s&&!names.includes(s.name))names.push(s.name);}));
+        slotEnrs.forEach(e=>{const s=student(e.studentId);if(s&&!names.includes(s.name))names.push(s.name);});
+
+        // Get slot compatibility profile from existing students
+        const existGroups=slotEnrs.map(e=>getSlotGroup(e.id)).filter(Boolean);
+        const slotAgeGroup=existGroups.length>0?existGroups[0].ageGroup:null;
+        const slotLevel=existGroups.length>0?existGroups[0].level:null;
+
+        // Apply age filter
+        if(ageF&&free<MAX_PER_SLOT){
+          // Slot has existing student — check if new student's age matches
+          if(slotAgeGroup&&slotAgeGroup!==ageF)return;
+        }
+        // Apply level filter
+        if(levelF&&free<MAX_PER_SLOT){
+          if(slotLevel&&slotLevel!==levelF)return;
+        }
+        // If slot is empty and filters set — show it (any empty slot fits)
+        // If filters set and slot has students — already filtered above
+
         const gk=`${pat.key}::${ti}`;
         if(!groups[gk])groups[gk]={pat,ti,rows:[]};
-        groups[gk].rows.push({t,free,names});
+        groups[gk].rows.push({t,free,names,slotAgeGroup,slotLevel,existGroups});
       });
     }
   });
+
   const keys=Object.keys(groups);
   const list=document.getElementById('free-list');
   if(!keys.length){list.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Нет слотов по фильтрам</div></div>';return;}
   keys.sort((a,b)=>{const[pa,ta]=a.split('::');const[pb,tb]=b.split('::');return parseInt(ta)!==parseInt(tb)?parseInt(ta)-parseInt(tb):pa==='mwf'?-1:1;});
+
   list.innerHTML=keys.map(k=>{
     const{pat,ti,rows}=groups[k];
     const totalFree=rows.reduce((s,r)=>s+r.free,0);
@@ -2409,15 +2450,24 @@ function renderFreeSlots(){
           const sj=subj(r.t.subjId);
           const pips=Array.from({length:MAX_PER_SLOT},(_,i)=>`<span style="width:10px;height:10px;border-radius:50%;display:inline-block;border:1.5px solid ${i<MAX_PER_SLOT-r.free?'rgba(240,89,117,.6)':'rgba(63,216,142,.5)'};background:${i<MAX_PER_SLOT-r.free?'rgba(240,89,117,.25)':'rgba(63,216,142,.15)'}"></span>`).join('');
           const ns=r.names.length?`<div style="font-size:11px;color:var(--t3);margin-top:3px">Занят: ${r.names.join(', ')}</div>`:'';
+
+          // Compatibility badge for this slot
+          const compatParts=[];
+          if(r.slotAgeGroup) compatParts.push(AGE_GROUP_LABELS[r.slotAgeGroup]||r.slotAgeGroup);
+          if(r.slotLevel) compatParts.push(LEVEL_LABELS[r.slotLevel]||r.slotLevel);
+          const compatBadge=compatParts.length
+            ?`<span style="font-size:10px;font-weight:600;color:var(--ac2);background:var(--acbg);border:1px solid var(--acb);padding:2px 8px;border-radius:8px">${compatParts.join(' · ')}</span>`
+            :(r.free===MAX_PER_SLOT?`<span style="font-size:10px;color:var(--t3);background:var(--bg3);padding:2px 7px;border-radius:6px">Свободный слот</span>`:'');
+
           return`<div class="fs-tr">
             <div>
               <div style="font-size:13px;font-weight:500">${r.t.name}</div>
               <div style="font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px;margin-top:2px"><span style="width:7px;height:7px;border-radius:50%;background:${sj.color};display:inline-block"></span>${sj.name}</div>
               ${ns}
             </div>
-            <div style="display:flex;align-items:center;gap:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
               <div style="display:flex;gap:4px;align-items:center">${pips}<span style="font-size:11px;color:${r.free>0?'var(--gn)':'var(--t3)'};margin-left:4px;font-weight:600">${r.free}/${MAX_PER_SLOT}</span></div>
-              ${(()=>{const cl=slotCompatLabel(r.t.id,pat.days,ti);return cl?`<span style="font-size:10px;color:var(--t3);background:var(--bg3);padding:2px 7px;border-radius:6px">${cl}</span>`:''})()}
+              ${compatBadge}
               ${r.free>0?`<button class="btn btn-a btn-sm" onclick="quickEnroll('${r.t.id}',${JSON.stringify(pat.days)},${ti})">Записать</button>`:'<span style="font-size:11px;color:var(--t3)">Нет мест</span>'}
             </div>
           </div>`;

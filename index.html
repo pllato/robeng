@@ -1063,6 +1063,9 @@ function startDbListener(){
       if(!S.reportsSent)S.reportsSent={};
       if(!S.trash)S.trash=[];
       if(!S.videoReports)S.videoReports={};
+        if(!Array.isArray(S.enrollments))S.enrollments=[];
+        if(!Array.isArray(S.students))S.students=[];
+        if(!Array.isArray(S.teachers))S.teachers=[];
       try{localStorage.setItem('edu_v5',JSON.stringify(S));}catch(e){}
       renderPanel(curPanel());
     }
@@ -1210,6 +1213,9 @@ fbAuth.onAuthStateChanged(user=>{
           if(!S.makeups)S.makeups={};
           if(!S.reportsSent)S.reportsSent={};
           if(!S.trash)S.trash=[];
+          if(!Array.isArray(S.enrollments))S.enrollments=[];
+          if(!Array.isArray(S.students))S.students=[];
+          if(!Array.isArray(S.teachers))S.teachers=[];
         } else {
           dbRef.set(S);
           // First launch — create admin record for this user
@@ -1554,7 +1560,7 @@ function renderDashboard(){
 
   // ── Today's lessons
   const lessons=[];
-  S.enrollments.forEach(e=>{
+  (S.enrollments||[]).forEach(e=>{
     if(!enrollActive(e,today)||e.inactive)return;
     const sl=e.slots.find(s=>s.day===todayDay);if(!sl)return;
     const st=student(e.studentId),t=teacher(e.teacherId),sj=subj(t?.subjId);
@@ -3163,6 +3169,7 @@ function deactivateEnroll(enrollId){
 // ── DEDUP old enrollments ─────────────────────────────────────────
 // Merge duplicate enrollments: keep only one per student, preferring most recent active
 function deduplicateEnrollments(){
+  if(!S||!S.enrollments||!Array.isArray(S.enrollments))return;
   // Find students with more than one enrollment for the SAME teacher+slots combo
   const stuIds=[...new Set(S.enrollments.map(e=>e.studentId))];
   let removed=0;
@@ -3198,6 +3205,7 @@ function deduplicateEnrollments(){
 
 // ── AUTO-APPLY scheduled avail on startup ────────────────────────
 function applyScheduledAvail(){
+  if(!S||!S.teachers||!S.scheduleHistory)return;
   const today=new Date().toISOString().slice(0,10);
   if(!S.scheduleHistory)return;
   S.teachers.forEach(t=>{

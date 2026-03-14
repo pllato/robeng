@@ -338,26 +338,26 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;letter-spacing:.03em">ELC Roblox English</div>
   </div>
   <nav class="nav">
-    <div class="nav-sec">Главное</div>
-    <div class="ni" data-p="today" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">☀️</span>Сегодня <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Дашборд</div>
-    <div class="ni admin-only" data-p="subjects" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📚</span>Предметы</div>
-    <div class="ni admin-only" data-p="teachers" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👥</span>Преподаватели</div>
-    <div class="ni" data-p="availability" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🕐</span>Доступность</div>
+    <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Главная <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="availability" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🕐</span>Время работы</div>
     <div class="nav-sec">Расписание</div>
     <div class="ni" data-p="schedule" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📅</span>Расписание</div>
     <div class="ni admin-only" data-p="freeSlots" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✦</span>Свободные слоты</div>
-    <div class="nav-sec">Ученики</div>
+    <div class="nav-sec">Ученики и работа</div>
     <div class="ni" data-p="students" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎓</span>Ученики</div>
-    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Общий чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni" data-p="tasks" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✅</span>Задачи <span id="tasks-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="nav-sec">Система</div>
     <div class="ni admin-only" data-p="users" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👤</span>Пользователи</div>
     <div class="ni" data-p="reports" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📊</span>Отчёты</div>
     <div class="ni" data-p="videoreviews" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎥</span>Видео уроков <span id="video-badge" style="display:none;background:var(--am);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" data-p="journal" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📋</span>Журнал</div>
-    <div class="ni admin-only" data-p="trash" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" data-p="backups" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💾</span>Резервные копии</div>
+    <div class="ni admin-only" id="ni-more" onclick="toggleMore(this)"><span style="font-size:14px;width:18px;text-align:center">•••</span>Ещё</div>
+    <div id="more-menu" style="display:none">
+      <div class="ni admin-only" data-p="subjects" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📚</span>Предметы</div>
+      <div class="ni admin-only" data-p="journal" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Журнал</div>
+      <div class="ni admin-only" data-p="trash" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+      <div class="ni admin-only" data-p="backups" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">💾</span>Резервные копии</div>
+    </div>
   </nav>
   <div class="role-box">
     <div class="role-lbl">Роль</div>
@@ -366,7 +366,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 </div>
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title" id="ttl">Дашборд</div>
+    <div class="topbar-title" id="ttl">Главная</div>
     <div class="tbr">
       <span style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
         <span class="fb-dot" id="fb-dot"></span><span id="fb-lbl">…</span>
@@ -386,7 +386,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
-      <div class="sec-title">Уроки сегодня</div>
+      <div class="sec-title">Уроки и дела сегодня</div>
       <div id="today-list"></div>
     </div>
     <!-- SUBJECTS -->
@@ -820,7 +820,21 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div class="fr"><label>ФИО родителя</label><input id="s-parent" placeholder="Петрова Ирина Владимировна"/></div>
     </div>
     <div class="fr"><label>Телефон родителя</label><input id="s-parent-phone" placeholder="+7 700 000 00 00"/></div>
-    <div class="fr"><label>Преподаватель</label><select id="s-teacher" onchange="onTeacherChange()"></select></div>
+    <div class="fr-row">
+      <div class="fr">
+        <label>Возраст ученика</label>
+        <input type="number" id="s-age" placeholder="7" min="3" max="18" onchange="checkCompatibility()"/>
+      </div>
+      <div class="fr">
+        <label>Уровень</label>
+        <select id="s-level" onchange="checkCompatibility()">
+          <option value="beginner">Начальный</option>
+          <option value="continuing">Продолжающий</option>
+        </select>
+      </div>
+    </div>
+    <div class="warn-box" id="s-compat-warn" style="display:none"></div>
+    <div class="fr"><label>Преподаватель</label><select id="s-teacher" onchange="onTeacherChange();checkCompatibility()"></select></div>
     <div class="divider"></div>
     <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);padding:13px;margin-bottom:13px">
       <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:10px">📅 Расписание занятий</div>
@@ -1304,10 +1318,12 @@ function countFree(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Дашборд',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
+const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Главная',subjects:'Предметы',teachers:'Преподаватели',availability:'Время работы',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
 const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
 function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'dashboard';}
 function nav(el){
+  // Close more menu on nav
+  if(_moreOpen && el && el.dataset && el.dataset.p){_moreOpen=false;const m=document.getElementById('more-menu');const b=document.getElementById('ni-more');if(m)m.style.display='none';if(b)b.style.background='';}
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
@@ -1548,8 +1564,8 @@ function renderDashboard(){
   });
   lessons.sort((a,b)=>a.time.localeCompare(b.time));
   const el=document.getElementById('today-list');
-  if(!lessons.length){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Уроков сегодня нет</div></div>';return;}
-  el.innerHTML=lessons.map(l=>{
+  if(!lessons.length){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Уроков сегодня нет</div></div>';}
+  else { el.innerHTML=lessons.map(l=>{
     const attColor=l.att==='done'?'var(--gn)':l.att==='miss'?'var(--rd)':l.att==='makeup'?'var(--am)':'var(--t3)';
     const attLabel=l.att==='done'?'✓ Проведён':l.att==='miss'?'✗ Пропуск':l.att==='makeup'?'↩ Отработка':'';
     return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:13px 17px;display:flex;align-items:center;gap:13px;margin-bottom:8px;flex-wrap:wrap">
@@ -1561,7 +1577,40 @@ function renderDashboard(){
       ${l.att?`<span style="font-size:11px;color:${attColor};font-weight:600">${attLabel}</span>`:''}
       <span class="badge b-a" style="background:${l.sj.color}22;border-color:${l.sj.color}55;color:${l.sj.color}">${l.sj.name}</span>
     </div>`;
-  }).join('');
+  }).join('');}
+
+  // ── My tasks for today ──
+  const uid=fbAuth.currentUser?.uid||'';
+  tasksRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    const myTasks=Object.values(data).filter(t=>
+      !t.done&&(t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid])||t.createdBy===uid)
+    ).sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
+    if(!myTasks.length)return;
+    const todayStr=new Date().toISOString().slice(0,10);
+    const overdue=myTasks.filter(t=>t.deadline&&t.deadline<todayStr);
+    const dueToday=myTasks.filter(t=>t.deadline===todayStr);
+    const other=myTasks.filter(t=>!t.deadline||(t.deadline>todayStr));
+    const todayTasksEl=document.getElementById('today-list');
+    if(!todayTasksEl)return;
+    let html=todayTasksEl.innerHTML;
+    if(overdue.length||dueToday.length||other.length){
+      html+=`<div class="sec-title" style="margin-top:16px;margin-bottom:10px">✅ Мои задачи</div>`;
+      const renderT=t=>{
+        const isOverdue=t.deadline&&t.deadline<todayStr;
+        const isToday=t.deadline===todayStr;
+        return`<div style="background:var(--bg2);border:1px solid ${isOverdue?'rgba(240,89,117,.3)':isToday?'rgba(245,200,66,.3)':'var(--b1)'};border-radius:var(--rl);padding:11px 15px;display:flex;align-items:center;gap:10px;margin-bottom:7px;cursor:pointer" onclick="nav(document.querySelector('.ni[data-p=\\"tasks\\"]'))">
+          <span style="font-size:15px">☐</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:var(--t1)">${t.title}</div>
+            ${t.deadline?`<div style="font-size:11px;color:${isOverdue?'var(--rd)':isToday?'var(--am)':'var(--t3)'}">${isOverdue?'⚠ Просрочено':isToday?'📅 Сегодня':'📅 '+fmtDate(t.deadline)}</div>`:''}
+          </div>
+        </div>`;
+      };
+      html+=overdue.map(renderT).join('')+dueToday.map(renderT).join('')+other.slice(0,3).map(renderT).join('');
+    }
+    todayTasksEl.innerHTML=html;
+  });
 }
 
 
@@ -2161,6 +2210,11 @@ function buildSchedTable(tid,wd,today,isCurWeek){
           else if(att==='miss')slotClass='slot-booked'+' sb4';
           else if(att==='makeup')slotClass='slot-booked'+' sb2';
           else slotClass=`slot-booked ${SBC[ci]}`;
+          // Compatibility badge
+          const stData=st?S.students.find(s=>s.id===st.id):null;
+          const agGrp=stData&&stData.age?getAgeGroup(stData.age):null;
+          const lvl=stData&&stData.level?stData.level:null;
+          const compatTag=(agGrp||lvl)?`<span style="font-size:8px;color:var(--t3);background:var(--bg4);border-radius:4px;padding:1px 4px;white-space:nowrap">${agGrp?AGE_GROUP_LABELS[agGrp]||'':''}${agGrp&&lvl?' ':''}${lvl?LEVEL_LABELS[lvl]||'':''}</span>`:'';
           html+=`<div class="${slotClass}" style="padding:4px 6px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:3px">
               <div class="sb-name" onclick="showDetail(${e.id})" style="cursor:pointer;flex:1">${st?st.name.split(' ')[0]:'?'}</div>
@@ -2170,6 +2224,7 @@ function buildSchedTable(tid,wd,today,isCurWeek){
               }
             </div>
             <div class="sb-topic">${e.topic}</div>
+            ${compatTag}
             ${dt?`<div class="att-row">
               <button class="att-btn att-done${att==='done'?' active':''}" onclick="event.stopPropagation();setAtt(${e.id},'${dt}','done')" title="Урок проведён">✓</button>
               <button class="att-btn att-miss${att==='miss'?' active':''}" onclick="event.stopPropagation();setAtt(${e.id},'${dt}','miss')" title="Пропуск">✗</button>
@@ -2271,6 +2326,7 @@ function showDetail(enrollId){
     <div class="mmeta"><b>Ученик:</b> ${st?.name||'—'}${st?.phone?' &nbsp;·&nbsp; 📱 '+st.phone:''}</div>
     ${(st?.parent||st?.parentPhone)?`<div class="mmeta"><b>Родитель:</b> ${st.parent||'—'}${st.parentPhone?' &nbsp;·&nbsp; 📱 '+st.parentPhone:''}</div>`:''}
     <div class="mmeta"><b>Предмет:</b> ${sj.name}</div>
+    ${(()=>{const sd=S.students.find(s=>s.id===e.studentId);return sd&&(sd.age||sd.level)?`<div class="mmeta"><b>Возраст:</b> ${sd.age||'—'} лет &nbsp;·&nbsp; <b>Уровень:</b> ${LEVEL_LABELS[sd.level||'beginner']||'—'}&nbsp;·&nbsp;${sd.age?AGE_GROUP_LABELS[getAgeGroup(sd.age)]||'':''}  </div>`:'';})()}
     <div class="mmeta"><b>Преподаватель:</b> ${t?.name||'—'}</div>
     <div class="mmeta"><b>Слоты:</b> ${slotStr}</div>
     <div class="mmeta"><b>Период:</b> ${fmtDate(e.dateStart)} — ${fmtDate(e.dateEnd)}</div>
@@ -2354,6 +2410,7 @@ function renderFreeSlots(){
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <div style="display:flex;gap:4px;align-items:center">${pips}<span style="font-size:11px;color:${r.free>0?'var(--gn)':'var(--t3)'};margin-left:4px;font-weight:600">${r.free}/${MAX_PER_SLOT}</span></div>
+              ${(()=>{const cl=slotCompatLabel(r.t.id,pat.days,ti);return cl?`<span style="font-size:10px;color:var(--t3);background:var(--bg3);padding:2px 7px;border-radius:6px">${cl}</span>`:''})()}
               ${r.free>0?`<button class="btn btn-a btn-sm" onclick="quickEnroll('${r.t.id}',${JSON.stringify(pat.days)},${ti})">Записать</button>`:'<span style="font-size:11px;color:var(--t3)">Нет мест</span>'}
             </div>
           </div>`;
@@ -2466,6 +2523,11 @@ function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
     document.getElementById('s-date-end').value=e.dateEnd;
     document.getElementById('s-topic').value=e.topic;
     document.getElementById('s-notes').value=e.notes||'';
+    const stuData=S.students.find(s=>s.id===e.studentId);
+    if(stuData){
+      document.getElementById('s-age').value=stuData.age||'';
+      document.getElementById('s-level').value=stuData.level||'beginner';
+    }
   } else {
     document.getElementById('s-name').value='';
     document.getElementById('s-phone').value='';
@@ -2506,6 +2568,20 @@ function saveStudent(){
   if(unavail.length){
     toast('⚠ На выбранное время нет доступности у преподавателя',true);return;
   }
+  // Check compatibility with existing students in slot (only if age filled)
+  const age2=parseInt(document.getElementById('s-age').value)||null;
+  const level2=document.getElementById('s-level').value||'beginner';
+  if(age2!==null){ // only block if age is specified
+    const newGroup={ageGroup:getAgeGroup(age2),level:level2};
+    const {groups:existGroups}=checkSlotCompatibility(tid,days,ti,editSId);
+    if(existGroups&&existGroups.length){
+      const incompat=existGroups.filter(g=>!isCompatible(newGroup,g));
+      if(incompat.length){
+        toast('⛔ Нельзя записать: несовместимый ученик в этом слоте',true);
+        checkCompatibility();return;
+      }
+    }
+  }
 
   const dateStart=document.getElementById('s-date-start').value;
   const dateEnd=document.getElementById('s-date-end').value;
@@ -2515,9 +2591,11 @@ function saveStudent(){
   const phone=document.getElementById('s-phone').value.trim();
   const parent=document.getElementById('s-parent').value.trim();
   const parentPhone=document.getElementById('s-parent-phone').value.trim();
+  const age=parseInt(document.getElementById('s-age').value)||null;
+  const level=document.getElementById('s-level').value||'beginner';
   let stu=S.students.find(s=>s.name.trim().toLowerCase()===name.toLowerCase()&&s.subjId===subjId);
-  if(!stu){stu={id:Date.now(),name,subjId,phone,parent,parentPhone};S.students.push(stu);}
-  else{stu.phone=phone;stu.parent=parent;stu.parentPhone=parentPhone;}
+  if(!stu){stu={id:Date.now(),name,subjId,phone,parent,parentPhone,age,level};S.students.push(stu);}
+  else{stu.phone=phone;stu.parent=parent;stu.parentPhone=parentPhone;stu.age=age;stu.level=level;}
   const slots=days.map(d=>({day:d,ti}));
 
   if(editSId){
@@ -2615,6 +2693,7 @@ function renderStudents(){
             <span style="color:var(--t3)">· ${sj.name}</span>
           </div>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
+            ${(()=>{const agG=st&&st.age?getAgeGroup(st.age):null;const lv=st&&st.level?st.level:'';return (agG||lv)?`<span class="stu-sched" style="background:var(--acbg);border:1px solid var(--acb);color:var(--ac2)">${agG?AGE_GROUP_LABELS[agG]:''}${agG&&lv?' · ':''}${lv?LEVEL_LABELS[lv]||'':''}</span>`:'';})()}
             <span class="stu-sched" style="font-size:11px">📅 ${dayStr} · ${timeStr}</span>
             <span class="stu-sched" style="font-size:11px">📆 ${fmtDate(e.dateStart)} — ${fmtDate(e.dateEnd)}</span>
             ${e.topic?`<span class="stu-sched" style="font-size:11px">📖 ${e.topic}</span>`:''}
@@ -3133,6 +3212,17 @@ function applyScheduledAvail(){
 }
 
 // ── USER MANAGEMENT ───────────────────────────────────────────────
+
+function toggleTeacherActive(uid, isCurrentlyActive){
+  const tIdx = S.teachers.findIndex(t=>String(t.id)===String(uid)||String(t.uid)===String(uid));
+  if(tIdx===-1){toast('Преподаватель не найден',true);return;}
+  S.teachers[tIdx].status = isCurrentlyActive ? 'inactive' : 'active';
+  const nm = S.teachers[tIdx].name;
+  logAction('other', `Преподаватель ${nm} ${isCurrentlyActive?'деактивирован':'активирован'}`, '');
+  save(); renderUsers();
+  toast(`${nm} — ${isCurrentlyActive?'✗ Неактивен':'✓ Активен'}`);
+}
+
 function renderUsers(){
   if(currentRole!=='admin'){toast('Нет доступа',true);return;}
   const el=document.getElementById('users-list');if(!el)return;
@@ -3146,7 +3236,11 @@ function renderUsers(){
     const curUid=fbAuth.currentUser?.uid;
     el.innerHTML=users.map(([uid,u])=>{
       const isAdmin=u.role==='admin';
+      const isTeacher=u.role==='teacher';
       const isSelf=uid===curUid;
+      // Check active status from S.teachers
+      const tRec=isTeacher?S.teachers.find(t=>String(t.id)===String(uid)||String(t.uid)===String(uid)):null;
+      const isActive=tRec?tRec.status!=='inactive':true;
       return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 17px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div class="av av${isAdmin?'0':'1'}" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${(u.name||u.email||'?').slice(0,2).toUpperCase()}</div>
         <div style="flex:1;min-width:160px">
@@ -3156,6 +3250,9 @@ function renderUsers(){
         <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;${isAdmin?'background:var(--acbg);border:1px solid var(--acb);color:var(--ac2)':'background:var(--gnbg);border:1px solid rgba(63,216,142,.25);color:var(--gn)'}">
           ${isAdmin?'👑 Админ':'👨‍🏫 Преподаватель'}
         </span>
+        ${isTeacher&&tRec?`<button class="btn btn-xs" style="${isActive?'background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn)':'background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd)'}" onclick="toggleTeacherActive('${uid}',${isActive})" title="${isActive?'Нажмите чтобы деактивировать':'Нажмите чтобы активировать'}">
+          ${isActive?'✓ Активен':'✗ Неактивен'}
+        </button>`:''}
         ${!isSelf?`
         <select onchange="changeUserRole('${uid}',this.value)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:12px;padding:5px 8px">
           <option value="admin" ${isAdmin?'selected':''}>Администратор</option>
@@ -4305,6 +4402,102 @@ function restoreBackup(key){
     toast('✓ Данные восстановлены из резервной копии!');
     renderBackups();
   }).catch(err=>toast('Ошибка отката: '+err.message,true));
+}
+
+
+// ── MORE MENU ─────────────────────────────────────────────────────
+let _moreOpen = false;
+function toggleMore(el){
+  _moreOpen = !_moreOpen;
+  const m = document.getElementById('more-menu');
+  const btn = document.getElementById('ni-more');
+  if(m) m.style.display = _moreOpen ? '' : 'none';
+  if(btn) btn.style.background = _moreOpen ? 'var(--bg3)' : '';
+}
+
+// ── COMPATIBILITY ────────────────────────────────────────────────
+const AGE_GROUP_LABELS = {'young':'До 7 лет','older':'7+ лет'};
+const LEVEL_LABELS = {'beginner':'Начальный','continuing':'Продолжающий'};
+
+function getAgeGroup(age){
+  if(!age)return null;
+  return parseInt(age)<=7 ? 'young' : 'older';
+}
+
+function getSlotGroup(enrollId){
+  // Returns {ageGroup, level} for a given enrollment
+  const e=S.enrollments.find(x=>x.id===enrollId);if(!e)return null;
+  const st=S.students.find(s=>s.id===e.studentId);if(!st)return null;
+  return{ageGroup:getAgeGroup(st.age),level:st.level||'beginner',name:st.name,age:st.age};
+}
+
+function checkSlotCompatibility(tid,days,ti,excludeEnrollId){
+  // Get all enrollments in this slot
+  const today=new Date().toISOString().slice(0,10);
+  const enrs=S.enrollments.filter(e=>
+    String(e.teacherId)===String(tid)&&
+    !e.inactive&&enrollActive(e,today)&&
+    e.id!==excludeEnrollId&&
+    e.slots.some(sl=>days.includes(sl.day)&&sl.ti===ti)
+  );
+  if(!enrs.length)return{ok:true,groups:[]};
+  const groups=enrs.map(e=>getSlotGroup(e.id)).filter(Boolean);
+  return{ok:true,groups,enrs};
+}
+
+function isCompatible(g1,g2){
+  // Both must have same ageGroup AND same level
+  if(!g1||!g2)return true;
+  if(g1.ageGroup&&g2.ageGroup&&g1.ageGroup!==g2.ageGroup)return false;
+  if(g1.level&&g2.level&&g1.level!==g2.level)return false;
+  return true;
+}
+
+function checkCompatibility(){
+  const warn=document.getElementById('s-compat-warn');if(!warn)return;
+  const tidRaw=document.getElementById('s-teacher').value;
+  const tid=isNaN(tidRaw)?tidRaw:parseInt(tidRaw);
+  const ti=parseInt(document.getElementById('s-time').value);
+  const days=getDays();
+  const age=parseInt(document.getElementById('s-age').value)||null;
+  const level=document.getElementById('s-level').value||'beginner';
+  if(!tid||!days.length||isNaN(ti)){warn.style.display='none';return;}
+  const {groups}=checkSlotCompatibility(tid,days,ti,editSId);
+  if(!groups.length){warn.style.display='none';return;}
+  const newGroup={ageGroup:getAgeGroup(age),level};
+  const incompatible=groups.filter(g=>!isCompatible(newGroup,g));
+  if(incompatible.length){
+    const reasons=[];
+    incompatible.forEach(g=>{
+      if(newGroup.ageGroup&&g.ageGroup&&newGroup.ageGroup!==g.ageGroup)
+        reasons.push(`возраст: ${AGE_GROUP_LABELS[newGroup.ageGroup]||'?'} ≠ ${AGE_GROUP_LABELS[g.ageGroup]||'?'} у ${g.name}`);
+      if(newGroup.level&&g.level&&newGroup.level!==g.level)
+        reasons.push(`уровень: ${LEVEL_LABELS[newGroup.level]||'?'} ≠ ${LEVEL_LABELS[g.level]||'?'} у ${g.name}`);
+    });
+    warn.innerHTML='⚠ Несовместимость: '+[...new Set(reasons)].join('; ')+'. Запись невозможна.';
+    warn.style.display='';
+    warn.style.background='var(--rdbg)';warn.style.borderColor='rgba(240,89,117,.3)';warn.style.color='var(--rd)';
+  } else if(groups.length){
+    const g=groups[0];
+    warn.innerHTML=`✓ Совместим: ${g.ageGroup?AGE_GROUP_LABELS[g.ageGroup]:''}${g.level?' · '+LEVEL_LABELS[g.level]:''}`;
+    warn.style.display='';
+    warn.style.background='var(--gnbg)';warn.style.borderColor='rgba(63,216,142,.25)';warn.style.color='var(--gn)';
+  } else {warn.style.display='none';}
+}
+
+function slotCompatLabel(tid,days,ti){
+  const today=new Date().toISOString().slice(0,10);
+  const enrs=S.enrollments.filter(e=>
+    String(e.teacherId)===String(tid)&&!e.inactive&&enrollActive(e,today)&&
+    e.slots.some(sl=>days.includes(sl.day)&&sl.ti===ti)
+  );
+  if(enrs.length===0)return'';
+  const groups=enrs.map(e=>getSlotGroup(e.id)).filter(g=>g&&(g.ageGroup||g.level));
+  if(!groups.length)return'';
+  const ag=groups[0].ageGroup;const lv=groups[0].level;
+  const agLabel=ag?AGE_GROUP_LABELS[ag]:'';
+  const lvLabel=lv?LEVEL_LABELS[lv]:'';
+  return[agLabel,lvLabel].filter(Boolean).join(' · ');
 }
 
 // ── INIT ─────────────────────────────────────────────────────────

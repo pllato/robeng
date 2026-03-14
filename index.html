@@ -212,6 +212,39 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 .rpt-tbl td{padding:9px 12px;border-bottom:1px solid var(--b1);color:var(--t1);vertical-align:middle}
 .rpt-tbl tr:last-child td{border-bottom:none}
 .rpt-tbl tr:hover td{background:var(--bg3)}
+/* ── TASKS & CHAT ─────────────────────────────────────────────── */
+.task-card{background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px;transition:border-color .15s;cursor:pointer}
+.task-card:hover{border-color:var(--b2)}
+.task-card.done{opacity:.55}
+.task-card.priority-high{border-left:3px solid var(--rd)}
+.task-card.priority-medium{border-left:3px solid var(--am)}
+.task-card.priority-low{border-left:3px solid var(--gn)}
+.task-title{font-size:14px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:8px}
+.task-title.done-text{text-decoration:line-through;color:var(--t3)}
+.task-meta{font-size:11px;color:var(--t3);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.task-assignees{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.task-av{width:22px;height:22px;border-radius:50%;background:var(--acbg);color:var(--ac2);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--fd)}
+.priority-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:600}
+.p-high{background:var(--rdbg);color:var(--rd);border:1px solid rgba(240,89,117,.25)}
+.p-medium{background:var(--ambg);color:var(--am);border:1px solid rgba(245,200,66,.25)}
+.p-low{background:var(--gnbg);color:var(--gn);border:1px solid rgba(63,216,142,.25)}
+.today-item{background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:12px 15px;margin-bottom:7px;display:flex;align-items:center;gap:12px}
+.today-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--b2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.today-check.done{background:var(--gn);border-color:var(--gn);color:var(--bg)}
+.today-check:hover{border-color:var(--ac)}
+/* Chat */
+.chat-wrap{border:1px solid var(--b1);border-radius:var(--rl);overflow:hidden;display:flex;flex-direction:column;height:320px}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:80%;padding:8px 11px;border-radius:10px;font-size:12px;line-height:1.5}
+.chat-msg.mine{background:var(--acbg);border:1px solid var(--acb);color:var(--t1);align-self:flex-end;border-radius:10px 10px 2px 10px}
+.chat-msg.theirs{background:var(--bg3);border:1px solid var(--b1);color:var(--t1);align-self:flex-start;border-radius:10px 10px 10px 2px}
+.chat-msg-meta{font-size:10px;color:var(--t3);margin-bottom:2px}
+.chat-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--b1);background:var(--bg3)}
+.chat-input{flex:1;background:var(--bg2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);font-family:var(--fb);font-size:13px;padding:7px 11px;resize:none;min-height:36px;max-height:80px}
+.chat-input:focus{outline:none;border-color:var(--ac)}
+.chat-send{background:var(--ac);border:none;border-radius:8px;color:#fff;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0}
+.chat-send:hover{background:var(--ac2)}
+.chat-input::-webkit-scrollbar{display:none}
 /* view toggle */
 .view-toggle{display:flex;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);overflow:hidden}
 .vt-btn{padding:5px 13px;font-size:12px;font-weight:500;font-family:var(--fb);border:none;background:transparent;color:var(--t2);cursor:pointer;transition:all .15s}
@@ -306,6 +339,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   </div>
   <nav class="nav">
     <div class="nav-sec">Главное</div>
+    <div class="ni" data-p="today" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">☀️</span>Сегодня <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Дашборд</div>
     <div class="ni admin-only" data-p="subjects" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📚</span>Предметы</div>
     <div class="ni admin-only" data-p="teachers" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👥</span>Преподаватели</div>
@@ -315,6 +349,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="ni admin-only" data-p="freeSlots" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✦</span>Свободные слоты</div>
     <div class="nav-sec">Ученики</div>
     <div class="ni" data-p="students" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎓</span>Ученики</div>
+    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Общий чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="tasks" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✅</span>Задачи <span id="tasks-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="nav-sec">Система</div>
     <div class="ni admin-only" data-p="users" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👤</span>Пользователи</div>
     <div class="ni" data-p="reports" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📊</span>Отчёты</div>
@@ -341,6 +377,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
         <div class="user-av" id="user-av">?</div>
         <span class="user-email" id="user-email">...</span>
       </div>
+      <button class="btn btn-sm" onclick="bindTelegram()" title="Привязать Telegram для уведомлений" style="padding:5px 8px">🔔</button>
     </div>
   </div>
   <div class="content">
@@ -503,6 +540,35 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       </div>
       <div id="users-list"></div>
     </div>
+    <!-- TODAY -->
+    <div class="panel" id="panel-today">
+      <div id="today-panel-list"></div>
+    </div>
+    <!-- TASKS -->
+    <div class="panel" id="panel-tasks">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="view-toggle">
+          <button class="vt-btn active" id="tk-all" onclick="setTaskTab('all')">Все мои</button>
+          <button class="vt-btn" id="tk-mine" onclick="setTaskTab('mine')">Назначены мне</button>
+          <button class="vt-btn" id="tk-done" onclick="setTaskTab('done')">Завершённые</button>
+        </div>
+        <button class="btn btn-a btn-sm" onclick="openTaskModal()">+ Новая задача</button>
+      </div>
+      <div id="tasks-list"></div>
+    </div>
+    <!-- TEAM CHAT -->
+    <div class="panel" id="panel-teamchat">
+      <div style="display:flex;flex-direction:column;height:calc(100vh - 120px)">
+        <div class="chat-wrap" style="flex:1;height:auto">
+          <div class="chat-msgs" id="team-chat-msgs" style="flex:1"></div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="team-chat-input" placeholder="Написать всей команде..." rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTeamMsg();}"></textarea>
+            <button class="chat-send" onclick="sendTeamMsg()">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- VIDEO REVIEWS -->
     <div class="panel" id="panel-videoreviews">
       <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Видеозаписи уроков, отправленные преподавателями на проверку.</div>
@@ -632,6 +698,65 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <button class="btn" onclick="close1('m-video-review')">Закрыть</button>
       <button class="btn btn-r" onclick="reviewVideo('rejected')">❌ Отклонить</button>
       <button class="btn btn-g" onclick="reviewVideo('approved')">✅ Одобрить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Task -->
+<div class="mo" id="m-task">
+  <div class="modal modal-lg">
+    <div class="mt" id="m-task-ttl">Новая задача</div>
+    <div class="fr"><label>Название</label><input type="text" id="task-title" placeholder="Что нужно сделать?"/></div>
+    <div class="fr"><label>Описание</label><textarea id="task-desc" placeholder="Подробности..."></textarea></div>
+    <div class="fr-row">
+      <div class="fr">
+        <label>Приоритет</label>
+        <select id="task-priority">
+          <option value="medium">🟡 Средний</option>
+          <option value="high">🔴 Высокий</option>
+          <option value="low">🟢 Низкий</option>
+        </select>
+      </div>
+      <div class="fr"><label>Дедлайн</label><input type="date" id="task-deadline"/></div>
+    </div>
+    <div class="fr">
+      <label>Исполнитель</label>
+      <select id="task-assignee"><option value="">— Не назначен —</option></select>
+    </div>
+    <div class="fr">
+      <label>Соисполнители</label>
+      <div id="task-coassignees-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+    </div>
+    <div class="ma">
+      <button class="btn" onclick="close1('m-task')">Отмена</button>
+      <button class="btn btn-a" onclick="saveTask()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Task Detail -->
+<div class="mo" id="m-task-detail">
+  <div class="modal modal-lg" style="max-height:90vh">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
+      <div class="mt" id="m-td-title" style="margin-bottom:0;flex:1"></div>
+      <button class="btn btn-xs" onclick="close1('m-task-detail')">✕</button>
+    </div>
+    <div id="m-td-meta" style="margin-bottom:12px"></div>
+    <div id="m-td-desc" style="font-size:13px;color:var(--t2);margin-bottom:14px;white-space:pre-wrap"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" id="m-td-complete-btn" onclick="toggleTaskDone()"></button>
+      <button class="btn btn-sm" onclick="editCurrentTask()">✎ Редактировать</button>
+      <button class="btn btn-r btn-sm" onclick="deleteCurrentTask()">Удалить</button>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Чат</div>
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="task-chat-msgs"></div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="task-chat-input" placeholder="Написать сообщение..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"></textarea>
+        <button class="chat-send" onclick="sendChatMsg()">→</button>
+      </div>
     </div>
   </div>
 </div>
@@ -964,11 +1089,50 @@ function authLogout(){
   fbAuth.signOut();
 }
 
+
+// ── TELEGRAM NOTIFICATIONS ────────────────────────────────────────
+// Замени на URL своего Cloudflare Worker после деплоя
+const WORKER_URL = 'https://robeng-notify.uurraa.workers.dev';
+
+async function sendNotification(type, targetUid, targetUids, data){
+  if(!WORKER_URL.includes('workers.dev') || WORKER_URL.includes('ТВОЙ'))return; // not configured yet
+  try{
+    await fetch(WORKER_URL+'/notify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type,targetUid:targetUid||null,targetUids:targetUids||null,data:data||{}})
+    });
+  }catch(e){console.warn('Notification failed:',e);}
+}
+
+async function bindTelegram(){
+  const uid=fbAuth.currentUser?.uid;
+  if(!uid){toast('Войдите в систему',true);return;}
+  const code=Math.random().toString(36).slice(2,8).toUpperCase();
+  try{
+    await fetch(WORKER_URL+'/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid,code})
+    });
+    // Show instructions
+    const botUrl='https://t.me/ELC_RobengBot?start='+code;
+    const msg=`Для привязки Telegram:\n\n1. Нажмите кнопку ниже или откройте @robeng_elc_bot\n2. Нажмите START или отправьте: /start ${code}\n\nКод действителен 5 минут.`;
+    if(confirm(msg+'\n\nОткрыть бота?')){
+      window.open(botUrl,'_blank');
+    }
+  }catch(e){toast('Ошибка: '+e.message,true);}
+}
+
 // ── ROLES ─────────────────────────────────────────────────────────
 let currentRole = null; // 'admin' | 'teacher'
 let currentTeacherId = null; // teacher record id when role=teacher
 const usersRef = fbDb.ref('appUsers');
 const availRequestsRef = fbDb.ref('availRequests');
+const tasksRef = fbDb.ref('tasks');
+const chatRef = fbDb.ref('taskChats');
+const teamChatRef = fbDb.ref('teamChat');
+let teamChatListener=null;
 
 function applyRole(role, teacherId){
   currentRole = role;
@@ -989,7 +1153,7 @@ function applyRole(role, teacherId){
 
   // Teacher: redirect if on forbidden page
   const cur = curPanel();
-  const teacherAllowed = ['dashboard','schedule','availability','students','reports','videoreviews'];
+  const teacherAllowed = ['today','dashboard','schedule','availability','students','reports','videoreviews','tasks','teamchat'];
   if(role==='teacher' && !teacherAllowed.includes(cur)){
     const schedNi = document.querySelector('.ni[data-p="schedule"]');
     if(schedNi) { nav(schedNi); return; }
@@ -1043,12 +1207,16 @@ fbAuth.onAuthStateChanged(user=>{
         updateWL();renderDashboard();
         updateTrashBadge();
         updateVideoBadge();
+        updateTasksBadge();
+        updateTodayBadge();
         // Load videoReports from separate Firebase node into S
         videoRef.once('value').then(vSnap=>{
           S.videoReports=vSnap.val()||{};
         });
         // Listen for video report changes
         videoRef.on('value',vSnap=>{S.videoReports=vSnap.val()||{};renderSchedule();});
+        startTeamChatBadgeListener();
+        tasksRef.on('value',()=>{updateTasksBadge();updateTodayBadge();if(curPanel()==='tasks')renderTasks();if(curPanel()==='today')renderToday();});
         startDbListener();
         autoBackupOnLogin();
         setInterval(createAutoBackup, 24*60*60*1000);
@@ -1136,8 +1304,8 @@ function countFree(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-const TITLES={dashboard:'Дашборд',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
-const ACTS={dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
+const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Дашборд',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
+const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
 function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'dashboard';}
 function nav(el){
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -1153,6 +1321,9 @@ function nav(el){
 }
 function mainAct(){const p=curPanel();if(p==='teachers')openTeacherModal();else openStudentModal();}
 function renderPanel(p){
+  if(p==='today'){renderToday();return;}
+  if(p==='tasks'){renderTasks();return;}
+  if(p==='teamchat'){initTeamChat();updateChatBadge(0);return;}
   if(p==='dashboard')renderDashboard();
   else if(p==='subjects')renderSubjects();
   else if(p==='teachers'){fillSubjSel();renderTeachers();}
@@ -3193,6 +3364,12 @@ function submitVideoLink(){
       renderSchedule();
       updateVideoBadge();
       toast('🎥 Видео отправлено на проверку!');
+      // Notify admins
+      usersRef.once('value').then(us=>{
+        const udata=us.val()||{};
+        const adminUids=Object.entries(udata).filter(([u,ud])=>ud.role==='admin').map(([u])=>u);
+        if(adminUids.length)sendNotification('video_pending',null,adminUids,record);
+      });
     })
     .catch(err=>{
       console.error('Video submit error:',err);
@@ -3232,6 +3409,20 @@ function reviewVideo(decision){
     }
     save();
     const labels={approved:'✅ Одобрено',rejected:'❌ Отклонено'};
+    // Notify teacher
+    videoRef.child(_videoReviewId).once('value').then(vSnap=>{
+      const vd=vSnap.val();if(!vd)return;
+      // Find teacher UID
+      usersRef.once('value').then(us=>{
+        const udata=us.val()||{};
+        const entry=Object.entries(udata).find(([uid,u])=>u.name===vd.teacherName);
+        if(entry){
+          sendNotification(decision==='approved'?'video_approved':'video_rejected',entry[0],null,{
+            studentName:vd.studentName,dateStr:vd.dateStr,adminComment
+          });
+        }
+      });
+    });
     logAction('other',`Видео урока ${labels[decision]||decision}`,`${adminComment?'Комментарий: '+adminComment:''}`);
     close1('m-video-review');
     renderVideoReviews();
@@ -3302,6 +3493,551 @@ function renderVideoReviews(){
   }).catch(()=>{el.innerHTML='<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Ошибка загрузки</div></div>';});
 }
 
+// ── TASKS ─────────────────────────────────────────────────────────
+let taskTab='all', editTaskId=null, currentTaskId=null, chatListener=null;
+
+function getMyUid(){return fbAuth.currentUser?.uid||'';}
+function getMyName(){return fbAuth.currentUser?.email||'—';}
+function getMyDisplayName(){
+  // Try to find in appUsers
+  const uid=getMyUid();
+  return new Promise(res=>{
+    usersRef.child(uid).once('value').then(s=>{
+      res(s.val()?.name||fbAuth.currentUser?.email||'—');
+    }).catch(()=>res(fbAuth.currentUser?.email||'—'));
+  });
+}
+
+function updateTasksBadge(){
+  const uid=getMyUid();
+  tasksRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    const n=Object.values(data).filter(t=>
+      !t.done&&(t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid]))
+    ).length;
+    const b=document.getElementById('tasks-badge');
+    if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+  });
+}
+function updateTodayBadge(){
+  const today=new Date().toISOString().slice(0,10);
+  const uid=getMyUid();
+  const todayDay=(new Date().getDay()+6)%7;
+  let n=0;
+  // Pending lessons today
+  if(currentTeacherId){
+    const enrs=S.enrollments.filter(e=>String(e.teacherId)===String(currentTeacherId)&&enrollActive(e,today)&&!e.inactive);
+    enrs.forEach(e=>{
+      if(!e.slots.some(sl=>sl.day===todayDay))return;
+      const att=(S.attendance||{})[`${e.id}_${today}`];
+      if(!att)n++;
+    });
+  }
+  // Pending tasks due today or overdue
+  tasksRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    Object.values(data).forEach(t=>{
+      if(t.done)return;
+      if(t.assigneeUid!==uid&&!(t.coassignees&&t.coassignees[uid]))return;
+      if(!t.deadline||t.deadline<=today)n++;
+    });
+    const b=document.getElementById('today-badge');
+    if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+  });
+}
+
+function setTaskTab(tab){
+  taskTab=tab;
+  ['all','mine','done'].forEach(t=>{
+    const b=document.getElementById('tk-'+t);
+    if(b)b.classList.toggle('active',t===tab);
+  });
+  renderTasks();
+}
+
+function fillTaskUserSel(){
+  usersRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    const opts='<option value="">— Не назначен —</option>'+
+      Object.entries(data).map(([uid,u])=>`<option value="${uid}">${u.name||u.email}</option>`).join('');
+    const sel=document.getElementById('task-assignee');
+    if(sel)sel.innerHTML=opts;
+    // Co-assignees checkboxes
+    const wrap=document.getElementById('task-coassignees-wrap');
+    if(wrap){
+      wrap.innerHTML=Object.entries(data).map(([uid,u])=>`
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);cursor:pointer;padding:4px 8px;background:var(--bg3);border:1px solid var(--b2);border-radius:6px">
+          <input type="checkbox" data-uid="${uid}" class="coassign-cb" style="accent-color:var(--ac)"/>
+          ${u.name||u.email}
+        </label>`).join('');
+    }
+  });
+}
+
+function openTaskModal(taskId){
+  editTaskId=taskId||null;
+  document.getElementById('m-task-ttl').textContent=taskId?'Редактировать задачу':'Новая задача';
+
+  // Reset form
+  document.getElementById('task-title').value='';
+  document.getElementById('task-desc').value='';
+  document.getElementById('task-priority').value='medium';
+  document.getElementById('task-deadline').value='';
+
+  // Load users first, then fill task data
+  usersRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    const opts='<option value="">— Не назначен —</option>'+
+      Object.entries(data).map(([uid,u])=>`<option value="${uid}">${u.name||u.email}</option>`).join('');
+    const sel=document.getElementById('task-assignee');
+    if(sel)sel.innerHTML=opts;
+
+    const wrap=document.getElementById('task-coassignees-wrap');
+    if(wrap){
+      wrap.innerHTML=Object.entries(data).map(([uid,u])=>`
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);cursor:pointer;padding:4px 8px;background:var(--bg3);border:1px solid var(--b2);border-radius:6px">
+          <input type="checkbox" data-uid="${uid}" class="coassign-cb" style="accent-color:var(--ac)"/>
+          ${u.name||u.email}
+        </label>`).join('');
+    }
+
+    // Now fill task data if editing
+    if(taskId){
+      tasksRef.child(taskId).once('value').then(snap2=>{
+        const t=snap2.val();if(!t)return;
+        document.getElementById('task-title').value=t.title||'';
+        document.getElementById('task-desc').value=t.desc||'';
+        document.getElementById('task-priority').value=t.priority||'medium';
+        document.getElementById('task-deadline').value=t.deadline||'';
+        if(sel&&t.assigneeUid)sel.value=t.assigneeUid;
+        document.querySelectorAll('.coassign-cb').forEach(cb=>{
+          cb.checked=!!(t.coassignees&&t.coassignees[cb.dataset.uid]);
+        });
+      });
+    }
+  });
+
+  open1('m-task');
+}
+
+function saveTask(){
+  const title=document.getElementById('task-title').value.trim();
+  if(!title){toast('Введите название задачи',true);return;}
+  const desc=document.getElementById('task-desc').value.trim();
+  const priority=document.getElementById('task-priority').value;
+  const deadline=document.getElementById('task-deadline').value;
+  const assigneeSel=document.getElementById('task-assignee');
+  const assigneeUid=assigneeSel?assigneeSel.value:'';
+  const assigneeName=assigneeSel?assigneeSel.options[assigneeSel.selectedIndex]?.text.replace('— Не назначен —','').trim():'';
+
+  // Collect co-assignees from checked boxes
+  const coassignees={};
+  document.querySelectorAll('.coassign-cb:checked').forEach(cb=>{
+    if(cb.dataset.uid)coassignees[cb.dataset.uid]=true;
+  });
+
+  const uid=getMyUid();
+  const now=new Date().toISOString();
+  const task={
+    title,desc,priority,deadline,
+    assigneeUid:assigneeUid||'',
+    assigneeName:assigneeName||'',
+    coassignees,
+    createdBy:uid,
+    createdByName:getMyName(),
+    updatedAt:now,
+    done:false
+  };
+
+  const btn=document.querySelector('#m-task .btn-a');
+  if(btn){btn.disabled=true;btn.textContent='Сохранение...';}
+
+  const done=()=>{
+    if(btn){btn.disabled=false;btn.textContent='Сохранить';}
+    close1('m-task');renderTasks();updateTasksBadge();
+  };
+
+  if(editTaskId){
+    // Keep original createdAt and createdBy when editing
+    tasksRef.child(editTaskId).once('value').then(snap=>{
+      const orig=snap.val()||{};
+      task.createdAt=orig.createdAt||now;
+      task.createdBy=orig.createdBy||uid;
+      task.createdByName=orig.createdByName||getMyName();
+      task.done=orig.done||false;
+      return tasksRef.child(editTaskId).set(task);
+    }).then(()=>{done();toast('Задача обновлена');})
+    .catch(err=>{
+      if(btn){btn.disabled=false;btn.textContent='Сохранить';}
+      toast('Ошибка: '+err.message,true);
+      console.error('saveTask error:',err);
+    });
+  } else {
+    task.createdAt=now;
+    tasksRef.push(task)
+      .then(ref=>{
+      done();toast('Задача создана');
+      // Notify assignee
+      if(task.assigneeUid&&task.assigneeUid!==getMyUid()){
+        sendNotification('task_assigned',task.assigneeUid,null,{
+          taskTitle:task.title,taskDesc:task.desc,
+          createdByName:task.createdByName,deadline:task.deadline
+        });
+      }
+      // Notify co-assignees
+      Object.keys(task.coassignees||{}).forEach(cUid=>{
+        if(cUid!==getMyUid()&&cUid!==task.assigneeUid)
+          sendNotification('task_assigned',cUid,null,{
+            taskTitle:task.title,taskDesc:task.desc,
+            createdByName:task.createdByName,deadline:task.deadline
+          });
+      });
+    })
+      .catch(err=>{
+        if(btn){btn.disabled=false;btn.textContent='Сохранить';}
+        toast('Ошибка: '+err.message,true);
+        console.error('saveTask error:',err);
+      });
+  }
+}
+
+function renderTasks(){
+  const el=document.getElementById('tasks-list');if(!el)return;
+  const uid=getMyUid();
+  el.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Загрузка...</div>';
+  tasksRef.orderByChild('createdAt').once('value').then(snap=>{
+    const data=snap.val()||{};
+    let items=Object.entries(data).map(([id,t])=>({id,...t}))
+      .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+    // Always filter to only tasks relevant to this user
+    const isMine=t=>t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid])||t.createdBy===uid;
+
+    if(taskTab==='done') items=items.filter(t=>t.done&&isMine(t));
+    else if(taskTab==='mine') items=items.filter(t=>!t.done&&(t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid])));
+    else items=items.filter(t=>!t.done&&isMine(t)); // 'all' = all mine (active)
+
+    if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">'+(taskTab==='done'?'Нет завершённых задач':'Нет задач')+'</div></div>';return;}
+
+    const pLabel={high:'🔴 Высокий',medium:'🟡 Средний',low:'🟢 Низкий'};
+    const pClass={high:'p-high',medium:'p-medium',low:'p-low'};
+
+    el.innerHTML=items.map(t=>{
+      const isAssigned=t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid]);
+      const isCreator=t.createdBy===uid;
+      const isOverdue=t.deadline&&t.deadline<new Date().toISOString().slice(0,10)&&!t.done;
+      const roleLabel=isAssigned?'Назначена мне':isCreator?'Создал я':'';
+      return`<div class="task-card ${t.done?'done':''} priority-${t.priority||'medium'}" onclick="openTaskDetail('${t.id}')">
+        <div class="task-title ${t.done?'done-text':''}">
+          <span style="font-size:16px">${t.done?'☑':'☐'}</span>
+          ${t.title}
+          ${roleLabel?`<span style="font-size:10px;color:var(--ac2);background:var(--acbg);padding:1px 6px;border-radius:6px">${roleLabel}</span>`:''}
+        </div>
+        ${t.desc?`<div style="font-size:12px;color:var(--t3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.desc.slice(0,80)}${t.desc.length>80?'...':''}</div>`:''}
+        <div class="task-meta">
+          <span class="priority-badge ${pClass[t.priority||'medium']}">${pLabel[t.priority||'medium']}</span>
+          ${t.deadline?`<span style="${isOverdue?'color:var(--rd);font-weight:600':''}">📅 ${fmtDate(t.deadline)}${isOverdue?' ⚠ Просрочено':''}</span>`:''}
+          ${t.assigneeName?`<span>👤 ${t.assigneeName}</span>`:''}
+          ${isCreator&&t.assigneeName?`<span style="color:var(--t3)">от меня</span>`:`<span style="color:var(--t3)">от ${t.createdByName||'—'}</span>`}
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function openTaskDetail(taskId){
+  currentTaskId=taskId;
+  // Stop previous chat listener
+  if(chatListener){chatRef.child(taskId).off('value',chatListener);chatListener=null;}
+
+  tasksRef.child(taskId).once('value').then(snap=>{
+    const t=snap.val();if(!t)return;
+    const pLabel={high:'🔴 Высокий',medium:'🟡 Средний',low:'🟢 Низкий'};
+    const pClass={high:'p-high',medium:'p-medium',low:'p-low'};
+    const isOverdue=t.deadline&&t.deadline<new Date().toISOString().slice(0,10)&&!t.done;
+
+    document.getElementById('m-td-title').textContent=t.title||'—';
+    document.getElementById('m-td-desc').textContent=t.desc||'';
+    document.getElementById('m-td-complete-btn').textContent=t.done?'↩ Возобновить':'✓ Завершить';
+    document.getElementById('m-td-complete-btn').className='btn btn-sm '+(t.done?'':'btn-g');
+
+    document.getElementById('m-td-meta').innerHTML=`
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+        <span class="priority-badge ${pClass[t.priority||'medium']}">${pLabel[t.priority||'medium']}</span>
+        ${t.deadline?`<span style="font-size:12px;${isOverdue?'color:var(--rd);font-weight:600':'color:var(--t3)'}">📅 ${fmtDate(t.deadline)}${isOverdue?' ⚠':''}</span>`:''}
+        ${t.done?'<span style="font-size:12px;color:var(--gn)">✅ Завершено</span>':''}
+      </div>
+      <div style="font-size:12px;color:var(--t3);display:flex;flex-wrap:wrap;gap:10px">
+        ${t.assigneeName?`<span>👤 Исполнитель: <b style="color:var(--t2)">${t.assigneeName}</b></span>`:''}
+        ${t.coassignees&&Object.keys(t.coassignees).length?`<span>👥 Соисполнители</span>`:''}
+        <span>Создал: ${t.createdByName||'—'}</span>
+        <span>${t.createdAt?new Date(t.createdAt).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</span>
+      </div>`;
+
+    // Start chat listener
+    document.getElementById('task-chat-msgs').innerHTML='<div style="text-align:center;padding:10px;color:var(--t3);font-size:11px">Загрузка...</div>';
+    document.getElementById('task-chat-input').value='';
+
+    chatListener=chatRef.child(taskId).on('value',cSnap=>{
+      const msgs=cSnap.val()||{};
+      const myUid=getMyUid();
+      const sorted=Object.values(msgs).sort((a,b)=>a.ts.localeCompare(b.ts));
+      const msgsEl=document.getElementById('task-chat-msgs');
+      if(!msgsEl)return;
+      if(!sorted.length){msgsEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Начните общение...</div>';return;}
+      msgsEl.innerHTML=sorted.map(m=>{
+        const mine=m.uid===myUid;
+        const ts=new Date(m.ts).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        return`<div class="chat-msg ${mine?'mine':'theirs'}">
+          ${!mine?`<div class="chat-msg-meta">${m.name||'—'} · ${ts}</div>`:''}
+          ${m.text}
+          ${mine?`<div class="chat-msg-meta" style="text-align:right;margin-top:2px">${ts}</div>`:''}
+        </div>`;
+      }).join('');
+      msgsEl.scrollTop=msgsEl.scrollHeight;
+    });
+
+    open1('m-task-detail');
+  });
+}
+
+function toggleTaskDone(){
+  if(!currentTaskId)return;
+  tasksRef.child(currentTaskId).once('value').then(snap=>{
+    const t=snap.val();if(!t)return;
+    tasksRef.child(currentTaskId).update({done:!t.done,updatedAt:new Date().toISOString()}).then(()=>{
+      renderTasks();updateTasksBadge();
+      openTaskDetail(currentTaskId);
+      toast(t.done?'Задача возобновлена':'✅ Задача завершена');
+    });
+  });
+}
+
+function editCurrentTask(){
+  if(!currentTaskId)return;
+  close1('m-task-detail');
+  openTaskModal(currentTaskId);
+}
+
+function deleteCurrentTask(){
+  if(!currentTaskId)return;
+  if(!confirm('Удалить задачу? Чат тоже будет удалён.'))return;
+  tasksRef.child(currentTaskId).remove();
+  chatRef.child(currentTaskId).remove();
+  close1('m-task-detail');
+  renderTasks();updateTasksBadge();
+  toast('Задача удалена');
+}
+
+async function sendChatMsg(){
+  const inp=document.getElementById('task-chat-input');
+  const text=inp.value.trim();
+  if(!text||!currentTaskId)return;
+  inp.value='';
+  const uid=getMyUid();
+  const name=await getMyDisplayName();
+  const msgRef=chatRef.child(currentTaskId).push({
+    uid,name,text,
+    ts:new Date().toISOString()
+  });
+  // Notify other task participants
+  tasksRef.child(currentTaskId).once('value').then(tSnap=>{
+    const td=tSnap.val();if(!td)return;
+    const notifyUids=new Set();
+    if(td.assigneeUid&&td.assigneeUid!==uid)notifyUids.add(td.assigneeUid);
+    if(td.createdBy&&td.createdBy!==uid)notifyUids.add(td.createdBy);
+    Object.keys(td.coassignees||{}).forEach(cu=>{if(cu!==uid)notifyUids.add(cu);});
+    notifyUids.forEach(nu=>sendNotification('task_chat',nu,null,{
+      taskTitle:td.title,senderName:name,message:text
+    }));
+  });
+}
+
+// ── TODAY PANEL ───────────────────────────────────────────────────
+function renderToday(){
+  const el=document.getElementById('today-panel-list');if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  const todayDay=(new Date().getDay()+6)%7;
+  const uid=getMyUid();
+  const dow=(new Date().getDay()+6)%7;
+  const isTuWed=dow===1||dow===2;
+  let html='';
+
+  // ── Section 1: My lessons today
+  const myEnrolls=currentTeacherId
+    ? S.enrollments.filter(e=>String(e.teacherId)===String(currentTeacherId)&&enrollActive(e,today)&&!e.inactive)
+    : (currentRole==='admin'?S.enrollments.filter(e=>enrollActive(e,today)&&!e.inactive):[]);
+
+  const lessonsToday=[];
+  myEnrolls.forEach(e=>{
+    const sl=e.slots.find(s=>s.day===todayDay);if(!sl)return;
+    const st=student(e.studentId),t=teacher(e.teacherId);
+    const att=(S.attendance||{})[`${e.id}_${today}`];
+    lessonsToday.push({e,st,t,sl,att,time:TIMES[sl.ti]});
+  });
+  lessonsToday.sort((a,b)=>a.time.localeCompare(b.time));
+
+  if(lessonsToday.length){
+    html+=`<div class="sec-title" style="margin-bottom:10px">📅 Уроки сегодня</div>`;
+    html+=lessonsToday.map(({e,st,t,sl,att})=>{
+      const done=att==='done',miss=att==='miss',makeup=att==='makeup';
+      const color=done?'var(--gn)':miss?'var(--rd)':makeup?'var(--am)':'var(--t2)';
+      return`<div class="today-item">
+        <div class="today-check ${done?'done':''}" onclick="setAtt(${e.id},'${today}','done')" title="Отметить проведённым">${done?'✓':''}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:${done?'var(--t3)':'var(--t1)'};${done?'text-decoration:line-through':''}">${TIMES[sl.ti]} — ${st?.name||'—'}</div>
+          <div style="font-size:11px;color:var(--t3)">${currentRole==='admin'?((t?.name||'—')+' · '):''}${e.topic||'—'}</div>
+        </div>
+        ${att?`<span style="font-size:11px;color:${color};font-weight:600">${done?'✓ Проведён':miss?'✗ Пропуск':'↩ Отработка'}</span>`:''}
+      </div>`;
+    }).join('');
+    html+=`<div class="divider"></div>`;
+  }
+
+  // ── Section 2: Video needed today (Tue/Wed)
+  if(isTuWed&&currentTeacherId){
+    const videoNeeded=myEnrolls.filter(e=>{
+      if(!e.slots.some(sl=>sl.day===todayDay))return false;
+      const v=(S.videoReports||{})[videoKey(e.id,today)];
+      return!v||v.status==='rejected';
+    });
+    if(videoNeeded.length){
+      html+=`<div class="sec-title" style="margin-bottom:10px">🎥 Видео на сегодня</div>`;
+      html+=videoNeeded.map(e=>{
+        const st=student(e.studentId);
+        const v=(S.videoReports||{})[videoKey(e.id,today)];
+        return`<div class="today-item">
+          <div style="font-size:18px">🎥</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${st?.name||'—'} · ${e.topic||'—'}</div>
+            <div style="font-size:11px;color:${v?.status==='rejected'?'var(--rd)':'var(--t3)'}">${v?.status==='rejected'?'❌ Отклонено — нужно переслать':'Нужно загрузить ссылку на видео'}</div>
+          </div>
+          <button class="btn btn-sm" onclick="openVideoUpload(${e.id},'${today}')">Загрузить</button>
+        </div>`;
+      }).join('');
+      html+=`<div class="divider"></div>`;
+    }
+  }
+
+  // ── Section 3: My tasks due today or overdue
+  tasksRef.once('value').then(snap=>{
+    const data=snap.val()||{};
+    const myTasks=Object.entries(data)
+      .map(([id,t])=>({id,...t}))
+      .filter(t=>!t.done&&(t.assigneeUid===uid||(t.coassignees&&t.coassignees[uid])||t.createdBy===uid))
+      .sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+    const overdue=myTasks.filter(t=>t.deadline&&t.deadline<today);
+    const dueToday=myTasks.filter(t=>t.deadline===today);
+    const upcoming=myTasks.filter(t=>!t.deadline||(t.deadline>today));
+
+    let tasksHtml='';
+    if(overdue.length||dueToday.length||upcoming.length){
+      tasksHtml+=`<div class="sec-title" style="margin-bottom:10px">✅ Мои задачи</div>`;
+      const renderT=(t,badge)=>`<div class="today-item" onclick="openTaskDetail('${t.id}')" style="cursor:pointer">
+        <div style="font-size:16px">${t.done?'☑':'☐'}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${t.title}</div>
+          ${t.deadline?`<div style="font-size:11px;color:var(--t3)">📅 ${fmtDate(t.deadline)}</div>`:''}
+        </div>
+        ${badge}
+      </div>`;
+      if(overdue.length) tasksHtml+=overdue.map(t=>renderT(t,'<span style="font-size:10px;color:var(--rd);font-weight:600;background:var(--rdbg);padding:2px 7px;border-radius:6px">⚠ Просрочено</span>')).join('');
+      if(dueToday.length) tasksHtml+=dueToday.map(t=>renderT(t,'<span style="font-size:10px;color:var(--am);font-weight:600;background:var(--ambg);padding:2px 7px;border-radius:6px">Сегодня</span>')).join('');
+      if(upcoming.length) tasksHtml+=upcoming.slice(0,5).map(t=>renderT(t,'')).join('');
+    }
+
+    if(!html&&!tasksHtml){
+      el.innerHTML='<div class="empty"><div class="empty-icon">☀️</div><div class="empty-text">На сегодня всё выполнено!</div></div>';
+      return;
+    }
+    el.innerHTML=html+tasksHtml;
+    updateTodayBadge();
+  });
+}
+
+// ── TEAM CHAT ─────────────────────────────────────────────────────
+let _lastSeenTeamChat = localStorage.getItem('lastSeenTeamChat')||'';
+
+function initTeamChat(){
+  const msgsEl=document.getElementById('team-chat-msgs');
+  if(!msgsEl)return;
+  msgsEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Загрузка...</div>';
+  // Stop old listener
+  if(teamChatListener){teamChatRef.off('value',teamChatListener);teamChatListener=null;}
+
+  teamChatListener=teamChatRef.limitToLast(100).on('value',snap=>{
+    const data=snap.val()||{};
+    const msgs=Object.values(data).sort((a,b)=>a.ts.localeCompare(b.ts));
+    const myUid=getMyUid();
+    if(!msgs.length){
+      msgsEl.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">💬</div><div>Начните общение с командой!</div></div>';
+      return;
+    }
+    // Group messages by date
+    let lastDate='',html='';
+    msgs.forEach(m=>{
+      const mine=m.uid===myUid;
+      const ts=new Date(m.ts);
+      const dateStr=ts.toISOString().slice(0,10);
+      const timeStr=ts.toLocaleString('ru',{hour:'2-digit',minute:'2-digit'});
+      const dateLabel=ts.toLocaleDateString('ru',{day:'numeric',month:'long'});
+      if(dateStr!==lastDate){
+        html+=`<div style="text-align:center;margin:10px 0"><span style="font-size:11px;color:var(--t3);background:var(--bg3);padding:3px 10px;border-radius:10px">${dateLabel}</span></div>`;
+        lastDate=dateStr;
+      }
+      html+=`<div style="display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'};margin-bottom:6px">
+        ${!mine?`<div style="font-size:10px;color:var(--t3);margin-bottom:2px;margin-left:4px">${m.name||'—'}</div>`:''}
+        <div class="chat-msg ${mine?'mine':'theirs'}" style="max-width:75%">
+          ${m.text.replace(/\n/g,'<br>')}
+          <div style="font-size:10px;color:${mine?'rgba(255,255,255,.5)':'var(--t3)'};margin-top:3px;text-align:right">${timeStr}</div>
+        </div>
+      </div>`;
+    });
+    msgsEl.innerHTML=html;
+    msgsEl.scrollTop=msgsEl.scrollHeight;
+    // Mark as seen
+    if(msgs.length){
+      const last=msgs[msgs.length-1].ts;
+      _lastSeenTeamChat=last;
+      localStorage.setItem('lastSeenTeamChat',last);
+      updateChatBadge(0);
+    }
+  });
+}
+
+async function sendTeamMsg(){
+  const inp=document.getElementById('team-chat-input');
+  const text=inp.value.trim();
+  if(!text)return;
+  inp.value='';inp.style.height='auto';
+  const name=await getMyDisplayName();
+  teamChatRef.push({
+    uid:getMyUid(),name,text,
+    ts:new Date().toISOString()
+  });
+}
+
+function updateChatBadge(n){
+  const b=document.getElementById('chat-badge');
+  if(!b)return;
+  if(n===0){b.style.display='none';return;}
+  b.textContent=n;b.style.display='';
+}
+
+function startTeamChatBadgeListener(){
+  // Listen for new messages and show badge when not on chat panel
+  teamChatRef.limitToLast(1).on('value',snap=>{
+    const data=snap.val()||{};
+    const msgs=Object.values(data);
+    if(!msgs.length)return;
+    const last=msgs[0];
+    if(last.ts>_lastSeenTeamChat&&last.uid!==getMyUid()&&curPanel()!=='teamchat'){
+      updateChatBadge('●');
+    }
+  });
+}
+
 // ── AVAILABILITY REQUESTS ─────────────────────────────────────────
 function updateAvailReqBadge(){
   availRequestsRef.orderByChild('status').equalTo('pending').once('value').then(snap=>{
@@ -3360,6 +4096,12 @@ function approveAvailRequest(reqId){
     S.scheduleHistory[tid].push({fromDate:req.fromDate,avail:req.avail});
     S.scheduleHistory[tid].sort((a,b)=>b.fromDate.localeCompare(a.fromDate));
     const user=fbAuth.currentUser?.email||'—';
+    // Notify teacher
+    usersRef.once('value').then(us=>{
+      const udata=us.val()||{};
+      const entry=Object.entries(udata).find(([uid,u])=>u.name===req.teacherName);
+      if(entry) sendNotification('avail_approved',entry[0],null,{fromDate:req.fromDate});
+    });
     logAction('teacher',`Заявка одобрена: ${req.teacherName}`,`С ${fmtDate(req.fromDate)} · Одобрил: ${user}`);
     save();
     availRequestsRef.child(reqId).update({status:'approved',approvedBy:user,approvedAt:new Date().toISOString()});
@@ -3389,8 +4131,20 @@ function editAndApproveAvailRequest(reqId){
 function rejectAvailRequest(reqId){
   if(!confirm('Отклонить заявку?'))return;
   const user=fbAuth.currentUser?.email||'—';
-  availRequestsRef.child(reqId).update({status:'rejected',rejectedBy:user,rejectedAt:new Date().toISOString()})
-    .then(()=>{updateAvailReqBadge();renderAvailRequests();toast('Заявка отклонена');});
+  availRequestsRef.child(reqId).once('value').then(rSnap=>{
+    const req2=rSnap.val();
+    availRequestsRef.child(reqId).update({status:'rejected',rejectedBy:user,rejectedAt:new Date().toISOString()})
+    .then(()=>{
+      updateAvailReqBadge();renderAvailRequests();toast('Заявка отклонена');
+      if(req2){
+        usersRef.once('value').then(us=>{
+          const udata=us.val()||{};
+          const entry=Object.entries(udata).find(([uid,u])=>u.name===req2.teacherName);
+          if(entry)sendNotification('avail_rejected',entry[0],null,{fromDate:req2.fromDate});
+        });
+      }
+    });
+  });
 }
 
 // ── TRASH ─────────────────────────────────────────────────────────

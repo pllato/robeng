@@ -1271,13 +1271,6 @@ function applyRole(role, teacherId){
 }
 
 // ── AUTH STATE OBSERVER ───────────────────────────────────────────
-// Check invite token on page load
-checkInviteToken().then(hasInvite=>{
-  if(!hasInvite){
-    // Normal flow — show login if not authenticated
-  }
-});
-
 fbAuth.onAuthStateChanged(user=>{
   if(user){
     document.getElementById('auth-screen').classList.remove('show');
@@ -1348,16 +1341,21 @@ fbAuth.onAuthStateChanged(user=>{
       });
     });
   } else {
-    document.getElementById('auth-screen').classList.add('show');
+    _dbListening=false;
+    setFbStatus('','');
+    currentRole=null;
+    // Check if this is an invite link
+    checkInviteToken().then(hasInvite=>{
+      if(!hasInvite){
+        document.getElementById('auth-screen').classList.add('show');
+      }
+    });
     document.getElementById('app').style.display='none';
     document.getElementById('auth-submit').disabled=false;
     document.getElementById('auth-submit').textContent='Войти';
     document.getElementById('auth-email').value='';
     document.getElementById('auth-pass').value='';
     document.getElementById('auth-err').style.display='none';
-    _dbListening=false;
-    setFbStatus('','');
-    currentRole=null;
   }
 });
 

@@ -330,6 +330,64 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   </div>
 </div>
 
+
+<!-- ── INVITE REGISTRATION ──────────────────────────────────────── -->
+<div id="invite-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1001;align-items:center;justify-content:center;flex-direction:column;">
+  <div class="auth-card" style="width:420px;max-width:94vw">
+    <div style="margin-bottom:8px;text-align:center">
+      <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wgARCAAoACgDASIAAhEBAxEB/8QAGAABAQEBAQAAAAAAAAAAAAAAAAQDBQL/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAHv4AAAAAAAAAAAAAnMQAAAAAAAAAAAAAAAB//xAAcEAADAQEBAQEBAAAAAAAAAAABAgMEEhMUIf/aAAgBAQABBQL1Xpx9Kt0uSEt7UqRRE2v9Mn8Lf0yIxdHp7GXFYrkBD2mXiNp6ORb0pJ0ZSODSSf/EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BH//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BH//EAB4QAAICAgMBAAAAAAAAAAAAAAABEBEhMUFRYXH/2gAIAQEABj8CqfM+4yolS3Mk4zDMjJvlHyT3T5LxCJPUk/8A/8QAHhAAAgIDAQEBAAAAAAAAAAAAAAERITFBUWFxgf/aAAgBAQABPyF7KXg5DLl5FNFKVkf0bVDNBkVJGS6fK2FNu7RA8VcOZmX0k2hMjuE2ioW+i6ZFXzH//2gAMAwEAAgADAAAAEAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAg/9oACAEDAQE/EB//xAAUEQEAAAAAAAAAAAAAAAAAAAAg/9oACAECAQE/EB//xAAgEAEAAgICAgMAAAAAAAAAAAABABEhMUFRYXGBkf/aAAgBAQABPxBuJnZ7N5UKwFgEbgJQAAHQSG6KTvjoCOqLuDIRsWfVuMqpjQFIBKE7B9h8NmBYiuvmXfM3GSJF3Z6LvTuAr7j//2Q==" alt="RobEng" style="height:60px;width:auto;display:block;margin:0 auto"/>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--t3);margin-bottom:8px;letter-spacing:.03em">ELC Roblox English</div>
+
+    <!-- Loading state -->
+    <div id="inv-state-loading" style="text-align:center;padding:20px;color:var(--t3)">
+      <div style="font-size:24px;margin-bottom:8px">⏳</div>Проверяем приглашение...
+    </div>
+
+    <!-- Expired -->
+    <div id="inv-state-expired" style="display:none;text-align:center;padding:10px 0">
+      <div style="font-size:36px;margin-bottom:10px">❌</div>
+      <div style="font-size:16px;font-weight:700;color:var(--rd);margin-bottom:8px">Ссылка недействительна</div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:16px">Это приглашение уже использовано или истекло.<br>Обратитесь к администратору.</div>
+      <button class="auth-btn" onclick="showLogin()">← Войти</button>
+    </div>
+
+    <!-- Registration form -->
+    <div id="inv-state-form" style="display:none">
+      <div id="inv-info-banner" style="background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--t2);line-height:1.5"></div>
+      <div class="auth-title" style="text-align:center">Создание аккаунта</div>
+      <div class="auth-err" id="inv-err"></div>
+      <div class="auth-field"><label>Ваше имя</label><input type="text" id="inv-name" placeholder="Айганым"/></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="inv-email" placeholder="email@gmail.com"/></div>
+      <div class="auth-field"><label>Пароль</label><input type="password" id="inv-pass" placeholder="Минимум 6 символов"/></div>
+      <div class="auth-field"><label>Телефон / Telegram</label><input type="tel" id="inv-phone" placeholder="+7 700 000 00 00"/></div>
+
+      <!-- Work schedule -->
+      <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);padding:13px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:10px">🕐 Ваше время работы</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn btn-xs btn-g" onclick="invAvailAll(true)" type="button">Выбрать всё</button>
+          <button class="btn btn-xs" onclick="invAvailAll(false)" type="button">Очистить</button>
+          <button class="btn btn-xs" onclick="invAvailPreset()" type="button">Стандарт Пн–Сб 18–21</button>
+        </div>
+        <div style="overflow-x:auto"><div id="inv-avail-grid"></div></div>
+      </div>
+
+      <button class="auth-btn" id="inv-submit-btn" onclick="doInviteRegister()">Зарегистрироваться</button>
+      <div style="text-align:center;margin-top:10px">
+        <button style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer" onclick="showLogin()">Уже есть аккаунт? Войти</button>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div id="inv-state-success" style="display:none;text-align:center;padding:10px 0">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-size:16px;font-weight:700;color:var(--gn);margin-bottom:8px">Добро пожаловать!</div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:16px" id="inv-success-text">Аккаунт создан. Входим...</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── MAIN APP ─────────────────────────────────────────────────── -->
 <div class="layout" id="app" style="display:none">
 <div class="sidebar">
@@ -536,7 +594,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="panel" id="panel-users">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div style="font-size:12px;color:var(--t3)">Управление доступом. Пользователи входят через email и пароль.</div>
-        <button class="btn btn-a btn-sm" onclick="openAddUser()">+ Добавить пользователя</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="createInviteLink()">🔗 Пригласить</button>
+          <button class="btn btn-a btn-sm" onclick="openAddUser()">+ Добавить</button>
+        </div>
       </div>
       <div id="users-list"></div>
     </div>
@@ -604,6 +665,35 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     </div>
   </div>
 </div>
+</div>
+
+<!-- Modal: Invite link -->
+<div class="mo" id="m-invite">
+  <div class="modal">
+    <div class="mt">🔗 Пригласить преподавателя</div>
+    <div class="fr">
+      <label>Имя (необязательно)</label>
+      <input type="text" id="inv-name" placeholder="Айганым"/>
+    </div>
+    <div class="fr">
+      <label>Роль</label>
+      <select id="inv-role">
+        <option value="teacher">👨‍🏫 Преподаватель</option>
+        <option value="admin">👑 Администратор</option>
+      </select>
+    </div>
+    <div id="inv-result" style="display:none;margin-top:14px">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:6px">Ссылка действительна 48 часов:</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="inv-link" readonly style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-size:12px;padding:8px 10px;flex:1;cursor:pointer" onclick="this.select()"/>
+        <button class="btn btn-g btn-sm" onclick="copyInviteLink()">Копировать</button>
+      </div>
+    </div>
+    <div class="ma">
+      <button class="btn" onclick="close1('m-invite')">Закрыть</button>
+      <button class="btn btn-a" id="inv-btn" onclick="generateInviteLink()">Создать ссылку</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: Add User -->
@@ -1181,6 +1271,13 @@ function applyRole(role, teacherId){
 }
 
 // ── AUTH STATE OBSERVER ───────────────────────────────────────────
+// Check invite token on page load
+checkInviteToken().then(hasInvite=>{
+  if(!hasInvite){
+    // Normal flow — show login if not authenticated
+  }
+});
+
 fbAuth.onAuthStateChanged(user=>{
   if(user){
     document.getElementById('auth-screen').classList.remove('show');
@@ -4143,6 +4240,195 @@ function startTeamChatBadgeListener(){
   });
 }
 
+// ── INVITE REGISTRATION ──────────────────────────────────────────
+const invitesRef = fbDb.ref('invites');
+let _inviteToken = null;
+let _inviteData = null;
+let _invAvail = {};
+
+function getInviteToken(){
+  const p = new URLSearchParams(window.location.search);
+  return p.get('invite') || p.get('token') || null;
+}
+
+function showLogin(){
+  document.getElementById('invite-screen').style.display='none';
+  document.getElementById('auth-screen').classList.add('show');
+}
+
+function invShowState(id){
+  ['inv-state-loading','inv-state-expired','inv-state-form','inv-state-success'].forEach(s=>{
+    document.getElementById(s).style.display = s===id ? '' : 'none';
+  });
+}
+
+async function checkInviteToken(){
+  _inviteToken = getInviteToken();
+  if(!_inviteToken) return false;
+
+  // Show invite screen instead of login
+  document.getElementById('auth-screen').classList.remove('show');
+  document.getElementById('invite-screen').style.display='flex';
+  invShowState('inv-state-loading');
+
+  try {
+    const snap = await invitesRef.child(_inviteToken).once('value');
+    _inviteData = snap.val();
+
+    if(!_inviteData || _inviteData.used){
+      invShowState('inv-state-expired');
+      return true;
+    }
+
+    // Check expiry (48h)
+    const created = new Date(_inviteData.createdAt);
+    if((Date.now() - created) / 3600000 > 48){
+      invShowState('inv-state-expired');
+      document.querySelector('#inv-state-expired div:nth-child(3)').textContent =
+        'Приглашение действует 48 часов. Попросите администратора выслать новое.';
+      return true;
+    }
+
+    // Show form
+    const roleLabel = _inviteData.role==='admin' ? '👑 Администратор' : '👨‍🏫 Преподаватель';
+    document.getElementById('inv-info-banner').innerHTML =
+      `Вас приглашает <b>ELC Roblox English</b><br>Роль: <b>${roleLabel}</b>`;
+
+    if(_inviteData.name) document.getElementById('inv-name').value = _inviteData.name;
+
+    // Build avail grid
+    invAvailPreset();
+    buildInvAvailGrid();
+    invShowState('inv-state-form');
+    return true;
+  } catch(e) {
+    invShowState('inv-state-expired');
+    return true;
+  }
+}
+
+function buildInvAvailGrid(){
+  const wrap = document.getElementById('inv-avail-grid');
+  if(!wrap) return;
+  // Reuse existing avail grid builder — same as _tAvail grid
+  _tAvail = _invAvail;
+  wrap.id = 't-avail-grid';
+  renderNewSchedGrid && renderNewSchedGrid();
+  wrap.id = 'inv-avail-grid';
+  _tAvail = _invAvail;
+}
+
+function invAvailAll(v){
+  _invAvail = {};
+  for(let d=0;d<7;d++){_invAvail[d]={};for(let ti=0;ti<TIMES.length;ti++)_invAvail[d][ti]=v;}
+  buildInvAvailGrid();
+}
+
+function invAvailPreset(){
+  _invAvail = {};
+  for(let d=0;d<7;d++){
+    _invAvail[d]={};
+    for(let ti=0;ti<TIMES.length;ti++){
+      // Пн-Сб (d<6), 18:00-21:00 (ti 20-26)
+      _invAvail[d][ti] = (d<6) && (ti>=20 && ti<=26);
+    }
+  }
+  buildInvAvailGrid();
+}
+
+async function doInviteRegister(){
+  const name  = document.getElementById('inv-name').value.trim();
+  const email = document.getElementById('inv-email').value.trim();
+  const pass  = document.getElementById('inv-pass').value;
+  const phone = document.getElementById('inv-phone').value.trim();
+  const errEl = document.getElementById('inv-err');
+  const btn   = document.getElementById('inv-submit-btn');
+
+  errEl.style.display='none';
+  if(!name){errEl.textContent='Введите ваше имя';errEl.style.display='';return;}
+  if(!email){errEl.textContent='Введите email';errEl.style.display='';return;}
+  if(pass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.style.display='';return;}
+
+  btn.disabled=true; btn.textContent='Создаём аккаунт...';
+
+  try {
+    // Create Firebase Auth user using secondary app to avoid side effects
+    const secondaryApp = firebase.initializeApp(firebaseConfig, 'invite_reg_'+Date.now());
+    const secAuth = secondaryApp.auth();
+    const cred = await secAuth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+
+    // Save to appUsers
+    await fbDb.ref('appUsers').child(uid).set({
+      email, name,
+      phone: phone||'',
+      role: _inviteData.role || 'teacher',
+      createdAt: new Date().toISOString(),
+      invitedBy: _inviteData.createdBy || '—'
+    });
+
+    // If teacher — create teacher record
+    if((_inviteData.role||'teacher') === 'teacher'){
+      const eduSnap = await fbDb.ref('eduSchedule').once('value');
+      const edu = eduSnap.val() || {};
+      const teachers = Array.isArray(edu.teachers) ? edu.teachers : Object.values(edu.teachers||{});
+      const subjects = Array.isArray(edu.subjects) ? edu.subjects : Object.values(edu.subjects||{});
+      const ci = teachers.length % 5;
+      const subjId = subjects[0]?.id || 1;
+
+      // Build avail from _invAvail
+      const avail = {};
+      for(let d=0;d<7;d++){avail[d]={};for(let ti=0;ti<TIMES.length;ti++)avail[d][ti]=!!(_invAvail[d]&&_invAvail[d][ti]);}
+
+      teachers.push({id:uid, name, subjId, status:'active', ci, uid, phone:phone||''});
+      const allAvail = edu.avail || {};
+      allAvail[uid] = avail;
+
+      await fbDb.ref('eduSchedule/teachers').set(teachers);
+      await fbDb.ref('eduSchedule/avail').set(allAvail);
+    }
+
+    // Mark invite as used
+    await invitesRef.child(_inviteToken).update({
+      used: true,
+      usedAt: new Date().toISOString(),
+      usedBy: email
+    });
+
+    // Sign out from secondary app
+    await secAuth.signOut();
+    await secondaryApp.delete();
+
+    // Show success then sign in
+    document.getElementById('inv-success-text').textContent = `Аккаунт создан, ${name}! Входим в систему...`;
+    invShowState('inv-state-success');
+
+    // Sign in with main auth
+    setTimeout(async ()=>{
+      try{
+        await fbAuth.signInWithEmailAndPassword(email, pass);
+        document.getElementById('invite-screen').style.display='none';
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }catch(e){
+        // If auto-login fails, redirect to login
+        showLogin();
+        document.getElementById('auth-email').value = email;
+      }
+    }, 1500);
+
+  } catch(e) {
+    btn.disabled=false; btn.textContent='Зарегистрироваться';
+    const msgs = {
+      'auth/email-already-in-use': 'Этот email уже зарегистрирован',
+      'auth/invalid-email': 'Некорректный email',
+      'auth/weak-password': 'Пароль слишком простой',
+    };
+    errEl.textContent = msgs[e.code] || 'Ошибка: ' + e.message;
+    errEl.style.display='';
+  }
+}
+
 // ── AVAILABILITY REQUESTS ─────────────────────────────────────────
 function updateAvailReqBadge(){
   availRequestsRef.orderByChild('status').equalTo('pending').once('value').then(snap=>{
@@ -4250,6 +4536,56 @@ function rejectAvailRequest(reqId){
       }
     });
   });
+}
+
+
+// ── INVITE LINKS ──────────────────────────────────────────────────
+const invitesRef = fbDb.ref('invites');
+
+function createInviteLink(){
+  document.getElementById('inv-name').value='';
+  document.getElementById('inv-role').value='teacher';
+  document.getElementById('inv-result').style.display='none';
+  document.getElementById('inv-btn').disabled=false;
+  document.getElementById('inv-btn').textContent='Создать ссылку';
+  open1('m-invite');
+}
+
+function generateInviteLink(){
+  const name=document.getElementById('inv-name').value.trim();
+  const role=document.getElementById('inv-role').value;
+  const btn=document.getElementById('inv-btn');
+  btn.disabled=true;btn.textContent='Создание...';
+
+  const token=Math.random().toString(36).slice(2,8).toUpperCase()+
+               Math.random().toString(36).slice(2,6).toUpperCase();
+  const user=fbAuth.currentUser?.email||'—';
+
+  invitesRef.child(token).set({
+    token,role,name:name||'',
+    createdBy:user,
+    createdAt:new Date().toISOString(),
+    used:false
+  }).then(()=>{
+    // Build invite URL
+    const base=window.location.href.replace(/\?.*$/,'').replace(/index\.html$/,'');
+    const link=base+'index.html?invite='+token;
+    document.getElementById('inv-link').value=link;
+    document.getElementById('inv-result').style.display='';
+    btn.textContent='✓ Готово';
+    logAction('other',`Создана ссылка-приглашение${name?' для: '+name:''}`,`Роль: ${role}`);
+    save();
+  }).catch(err=>{
+    btn.disabled=false;btn.textContent='Создать ссылку';
+    toast('Ошибка: '+err.message,true);
+  });
+}
+
+function copyInviteLink(){
+  const inp=document.getElementById('inv-link');
+  inp.select();
+  document.execCommand('copy');
+  toast('✓ Ссылка скопирована!');
 }
 
 // ── TRASH ─────────────────────────────────────────────────────────

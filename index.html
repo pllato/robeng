@@ -338,26 +338,26 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;letter-spacing:.03em">ELC Roblox English</div>
   </div>
   <nav class="nav">
-    <div class="nav-sec">Главное</div>
-    <div class="ni" data-p="today" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">☀️</span>Сегодня <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Дашборд</div>
-    <div class="ni admin-only" data-p="subjects" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📚</span>Предметы</div>
-    <div class="ni admin-only" data-p="teachers" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👥</span>Преподаватели</div>
-    <div class="ni" data-p="availability" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🕐</span>Доступность</div>
+    <div class="ni active" data-p="dashboard" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">◈</span>Главная <span id="today-badge" style="display:none;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="availability" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🕐</span>Время работы</div>
     <div class="nav-sec">Расписание</div>
     <div class="ni" data-p="schedule" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📅</span>Расписание</div>
     <div class="ni admin-only" data-p="freeSlots" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✦</span>Свободные слоты</div>
-    <div class="nav-sec">Ученики</div>
+    <div class="nav-sec">Ученики и работа</div>
     <div class="ni" data-p="students" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎓</span>Ученики</div>
-    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Общий чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="teamchat" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💬</span>Чат <span id="chat-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni" data-p="tasks" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">✅</span>Задачи <span id="tasks-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="nav-sec">Система</div>
     <div class="ni admin-only" data-p="users" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👤</span>Пользователи</div>
     <div class="ni" data-p="reports" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📊</span>Отчёты</div>
     <div class="ni" data-p="videoreviews" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎥</span>Видео уроков <span id="video-badge" style="display:none;background:var(--am);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" data-p="journal" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📋</span>Журнал</div>
-    <div class="ni admin-only" data-p="trash" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
-    <div class="ni admin-only" data-p="backups" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">💾</span>Резервные копии</div>
+    <div class="ni admin-only" id="ni-more" onclick="toggleMore(this)"><span style="font-size:14px;width:18px;text-align:center">•••</span>Ещё</div>
+    <div id="more-menu" style="display:none">
+      <div class="ni admin-only" data-p="subjects" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📚</span>Предметы</div>
+      <div class="ni admin-only" data-p="journal" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Журнал</div>
+      <div class="ni admin-only" data-p="trash" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+      <div class="ni admin-only" data-p="backups" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">💾</span>Резервные копии</div>
+    </div>
   </nav>
   <div class="role-box">
     <div class="role-lbl">Роль</div>
@@ -366,7 +366,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 </div>
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title" id="ttl">Дашборд</div>
+    <div class="topbar-title" id="ttl">Главная</div>
     <div class="tbr">
       <span style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px">
         <span class="fb-dot" id="fb-dot"></span><span id="fb-lbl">…</span>
@@ -1304,10 +1304,12 @@ function countFree(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Дашборд',subjects:'Предметы',teachers:'Преподаватели',availability:'Доступность',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
+const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Главная',subjects:'Предметы',teachers:'Преподаватели',availability:'Время работы',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
 const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
 function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'dashboard';}
 function nav(el){
+  // Close more menu on nav
+  if(_moreOpen && el && el.dataset && el.dataset.p){_moreOpen=false;const m=document.getElementById('more-menu');const b=document.getElementById('ni-more');if(m)m.style.display='none';if(b)b.style.background='';}
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
@@ -3133,6 +3135,17 @@ function applyScheduledAvail(){
 }
 
 // ── USER MANAGEMENT ───────────────────────────────────────────────
+
+function toggleTeacherActive(uid, isCurrentlyActive){
+  const tIdx = S.teachers.findIndex(t=>String(t.id)===String(uid)||String(t.uid)===String(uid));
+  if(tIdx===-1){toast('Преподаватель не найден',true);return;}
+  S.teachers[tIdx].status = isCurrentlyActive ? 'inactive' : 'active';
+  const nm = S.teachers[tIdx].name;
+  logAction('other', `Преподаватель ${nm} ${isCurrentlyActive?'деактивирован':'активирован'}`, '');
+  save(); renderUsers();
+  toast(`${nm} — ${isCurrentlyActive?'✗ Неактивен':'✓ Активен'}`);
+}
+
 function renderUsers(){
   if(currentRole!=='admin'){toast('Нет доступа',true);return;}
   const el=document.getElementById('users-list');if(!el)return;
@@ -3146,7 +3159,11 @@ function renderUsers(){
     const curUid=fbAuth.currentUser?.uid;
     el.innerHTML=users.map(([uid,u])=>{
       const isAdmin=u.role==='admin';
+      const isTeacher=u.role==='teacher';
       const isSelf=uid===curUid;
+      // Check active status from S.teachers
+      const tRec=isTeacher?S.teachers.find(t=>String(t.id)===String(uid)||String(t.uid)===String(uid)):null;
+      const isActive=tRec?tRec.status!=='inactive':true;
       return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 17px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div class="av av${isAdmin?'0':'1'}" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${(u.name||u.email||'?').slice(0,2).toUpperCase()}</div>
         <div style="flex:1;min-width:160px">
@@ -3156,6 +3173,9 @@ function renderUsers(){
         <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;${isAdmin?'background:var(--acbg);border:1px solid var(--acb);color:var(--ac2)':'background:var(--gnbg);border:1px solid rgba(63,216,142,.25);color:var(--gn)'}">
           ${isAdmin?'👑 Админ':'👨‍🏫 Преподаватель'}
         </span>
+        ${isTeacher&&tRec?`<button class="btn btn-xs" style="${isActive?'background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn)':'background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd)'}" onclick="toggleTeacherActive('${uid}',${isActive})" title="${isActive?'Нажмите чтобы деактивировать':'Нажмите чтобы активировать'}">
+          ${isActive?'✓ Активен':'✗ Неактивен'}
+        </button>`:''}
         ${!isSelf?`
         <select onchange="changeUserRole('${uid}',this.value)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:12px;padding:5px 8px">
           <option value="admin" ${isAdmin?'selected':''}>Администратор</option>
@@ -4307,6 +4327,16 @@ function restoreBackup(key){
   }).catch(err=>toast('Ошибка отката: '+err.message,true));
 }
 
+
+// ── MORE MENU ─────────────────────────────────────────────────────
+let _moreOpen = false;
+function toggleMore(el){
+  _moreOpen = !_moreOpen;
+  const m = document.getElementById('more-menu');
+  const btn = document.getElementById('ni-more');
+  if(m) m.style.display = _moreOpen ? '' : 'none';
+  if(btn) btn.style.background = _moreOpen ? 'var(--bg3)' : '';
+}
 // ── INIT ─────────────────────────────────────────────────────────
 // Init is now triggered by Firebase Auth onAuthStateChanged above
 

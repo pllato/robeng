@@ -4506,9 +4506,8 @@ function checkSlotCompatibility(tid,days,ti,excludeEnrollId){
 }
 
 function isCompatible(g1,g2){
-  // Both must have same ageGroup AND same level
+  // Only level must match — age is informational only
   if(!g1||!g2)return true;
-  if(g1.ageGroup&&g2.ageGroup&&g1.ageGroup!==g2.ageGroup)return false;
   if(g1.level&&g2.level&&g1.level!==g2.level)return false;
   return true;
 }
@@ -4529,8 +4528,6 @@ function checkCompatibility(){
   if(incompatible.length){
     const reasons=[];
     incompatible.forEach(g=>{
-      if(newGroup.ageGroup&&g.ageGroup&&newGroup.ageGroup!==g.ageGroup)
-        reasons.push(`возраст: ${AGE_GROUP_LABELS[newGroup.ageGroup]||'?'} ≠ ${AGE_GROUP_LABELS[g.ageGroup]||'?'} у ${g.name}`);
       if(newGroup.level&&g.level&&newGroup.level!==g.level)
         reasons.push(`уровень: ${LEVEL_LABELS[newGroup.level]||'?'} ≠ ${LEVEL_LABELS[g.level]||'?'} у ${g.name}`);
     });

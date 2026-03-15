@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Robeng LMS — Запись ученика</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f6fa;color:#1a1a2e;font-size:13px}
+.wrap{padding:12px;max-width:480px}
+.card{background:#fff;border-radius:10px;border:1px solid #e0e0ef;padding:14px;margin-bottom:10px}
+.card-title{font-size:11px;font-weight:700;color:#6b6b9b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.fr{margin-bottom:10px}
+.fr label{font-size:11px;font-weight:600;color:#6b6b9b;display:block;margin-bottom:4px}
+.fr input,.fr select{width:100%;background:#f5f6fa;border:1px solid #dde0f0;border-radius:7px;color:#1a1a2e;font-size:13px;padding:8px 10px;outline:none;transition:border-color .15s;font-family:inherit}
+.fr input:focus,.fr select:focus{border-color:#7c5cfc;box-shadow:0 0 0 2px rgba(124,92,252,.1)}
+.fr-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{width:100%;padding:11px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-p{background:#7c5cfc;color:#fff}
+.btn-p:hover{background:#6a4de8}
+.btn-p:disabled{background:#c4b8f8;cursor:not-allowed}
+.err{background:#fff0f3;border:1px solid #ffc0cb;border-radius:7px;padding:8px 12px;font-size:12px;color:#d63384;margin-bottom:8px;display:none}
+.ok{background:#f0fff8;border:1px solid #b3f5d8;border-radius:7px;padding:8px 12px;font-size:12px;color:#0a7c4a;margin-bottom:8px;display:none}
+.slot-card{background:#f8f8ff;border:1.5px solid #dde0f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:space-between}
+.slot-card:hover{border-color:#7c5cfc;background:#f3f0ff}
+.slot-card.sel{border-color:#7c5cfc;background:#ede9ff}
+.stag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;background:#ede9ff;color:#7c5cfc;border:1px solid #d4c9ff}
+.stag-g{background:#e6fff3;color:#0a7c4a;border-color:#b3f5d8}
+.stag-r{background:#fff0f3;color:#d63384;border-color:#ffc0cb}
+.pips{display:flex;gap:3px}
+.pip{width:9px;height:9px;border-radius:50%}
+.pip-f{background:rgba(214,51,132,.25);border:1.5px solid rgba(214,51,132,.5)}
+.pip-e{background:rgba(10,124,74,.15);border:1.5px solid rgba(10,124,74,.4)}
+.loading{text-align:center;padding:16px;color:#6b6b9b;font-size:12px}
+.deal-tag{background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:3px 8px;font-size:11px;color:#4f46e5;display:inline-flex;align-items:center;gap:4px}
+.compat-box{border-radius:7px;padding:8px 10px;font-size:12px;margin-top:6px;display:none}
+.compat-ok{background:#f0fff8;border:1px solid #b3f5d8;color:#0a7c4a}
+.compat-warn{background:#fff8e6;border:1px solid #ffe0a0;color:#8a6000}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card" id="deal-banner" style="display:none">
+    <div class="card-title">Сделка Битрикс24</div>
+    <div id="deal-info" style="font-size:12px;color:#6b6b9b;line-height:1.8"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Данные ученика</div>
+    <div class="err" id="err"></div>
+    <div class="ok" id="ok"></div>
+    <div class="fr"><label>ФИО ученика *</label><input id="s-name" placeholder="Иванов Алексей"/></div>
+    <div class="fr-row">
+      <div class="fr"><label>Тел. ученика</label><input id="s-phone" type="tel" placeholder="+7 700 000 00 00"/></div>
+      <div class="fr"><label>ФИО родителя</label><input id="s-parent" placeholder="Иванова Мария"/></div>
+    </div>
+    <div class="fr"><label>Тел. родителя</label><input id="s-parent-phone" type="tel" placeholder="+7 700 000 00 00"/></div>
+    <div class="fr-row">
+      <div class="fr"><label>Возраст</label><input id="s-age" type="number" placeholder="7" min="3" max="18" onchange="renderSlots()"/></div>
+      <div class="fr"><label>Уровень *</label>
+        <select id="s-level" onchange="renderSlots()">
+          <option value="beginner">Начальный</option>
+          <option value="continuing">Продолжающий</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Выбор слота</div>
+    <div class="fr-row" style="margin-bottom:10px">
+      <div class="fr"><label>Дни занятий</label>
+        <select id="f-days" onchange="renderSlots()">
+          <option value="">Любые</option>
+          <option value="mwf">Пн · Ср · Пт</option>
+          <option value="tts">Вт · Чт · Сб</option>
+        </select>
+      </div>
+      <div class="fr"><label>Время (от)</label>
+        <select id="f-time" onchange="renderSlots()">
+          <option value="">Любое</option>
+        </select>
+      </div>
+    </div>
+    <div id="slots-list"><div class="loading">⏳ Загрузка...</div></div>
+    <div id="compat-msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Период обучения</div>
+    <div class="fr-row">
+      <div class="fr"><label>Дата начала *</label><input type="date" id="s-date-start"/></div>
+      <div class="fr"><label>Дата окончания *</label><input type="date" id="s-date-end"/></div>
+    </div>
+    <div class="fr"><label>Тема / Курс</label><input id="s-topic" placeholder="Roblox English, базовый"/></div>
+  </div>
+
+  <button class="btn btn-p" id="sub-btn" onclick="doEnroll()" disabled>Записать ученика →</button>
+</div>
+
+<script>
+const BX = "https://elcalmaty.bitrix24.kz/rest/1/268e024qbc8av2e1";
+const FB_CFG = {
+  apiKey:"AIzaSyCC61xh7Rdwkrw63BIzgdDqVq5_FOBUlgI",
+  authDomain:"elc-robeng.firebaseapp.com",
+  databaseURL:"https://elc-robeng-default-rtdb.firebaseio.com"
+};
+const MAX = 2;
+const TIMES = [];
+for(let h=8;h<=20;h++){TIMES.push(("0"+h).slice(-2)+":00");TIMES.push(("0"+h).slice(-2)+":30");}
+TIMES.push("21:00");
+const DS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const PATS = [
+  {key:"mwf",days:[0,2,4],label:"Пн · Ср · Пт",col:"#7c5cfc"},
+  {key:"tts",days:[1,3,5],label:"Вт · Чт · Сб",col:"#0a7c4a"}
+];
+const LBL = {beginner:"Начальный",continuing:"Продолжающий"};
+const AGL = {young:"До 7 лет",older:"Старше 7 лет"};
+
+let S=null, selSlot=null;
+
+firebase.initializeApp(FB_CFG);
+const db = firebase.database();
+
+db.ref("eduSchedule").once("value").then(snap=>{
+  S=snap.val();
+  if(!S) return showErr("Ошибка загрузки");
+  if(!Array.isArray(S.teachers))S.teachers=[];
+  if(!Array.isArray(S.enrollments))S.enrollments=[];
+  if(!Array.isArray(S.students))S.students=[];
+  if(!S.avail)S.avail={};
+  // fill time filter from 16:00
+  const fs=document.getElementById("f-time");
+  TIMES.forEach((t,i)=>{if(i>=16){const o=document.createElement("option");o.value=i;o.textContent=t;fs.appendChild(o);}});
+  // default dates
+  const t=new Date(), t2=new Date();
+  t2.setMonth(t2.getMonth()+3);
+  document.getElementById("s-date-start").value=t.toISOString().slice(0,10);
+  document.getElementById("s-date-end").value=t2.toISOString().slice(0,10);
+  renderSlots();
+  document.getElementById("sub-btn").disabled=false;
+  loadDeal();
+}).catch(e=>showErr("Firebase: "+e.message));
+
+function loadDeal(){
+  let dealId=null;
+  try{if(window.BX24){const pl=BX24.placement.info();if(pl&&pl.options)dealId=pl.options.ID||pl.options.DEAL_ID;}}catch(e){}
+  if(!dealId){const p=new URLSearchParams(location.search);dealId=p.get("deal_id")||p.get("id");}
+  if(!dealId)return;
+  fetch(BX+"/crm.deal.get.json?id="+dealId)
+    .then(r=>r.json()).then(d=>{
+      if(!d.result)return;
+      const deal=d.result;
+      const banner=document.getElementById("deal-banner");
+      const info=document.getElementById("deal-info");
+      banner.style.display="";
+      info.innerHTML="<span class=\"deal-tag\">Сделка #"+dealId+"</span> <strong style=\"margin-left:6px\">"+deal.TITLE+"</strong>";
+      const cid=deal.CONTACT_ID;
+      if(cid){
+        fetch(BX+"/crm.contact.get.json?id="+cid).then(r=>r.json()).then(cd=>{
+          if(!cd.result)return;
+          const c=cd.result;
+          const nm=[c.LAST_NAME,c.NAME,c.SECOND_NAME].filter(Boolean).join(" ");
+          if(nm)document.getElementById("s-name").value=nm;
+          const ph=(c.PHONE||[])[0];
+          if(ph)document.getElementById("s-phone").value=ph.VALUE||"";
+          info.innerHTML+="<br><span style=\"color:#4f46e5\">👤 "+nm+"</span>";
+        });
+      }
+    }).catch(()=>{});
+}
+
+function teacher(id){return S.teachers.find(t=>String(t.id)===String(id));}
+function student(id){return S.students.find(s=>s.id===id);}
+function subj(id){const a=Array.isArray(S.subjects)?S.subjects:Object.values(S.subjects||{});return a.find(s=>s.id===parseInt(id))||{name:"—",color:"#888"};}
+function enrollActive(e,today){return e.dateStart<=today&&e.dateEnd>=today;}
+function ageGroup(age){return age?parseInt(age)<=7?"young":"older":null;}
+function getAv(tid){return(S.avail||{})[String(tid)]||(S.avail||{})[parseInt(tid)]||{};}
+function countAt(tid,d,ti){const today=new Date().toISOString().slice(0,10);return S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&!e.inactive&&enrollActive(e,today)&&e.slots.some(sl=>sl.day===d&&sl.ti===ti)).length;}
+function slotGroup(eid){const e=S.enrollments.find(x=>x.id===eid);if(!e)return null;const s=S.students.find(x=>x.id===e.studentId);if(!s)return null;return{level:s.level||"beginner",ageGroup:ageGroup(s.age),name:s.name};}
+function compat(g1,g2){if(!g1||!g2)return true;if(g1.level&&g2.level&&g1.level!==g2.level)return false;return true;}
+
+function renderSlots(){
+  if(!S)return;
+  const dF=document.getElementById("f-days").value;
+  const tF=document.getElementById("f-time").value;
+  const lv=document.getElementById("s-level").value;
+  const ag=parseInt(document.getElementById("s-age").value)||null;
+  const today=new Date().toISOString().slice(0,10);
+  const pats=dF?PATS.filter(p=>p.key===dF):PATS;
+  const slots=[];
+  selSlot=null;
+  document.getElementById("compat-msg").innerHTML="";
+
+  S.teachers.filter(t=>t.status==="active").forEach(t=>{
+    const av=getAv(t.id);
+    for(let ti=0;ti<TIMES.length;ti++){
+      if(tF!==""&&ti!==parseInt(tF))continue;
+      pats.forEach(pat=>{
+        if(!pat.days.every(d=>av[d]&&av[d][ti]))return;
+        const maxOcc=Math.max(...pat.days.map(d=>countAt(t.id,d,ti)));
+        const free=Math.max(0,MAX-maxOcc);
+        const enrs=S.enrollments.filter(e=>String(e.teacherId)===String(t.id)&&!e.inactive&&enrollActive(e,today)&&e.slots.some(sl=>pat.days.includes(sl.day)&&sl.ti===ti));
+        const eGroups=enrs.map(e=>slotGroup(e.id)).filter(Boolean);
+        const slotLv=eGroups.length?eGroups[0].level:null;
+        if(slotLv&&slotLv!==lv)return;
+        const ng={level:lv,ageGroup:ageGroup(ag)};
+        if(eGroups.filter(g=>!compat(ng,g)).length)return;
+        const names=enrs.map(e=>{const s=student(e.studentId);return s?s.name:"?";});
+        slots.push({t,pat,ti,free,eGroups,slotLv,names});
+      });
+    }
+  });
+
+  const list=document.getElementById("slots-list");
+  if(!slots.length){list.innerHTML="<div class=\"loading\">😔 Нет подходящих слотов</div>";return;}
+  slots.sort((a,b)=>(b.eGroups.length-a.eGroups.length)||a.ti-b.ti);
+  window._SL=slots;
+  list.innerHTML=slots.map((s,i)=>{
+    const cp=[];
+    if(s.slotLv)cp.push(LBL[s.slotLv]||s.slotLv);
+    const ctag=cp.length?"<span class=\"stag\">"+cp.join(" · ")+"</span>":"<span class=\"stag stag-g\">Свободный</span>";
+    const ftag=s.free>0?"<span class=\"stag stag-g\">"+s.free+" место</span>":"<span class=\"stag stag-r\">Занято</span>";
+    const pips=Array.from({length:MAX},(_,j)=>"<span class=\"pip "+(j<MAX-s.free?"pip-f":"pip-e")+"\"></span>").join("");
+    const ns=s.names.length?"<div style=\"font-size:11px;color:#6b6b9b;margin-top:2px\">С: "+s.names.join(", ")+"</div>":"";
+    return"<div class=\"slot-card\" onclick=\"selSlot_("+i+",this)\" data-i=\""+i+"\"><div><div style=\"font-size:13px;font-weight:600\">"+TIMES[s.ti]+" <span style=\"color:"+s.pat.col+";font-size:11px\">"+s.pat.label+"</span></div><div style=\"font-size:12px;color:#6b6b9b;margin-top:1px\">"+s.t.name+"</div>"+ns+"</div><div style=\"display:flex;flex-direction:column;align-items:flex-end;gap:4px\">"+ctag+"<div class=\"pips\">"+pips+"</div>"+ftag+"</div></div>";
+  }).join("");
+}
+
+function selSlot_(i,el){
+  document.querySelectorAll(".slot-card").forEach(c=>c.classList.remove("sel"));
+  el.classList.add("sel");
+  const s=window._SL[i];
+  selSlot={teacherId:s.t.id,days:s.pat.days,ti:s.ti,pat:s.pat,free:s.free};
+  const msg=document.getElementById("compat-msg");
+  if(s.eGroups.length){
+    const g=s.eGroups[0];
+    const p=[];if(g.ageGroup)p.push(AGL[g.ageGroup]);if(g.level)p.push(LBL[g.level]);
+    msg.innerHTML="<div class=\"compat-box compat-ok\" style=\"display:block\">✓ Совместим: в слоте ученик ("+p.join(" · ")+")</div>";
+  } else {
+    msg.innerHTML="<div class=\"compat-box compat-ok\" style=\"display:block\">✓ Свободный слот — первый ученик</div>";
+  }
+}
+
+function showErr(m){const e=document.getElementById("err");e.textContent=m;e.style.display="";document.getElementById("ok").style.display="none";}
+function showOk(m){const e=document.getElementById("ok");e.textContent=m;e.style.display="";document.getElementById("err").style.display="none";}
+
+async function doEnroll(){
+  const name=document.getElementById("s-name").value.trim();
+  const phone=document.getElementById("s-phone").value.trim();
+  const parent=document.getElementById("s-parent").value.trim();
+  const pp=document.getElementById("s-parent-phone").value.trim();
+  const age=parseInt(document.getElementById("s-age").value)||null;
+  const level=document.getElementById("s-level").value||"beginner";
+  const ds=document.getElementById("s-date-start").value;
+  const de=document.getElementById("s-date-end").value;
+  const topic=document.getElementById("s-topic").value.trim();
+  if(!name)return showErr("Введите ФИО ученика");
+  if(!selSlot)return showErr("Выберите слот");
+  if(!ds||!de)return showErr("Укажите даты обучения");
+  if(selSlot.free<=0)return showErr("В этом слоте нет мест");
+  const btn=document.getElementById("sub-btn");
+  btn.disabled=true;btn.textContent="Записываем...";
+  try{
+    const snap=await db.ref("eduSchedule").once("value");
+    const F=snap.val();
+    if(!Array.isArray(F.teachers))F.teachers=[];
+    if(!Array.isArray(F.enrollments))F.enrollments=[];
+    if(!Array.isArray(F.students))F.students=[];
+    const t=F.teachers.find(t=>String(t.id)===String(selSlot.teacherId));
+    const subjId=t?t.subjId:1;
+    let stu=F.students.find(s=>s.name.trim().toLowerCase()===name.toLowerCase()&&s.subjId===subjId);
+    if(!stu){stu={id:Date.now(),name,subjId,phone,parent,parentPhone:pp,age,level};F.students.push(stu);}
+    else{stu.phone=phone;stu.parent=parent;stu.parentPhone=pp;if(age)stu.age=age;stu.level=level;}
+    const slots=selSlot.days.map(d=>({day:d,ti:selSlot.ti}));
+    F.enrollments.push({id:Date.now()+1,studentId:stu.id,teacherId:selSlot.teacherId,slots,dateStart:ds,dateEnd:de,topic:topic||"Roblox English",notes:""});
+    if(!F.journal)F.journal=[];
+    F.journal.push({type:"enroll",text:"Записан: "+name,detail:(t?t.name:"")+" · "+selSlot.days.map(d=>DS[d]).join(" ")+" "+TIMES[selSlot.ti]+" · "+ds+"–"+de,ts:Date.now(),user:"Bitrix виджет"});
+    await db.ref("eduSchedule").set(F);
+    S=F;
+    showOk("✅ "+name+" записан! "+selSlot.pat.label+" "+TIMES[selSlot.ti]+(t?" — "+t.name:""));
+    btn.textContent="✅ Готово!";
+    selSlot=null;
+    setTimeout(()=>{
+      btn.disabled=false;btn.textContent="Записать ученика →";
+      ["s-name","s-phone","s-parent","s-parent-phone","s-age"].forEach(id=>document.getElementById(id).value="");
+      renderSlots();
+    },3000);
+  }catch(e){showErr("Ошибка: "+e.message);btn.disabled=false;btn.textContent="Записать ученика →";}
+}
+</script>
+</body>
+</html>

@@ -1,5 +1,14 @@
 [[headers]]
-  for = "/bitrix_widget.html"
+  for = "/*"
   [headers.values]
-    X-Frame-Options = "ALLOW-FROM https://elcalmaty.bitrix24.kz"
-    Content-Security-Policy = "frame-ancestors https://elcalmaty.bitrix24.kz"
+    X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "frame-ancestors *"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
+[[redirects]]
+  from = "/bitrix_widget.html"
+  to = "/bitrix_widget.html"
+  status = 200
+  force = true
+  conditions = {Method = ["POST"]}

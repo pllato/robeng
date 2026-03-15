@@ -172,18 +172,32 @@ function loadDeal(){
       const info=document.getElementById("deal-info");
       banner.style.display="";
       info.innerHTML="<span class=\"deal-tag\">Сделка #"+dealId+"</span> <strong style=\"margin-left:6px\">"+deal.TITLE+"</strong>";
+      // Поля ученика из сделки
+      const sName=deal["UF_CRM_1773584484994"]||"";
+      const sPhone=deal["UF_CRM_1773584612872"]||"";
+      const sAge=deal["UF_CRM_1773584748675"]||"";
+      const sLvl=deal["UF_CRM_1773584819910"]||"";
+      if(sName)document.getElementById("s-name").value=sName;
+      if(sPhone)document.getElementById("s-phone").value=sPhone;
+      if(sAge)document.getElementById("s-age").value=sAge;
+      if(sLvl=="370")document.getElementById("s-level").value="beginner";
+      if(sLvl=="372")document.getElementById("s-level").value="continuing";
+      if(sName)info.innerHTML+="<br><span style=\"color:#0a7c4a\">🎓 Ученик: "+sName+"</span>";
+
+      // Контакт = родитель
       const cid=deal.CONTACT_ID;
       if(cid){
         fetch(BX+"/crm.contact.get.json?id="+cid).then(r=>r.json()).then(cd=>{
           if(!cd.result)return;
           const c=cd.result;
           const nm=[c.LAST_NAME,c.NAME,c.SECOND_NAME].filter(Boolean).join(" ");
-          if(nm)document.getElementById("s-name").value=nm;
+          if(nm)document.getElementById("s-parent").value=nm;
           const ph=(c.PHONE||[])[0];
-          if(ph)document.getElementById("s-phone").value=ph.VALUE||"";
-          info.innerHTML+="<br><span style=\"color:#4f46e5\">👤 "+nm+"</span>";
+          if(ph)document.getElementById("s-parent-phone").value=ph.VALUE||"";
+          info.innerHTML+="<br><span style=\"color:#4f46e5\">👤 Родитель: "+nm+"</span>";
         });
       }
+      setTimeout(renderSlots,300);
     }).catch(()=>{});
 }
 

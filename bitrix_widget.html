@@ -235,6 +235,9 @@ function selSlot_(i,el){
   el.classList.add("sel");
   const s=window._SL[i];
   selSlot={teacherId:s.t.id,days:s.pat.days,ti:s.ti,pat:s.pat,free:s.free};
+  // Enable submit button
+  const btn=document.getElementById("sub-btn");
+  if(btn)btn.disabled=false;
   const msg=document.getElementById("compat-msg");
   if(s.eGroups.length){
     const g=s.eGroups[0];

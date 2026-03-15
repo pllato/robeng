@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Robeng LMS — Запись ученика</title>
+<script src="https://api.bitrix24.com/api/v1/"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
@@ -160,10 +161,26 @@ fbGet("eduSchedule").then(snap=>{
 }).catch(e=>showErr("Firebase: "+e.message));
 
 function loadDeal(){
-  let dealId=null;
-  try{if(window.BX24){const pl=BX24.placement.info();if(pl&&pl.options)dealId=pl.options.ID||pl.options.DEAL_ID;}}catch(e){}
-  if(!dealId){const p=new URLSearchParams(location.search);dealId=p.get("deal_id")||p.get("id");}
-  if(!dealId)return;
+  // Try BX24 SDK first
+  if(window.BX24){
+    BX24.init(()=>{
+      const pl=BX24.placement.info();
+      const dealId=pl&&pl.options&&(pl.options.ID||pl.options.DEAL_ID);
+      if(dealId) _loadDealById(dealId);
+      else {
+        // Fallback to URL param
+        const p=new URLSearchParams(location.search);
+        const id=p.get("deal_id")||p.get("id");
+        if(id)_loadDealById(id);
+      }
+    });
+  } else {
+    const p=new URLSearchParams(location.search);
+    const dealId=p.get("deal_id")||p.get("id");
+    if(dealId)_loadDealById(dealId);
+  }
+}
+function _loadDealById(dealId){
   fetch(BX+"/crm.deal.get.json?id="+dealId)
     .then(r=>r.json()).then(d=>{
       if(!d.result)return;

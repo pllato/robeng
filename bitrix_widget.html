@@ -108,7 +108,6 @@ const FB_CFG = {
   authDomain:"elc-robeng.firebaseapp.com",
   databaseURL:"https://elc-robeng-default-rtdb.firebaseio.com"
 };
-const FB_SECRET = "oL2MhpvVwTMF7FOfxhJVuZcvYm8OZVIiGJAFX0tZ";
 const FB_URL = "https://elc-robeng-default-rtdb.firebaseio.com";
 const MAX = 2;
 const TIMES = [];
@@ -126,14 +125,18 @@ let S=null, selSlot=null;
 
 // Use REST API with secret for read/write without auth
 async function fbGet(path){
-  const r=await fetch(`${FB_URL}/${path}.json?auth=${FB_SECRET}`);
+  const r=await fetch(`${FB_URL}/${path}.json`);
+  if(!r.ok)throw new Error('Firebase read failed: '+r.status);
   return r.json();
 }
 async function fbSet(path,data){
-  const r=await fetch(`${FB_URL}/${path}.json?auth=${FB_SECRET}`,{
-    method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(data)
+  // Write via Cloudflare Worker proxy
+  const r=await fetch('https://robeng-notify.uurraa.workers.dev/fbwrite',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({path,data})
   });
+  if(!r.ok)throw new Error('Write failed: '+r.status);
   return r.json();
 }
 

@@ -1,0 +1,5 @@
+[[headers]]
+  for = "/bitrix_widget.html"
+  [headers.values]
+    X-Frame-Options = "ALLOW-FROM https://elcalmaty.bitrix24.kz"
+    Content-Security-Policy = "frame-ancestors https://elcalmaty.bitrix24.kz"

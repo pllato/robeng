@@ -108,6 +108,8 @@ const FB_CFG = {
   authDomain:"elc-robeng.firebaseapp.com",
   databaseURL:"https://elc-robeng-default-rtdb.firebaseio.com"
 };
+const FB_SECRET = "oL2MhpvVwTMF7FOfxhJVuZcvYm8OZVIiGJAFX0tZ";
+const FB_URL = "https://elc-robeng-default-rtdb.firebaseio.com";
 const MAX = 2;
 const TIMES = [];
 for(let h=8;h<=20;h++){TIMES.push(("0"+h).slice(-2)+":00");TIMES.push(("0"+h).slice(-2)+":30");}
@@ -122,11 +124,21 @@ const AGL = {young:"До 7 лет",older:"Старше 7 лет"};
 
 let S=null, selSlot=null;
 
-firebase.initializeApp(FB_CFG);
-const db = firebase.database();
+// Use REST API with secret for read/write without auth
+async function fbGet(path){
+  const r=await fetch(`${FB_URL}/${path}.json?auth=${FB_SECRET}`);
+  return r.json();
+}
+async function fbSet(path,data){
+  const r=await fetch(`${FB_URL}/${path}.json?auth=${FB_SECRET}`,{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  });
+  return r.json();
+}
 
-db.ref("eduSchedule").once("value").then(snap=>{
-  S=snap.val();
+fbGet("eduSchedule").then(snap=>{
+  S=snap;
   if(!S) return showErr("Ошибка загрузки");
   if(!Array.isArray(S.teachers))S.teachers=[];
   if(!Array.isArray(S.enrollments))S.enrollments=[];
@@ -268,8 +280,7 @@ async function doEnroll(){
   const btn=document.getElementById("sub-btn");
   btn.disabled=true;btn.textContent="Записываем...";
   try{
-    const snap=await db.ref("eduSchedule").once("value");
-    const F=snap.val();
+    const F=await fbGet("eduSchedule");
     if(!Array.isArray(F.teachers))F.teachers=[];
     if(!Array.isArray(F.enrollments))F.enrollments=[];
     if(!Array.isArray(F.students))F.students=[];
@@ -282,7 +293,7 @@ async function doEnroll(){
     F.enrollments.push({id:Date.now()+1,studentId:stu.id,teacherId:selSlot.teacherId,slots,dateStart:ds,dateEnd:de,topic:topic||"Roblox English",notes:""});
     if(!F.journal)F.journal=[];
     F.journal.push({type:"enroll",text:"Записан: "+name,detail:(t?t.name:"")+" · "+selSlot.days.map(d=>DS[d]).join(" ")+" "+TIMES[selSlot.ti]+" · "+ds+"–"+de,ts:Date.now(),user:"Bitrix виджет"});
-    await db.ref("eduSchedule").set(F);
+    await fbSet("eduSchedule",F);
     S=F;
     showOk("✅ "+name+" записан! "+selSlot.pat.label+" "+TIMES[selSlot.ti]+(t?" — "+t.name:""));
     btn.textContent="✅ Готово!";

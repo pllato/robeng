@@ -379,6 +379,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
         <span class="user-email" id="user-email">...</span>
       </div>
       <button class="btn btn-sm" onclick="bindTelegram()" title="Привязать Telegram для уведомлений" style="padding:5px 8px">🔔</button>
+      <button class="btn btn-sm" onclick="toggleHelp()" title="Справка" style="padding:5px 10px;font-weight:700" id="help-btn">?</button>
     </div>
   </div>
   <div class="content">
@@ -1261,6 +1262,7 @@ fbAuth.onAuthStateChanged(user=>{
         const data=snap2.val();
         if(data){S=data;if(!S.journal)S.journal=[];if(!S.scheduleHistory)S.scheduleHistory={};}
         applyScheduledAvail();deduplicateEnrollments();updateWL();renderDashboard();startDbListener();
+        setTimeout(()=>{initTooltips();showOnboarding();},800);
       });
     });
   } else {
@@ -1762,10 +1764,10 @@ function fillSubjSel(){
   ['stu-subj-f','fs-subj'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Все</option>'+opts;});
 }
 function fillTSel(){
-  // Teachers see only themselves; admins see all
+  // Teachers see only themselves; admins see all active
   const list = currentRole==='teacher' && currentTeacherId
-    ? S.teachers.filter(t=>t.id===currentTeacherId)
-    : S.teachers;
+    ? S.teachers.filter(t=>String(t.id)===String(currentTeacherId))
+    : S.teachers.filter(t=>t.status!=='inactive');
   const opts=list.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
   ['avail-sel','sched-sel'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;if(v)el.value=v;}});
 }
@@ -4194,7 +4196,403 @@ function startTeamChatBadgeListener(){
   });
 }
 
-// ── AVAILABILITY REQUESTS ─────────────────────────────────────────
+// ── HELP SYSTEM ──────────────────────────────────────────────────
+
+const HELP_DATA = {
+  home: {
+    title: '◈ Главная',
+    icon: '◈',
+    text: 'Дашборд с ключевыми показателями и делами на сегодня.',
+    tips: [
+      {h:'Статистика', t:'Карточки вверху — активные ученики, пропуски, занятость преподавателей, видео.'},
+      {h:'Уроки сегодня', t:'Список всех занятий на текущий день с цветными статусами: зелёный — проведён, красный — пропуск, жёлтый — отработка.'},
+      {h:'Мои задачи', t:'Просроченные задачи (красная рамка) и задачи на сегодня (жёлтая). Нажми чтобы перейти в Задачи.'},
+    ]
+  },
+  availability: {
+    title: '🕐 Время работы',
+    icon: '🕐',
+    text: 'Настройка доступности преподавателей по дням недели и часам.',
+    tips: [
+      {h:'Выбор преподавателя', t:'Выбери преподавателя из выпадающего списка вверху.'},
+      {h:'Заполнение сетки', t:'Нажимай ячейки чтобы переключать доступность. Зелёная = работает, серая = недоступен. Можно зажать и провести мышью.'},
+      {h:'Новое расписание', t:'Вкладка «+ Новое расписание» — если преподаватель меняет время с определённой даты.'},
+      {h:'Заявки', t:'Преподаватели могут сами подавать заявки на изменение расписания. Одобри или отклони здесь.'},
+      {h:'Сохранение', t:'Не забудь нажать 💾 Сохранить после изменений!'},
+    ]
+  },
+  schedule: {
+    title: '📅 Расписание',
+    icon: '📅',
+    text: 'Сетка занятий всех преподавателей по неделям.',
+    tips: [
+      {h:'Навигация', t:'Кнопки ← → для перехода между неделями. Фильтр по преподавателю сверху.'},
+      {h:'Цвета ячеек', t:'🟢 Зелёная = проведён, 🔴 Красная = пропуск, 🟡 Жёлтая = отработка, белая = не отмечен.'},
+      {h:'Отметить посещаемость', t:'Нажми на ячейку с учеником → выбери статус в модальном окне.'},
+      {h:'Видео 🎥', t:'По вторникам и средам на ячейках есть кнопка 🎥 — преподаватель должен загрузить видео урока.'},
+      {h:'Метка совместимости', t:'Маленький тег под именем ученика показывает уровень пары (Начальный / Продолжающий).'},
+    ]
+  },
+  freeSlots: {
+    title: '✦ Свободные слоты',
+    icon: '✦',
+    text: 'Поиск свободных мест для записи нового ученика с фильтрами совместимости.',
+    tips: [
+      {h:'Как использовать', t:'Сначала открывай этот раздел когда нужно записать нового ученика — видно все доступные места сразу.'},
+      {h:'Фильтр по возрасту', t:'До 7 лет / Старше 7 лет — информационный фильтр для подбора пары по возрастной группе.'},
+      {h:'Фильтр по уровню', t:'Начальный / Продолжающий — система покажет слоты где уже есть ученик с таким же уровнем (нужна пара) + все пустые слоты.'},
+      {h:'Бейдж на слоте', t:'«До 7 лет · Начальный» — уже есть ученик, нужна совместимая пара. «Свободный слот» — пустой, любой.'},
+      {h:'Кнопка Записать', t:'Нажми Записать рядом со слотом — откроется форма с уже выбранным преподавателем и временем.'},
+    ]
+  },
+  students: {
+    title: '🎓 Ученики',
+    icon: '🎓',
+    text: 'База учеников, управление записями и статусами.',
+    tips: [
+      {h:'Создать ученика', t:'Нажми + Ученик. Заполни: ФИО, предмет, телефоны, ВОЗРАСТ и УРОВЕНЬ (важно!), выбери преподавателя, дни, время.'},
+      {h:'Возраст и уровень', t:'Возраст — для фильтрации слотов. Уровень (Начальный/Продолжающий) — система не даст записать ученика в слот с несовместимым уровнем.'},
+      {h:'Статусы', t:'● Активен — занятия идут. ⏸ Неактивен — пауза. Завершён — курс закончился по дате.'},
+      {h:'Продлить', t:'Кнопка ↻ Продлить — быстрое продление курса без пересоздания записи.'},
+      {h:'Деактивировать', t:'Кнопка «Деактивировать» — ученик остаётся в базе но не учитывается в расписании.'},
+    ]
+  },
+  reports: {
+    title: '📊 Отчёты',
+    icon: '📊',
+    text: 'Еженедельные отчёты преподавателей по каждому ученику.',
+    tips: [
+      {h:'Для администратора', t:'Выбери преподавателя из фильтра. Видна таблица: ученик, неделя, статус — Отправлен / Не отправлен.'},
+      {h:'Для преподавателя', t:'Нажми + Отчёт рядом с учеником → заполни что пройдено за неделю.'},
+      {h:'Статистика', t:'На Главной странице видно сколько отчётов отправлено из необходимых за 30 дней.'},
+    ]
+  },
+  videoreviews: {
+    title: '🎥 Видео уроков',
+    icon: '🎥',
+    text: 'Видео записи уроков по вторникам и средам для проверки администратором.',
+    tips: [
+      {h:'Загрузить видео (преп.)', t:'В расписании по Вт/Ср нажми 🎥 на уроке → вставь ссылку YouTube/Drive/Loom → отправь.'},
+      {h:'Проверить (адм.)', t:'Оранжевый бейдж показывает количество видео на проверке. Одобри или отклони с комментарием.'},
+      {h:'После проверки', t:'Преподаватель получает уведомление в Telegram. При отклонении — можно переслать видео.'},
+    ]
+  },
+  tasks: {
+    title: '✅ Задачи',
+    icon: '✅',
+    text: 'Постановка задач команде с приоритетами и дедлайнами.',
+    tips: [
+      {h:'Создать задачу', t:'Нажми + Задача. Укажи название, приоритет (Высокий/Средний/Низкий), дедлайн, исполнителя.'},
+      {h:'Уведомления', t:'Исполнитель получит уведомление в Telegram при назначении задачи.'},
+      {h:'Чат в задаче', t:'Открой задачу → внизу чат. Все участники получают уведомления о новых сообщениях.'},
+      {h:'Фильтры', t:'«Все мои» — где ты участник. «Назначены мне» — ты исполнитель. «Завершённые» — выполненные.'},
+    ]
+  },
+  teamchat: {
+    title: '💬 Чат',
+    icon: '💬',
+    text: 'Общий чат команды в реальном времени.',
+    tips: [
+      {h:'Отправить', t:'Enter — отправить. Shift+Enter — новая строка.'},
+      {h:'Зелёная точка ●', t:'Появляется в меню когда пришли новые сообщения пока ты в другом разделе.'},
+      {h:'Лимит', t:'Хранится 100 последних сообщений.'},
+    ]
+  },
+  users: {
+    title: '👤 Пользователи',
+    icon: '👤',
+    text: 'Управление аккаунтами администраторов и преподавателей.',
+    tips: [
+      {h:'Добавить пользователя', t:'+ Добавить → роль Преподаватель автоматически создаёт запись в Времени работы.'},
+      {h:'Активность преподавателя', t:'✓ Активен — в расписании. ✗ Неактивен — скрыт из расписания и свободных слотов.'},
+      {h:'Смена роли', t:'Выпадающий список в карточке — переключи между Администратор и Преподаватель.'},
+    ]
+  },
+  subjects: {
+    title: '📚 Предметы',
+    icon: '📚',
+    text: 'Учебные направления к которым привязаны преподаватели и ученики.',
+    tips: [
+      {h:'Добавить', t:'Введи название → + Добавить. Предмет получит уникальный цвет автоматически.'},
+      {h:'Удалить', t:'Нельзя удалить предмет если к нему привязаны ученики или преподаватели.'},
+    ]
+  },
+  journal: {
+    title: '📋 Журнал',
+    icon: '📋',
+    text: 'Лог всех действий в системе для контроля и аудита.',
+    tips: [
+      {h:'Что записывается', t:'Создание/удаление учеников, изменения расписания, входы в систему, все важные операции.'},
+      {h:'Фильтр', t:'Можно фильтровать по типу действия и дате.'},
+    ]
+  },
+  trash: {
+    title: '🗑 Корзина',
+    icon: '🗑',
+    text: 'Удалённые данные хранятся 30 дней — можно восстановить.',
+    tips: [
+      {h:'Восстановить', t:'Нажми «Восстановить» — запись вернётся в систему.'},
+      {h:'Удалить навсегда', t:'Безвозвратное удаление. Осторожно!'},
+      {h:'Срок хранения', t:'30 дней. После — автоматически удаляется.'},
+    ]
+  },
+  backups: {
+    title: '💾 Резервные копии',
+    icon: '💾',
+    text: 'Автоматические и ручные резервные копии всех данных.',
+    tips: [
+      {h:'Автокопии', t:'Создаются при входе (не чаще раза в 24ч). Хранится 10 последних копий.'},
+      {h:'Ручная копия', t:'Нажми + Создать копию перед важными изменениями.'},
+      {h:'Восстановление', t:'Выбери копию → Восстановить. ⚠️ Перезапишет все текущие данные!'},
+    ]
+  },
+};
+
+let helpOpen = false;
+let helpCollapsed = false;
+const HELP_COLLAPSED_WIDTH = '48px';
+const HELP_FULL_WIDTH = '360px';
+
+function toggleHelp(){
+  helpOpen = !helpOpen;
+  helpCollapsed = false;
+  const panel = document.getElementById('help-panel');
+  const backdrop = document.getElementById('help-backdrop');
+  const btn = document.getElementById('help-btn');
+  const body = document.getElementById('help-body');
+  const colBtn = document.getElementById('help-collapse-btn');
+  const isMobile = window.innerWidth < 768;
+
+  if(helpOpen){
+    panel.style.display = 'flex';
+    panel.style.width = HELP_FULL_WIDTH;
+    if(body) body.style.display = 'flex';
+    if(colBtn) colBtn.textContent = '⟩';
+    if(btn) btn.style.background = 'var(--acbg)';
+    // On mobile show backdrop, on desktop shift content
+    if(isMobile && backdrop) backdrop.style.display = 'block';
+    else shiftContent(true);
+    updateHelpForPanel(curPanel());
+  } else {
+    panel.style.display = 'none';
+    if(backdrop) backdrop.style.display = 'none';
+    if(btn) btn.style.background = '';
+    shiftContent(false);
+  }
+}
+
+function collapseHelp(){
+  const panel = document.getElementById('help-panel');
+  const body = document.getElementById('help-body');
+  const colBtn = document.getElementById('help-collapse-btn');
+  const isMobile = window.innerWidth < 768;
+  if(isMobile){ toggleHelp(); return; } // on mobile just close
+  helpCollapsed = !helpCollapsed;
+  if(helpCollapsed){
+    panel.style.width = HELP_COLLAPSED_WIDTH;
+    if(body) body.style.display = 'none';
+    if(colBtn) colBtn.textContent = '⟨';
+    shiftContent(true, HELP_COLLAPSED_WIDTH);
+  } else {
+    panel.style.width = HELP_FULL_WIDTH;
+    if(body) body.style.display = 'flex';
+    if(colBtn) colBtn.textContent = '⟩';
+    shiftContent(true, HELP_FULL_WIDTH);
+  }
+}
+
+function shiftContent(shift, width){
+  const w = width || HELP_FULL_WIDTH;
+  const main = document.querySelector('.main');
+  if(!main) return;
+  main.style.marginRight = shift ? w : '0';
+  main.style.transition = 'margin-right .25s';
+}
+
+// Close help on mobile when tapping backdrop - already handled by backdrop onclick
+
+function updateHelpForPanel(p){
+  const data = HELP_DATA[p];
+  const ctx = document.getElementById('help-panel-ctx');
+  if(ctx) ctx.textContent = data ? data.title : 'Общая справка';
+  renderHelpContent(data || null);
+}
+
+function renderHelpContent(data, filter=''){
+  const el = document.getElementById('help-content');
+  if(!el) return;
+
+  // Collect all sections if no specific data
+  const sections = data ? [data] : Object.values(HELP_DATA);
+
+  let html = '';
+  sections.forEach(sec=>{
+    const tips = filter
+      ? sec.tips.filter(t=>
+          t.h.toLowerCase().includes(filter) ||
+          t.t.toLowerCase().includes(filter) ||
+          sec.title.toLowerCase().includes(filter)
+        )
+      : sec.tips;
+    if(filter && !tips.length && !sec.title.toLowerCase().includes(filter)) return;
+
+    html += `<div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--ac2);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span>${sec.icon}</span>${sec.title}
+      </div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:8px;line-height:1.5">${sec.text}</div>`;
+
+    tips.forEach(tip=>{
+      const hText = filter ? tip.h.replace(new RegExp(filter,'gi'), m=>`<mark style="background:rgba(245,200,66,.3);border-radius:2px;color:var(--am)">${m}</mark>`) : tip.h;
+      const tText = filter ? tip.t.replace(new RegExp(filter,'gi'), m=>`<mark style="background:rgba(245,200,66,.3);border-radius:2px;color:var(--am)">${m}</mark>`) : tip.t;
+      html += `<div style="background:var(--bg3);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:3px">${hText}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">${tText}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  if(!html) html = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px">🔍 Ничего не найдено</div>';
+  el.innerHTML = html;
+}
+
+function filterHelp(q){
+  renderHelpContent(null, q.toLowerCase().trim());
+}
+
+// Update help panel when navigating
+const _origNav = nav;
+function nav(el){
+  _origNav(el);
+  if(helpOpen) setTimeout(()=>updateHelpForPanel(curPanel()), 50);
+}
+
+// ── TOOLTIPS ─────────────────────────────────────────────────────
+const TOOLTIPS = {
+  'fs-age':     'Фильтр по возрастной группе ученика (информационный)',
+  'fs-level':   'Фильтр по уровню — система покажет совместимые слоты',
+  'fs-days':    'Выбери удобные для ученика дни занятий',
+  's-age':      'Возраст ученика — используется для подбора пары',
+  's-level':    'Уровень важен! Нельзя объединить учеников с разными уровнями',
+  's-compat-warn': null,
+  'avail-sel':  'Выбери преподавателя для редактирования расписания',
+  'inv-name':   'Имя нового преподавателя',
+};
+
+function showTooltip(id, text, event){
+  const tip = document.getElementById('tooltip');
+  if(!tip) return;
+  tip.textContent = text;
+  tip.style.display = 'block';
+  const x = Math.min(event.clientX + 12, window.innerWidth - 260);
+  const y = event.clientY + 16;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+
+function hideTooltip(){
+  const tip = document.getElementById('tooltip');
+  if(tip) tip.style.display = 'none';
+}
+
+// Add tooltips to form elements
+function initTooltips(){
+  Object.entries(TOOLTIPS).forEach(([id, text])=>{
+    if(!text) return;
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('mouseenter', e=>showTooltip(id, text, e));
+    el.addEventListener('mousemove', e=>showTooltip(id, text, e));
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('focus', e=>showTooltip(id, text, {clientX: e.target.getBoundingClientRect().left, clientY: e.target.getBoundingClientRect().bottom}));
+    el.addEventListener('blur', hideTooltip);
+  });
+}
+
+// ── ONBOARDING ────────────────────────────────────────────────────
+const ONBOARD_KEY = 'robeng_onboarded_v1';
+const ONBOARD_STEPS = [
+  {
+    ico: '👋',
+    title: 'Добро пожаловать в Robeng LMS!',
+    text: 'Это система управления расписанием ELC Roblox English. Пройдём быстрый тур по основным функциям — займёт 1 минуту.',
+    actions: []
+  },
+  {
+    ico: '👥',
+    title: 'Начни с пользователей',
+    text: 'Сначала добавь преподавателей в разделе <strong>Пользователи</strong>. После создания аккаунта они смогут входить и видеть своё расписание.',
+    actions: [{label:'→ Открыть Пользователи', panel:'users'}]
+  },
+  {
+    ico: '🕐',
+    title: 'Настрой время работы',
+    text: 'В разделе <strong>Время работы</strong> заполни сетку доступности для каждого преподавателя — какие дни и часы они работают.',
+    actions: [{label:'→ Открыть Время работы', panel:'availability'}]
+  },
+  {
+    ico: '✦',
+    title: 'Записывай учеников через Свободные слоты',
+    text: 'Когда пришёл новый ученик — открой <strong>Свободные слоты</strong>, выбери фильтры (дни, возраст, уровень) и нажми «Записать» рядом с подходящим слотом.',
+    actions: [{label:'→ Открыть Свободные слоты', panel:'freeSlots'}]
+  },
+  {
+    ico: '🔔',
+    title: 'Подключи Telegram уведомления',
+    text: 'Нажми кнопку 🔔 в правом верхнем углу и привяжи свой Telegram — будешь получать уведомления о задачах, видео и заявках.',
+    actions: [{label:'🔔 Привязать сейчас', fn:'bindTelegram()'}]
+  },
+  {
+    ico: '📖',
+    title: 'Справка всегда рядом',
+    text: 'В любой момент нажми кнопку <strong>?</strong> в верхнем правом углу — откроется подробная справка по текущему разделу.',
+    actions: []
+  },
+];
+
+let obStep = 0;
+
+function showOnboarding(){
+  if(localStorage.getItem(ONBOARD_KEY)) return;
+  obStep = 0;
+  renderOnboardStep();
+  const ov = document.getElementById('onboard-overlay');
+  if(ov) ov.style.display = 'flex';
+}
+
+function renderOnboardStep(){
+  const s = ONBOARD_STEPS[obStep];
+  document.getElementById('ob-ico').textContent = s.ico;
+  document.getElementById('ob-title').textContent = s.title;
+  document.getElementById('ob-text').innerHTML = s.text;
+  document.getElementById('ob-step').textContent = `${obStep+1} из ${ONBOARD_STEPS.length}`;
+  const actEl = document.getElementById('ob-actions');
+  actEl.innerHTML = s.actions.map(a=>
+    a.fn
+      ? `<button class="btn btn-sm" onclick="${a.fn}">${a.label}</button>`
+      : `<button class="btn btn-sm" onclick="nav(document.querySelector('.ni[data-p=\\"${a.panel}\\"]'));skipOnboard()">${a.label}</button>`
+  ).join('');
+  const nextBtn = document.getElementById('ob-next');
+  if(nextBtn) nextBtn.textContent = obStep === ONBOARD_STEPS.length-1 ? '✓ Готово' : 'Далее →';
+}
+
+function nextOnboard(){
+  if(obStep >= ONBOARD_STEPS.length-1){
+    skipOnboard();
+  } else {
+    obStep++;
+    renderOnboardStep();
+  }
+}
+
+function skipOnboard(){
+  localStorage.setItem(ONBOARD_KEY, '1');
+  const ov = document.getElementById('onboard-overlay');
+  if(ov) ov.style.display = 'none';
+}
+
+// ── INIT HELP ─────────────────────────────────────────────────────
 function updateAvailReqBadge(){
   availRequestsRef.orderByChild('status').equalTo('pending').once('value').then(snap=>{
     const n=snap.numChildren();
@@ -4561,5 +4959,47 @@ function slotCompatLabel(tid,days,ti){
 // Init is now triggered by Firebase Auth onAuthStateChanged above
 
 </script>
+
+<!-- ── HELP PANEL ─────────────────────────────────────────────── -->
+<div id="help-backdrop" onclick="toggleHelp()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:899"></div>
+<div id="help-panel" style="display:none;position:fixed;top:0;right:0;width:360px;max-width:100vw;height:100vh;background:var(--bg2);border-left:1px solid var(--b2);z-index:900;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.5);transition:transform .25s">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px">
+    <div style="flex:1">
+      <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--ac2)">📖 Справка</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:1px" id="help-panel-ctx">Выбери раздел слева</div>
+    </div>
+    <!-- Collapse/expand button -->
+    <button class="btn btn-sm" id="help-collapse-btn" onclick="collapseHelp()" title="Свернуть" style="padding:4px 8px;font-size:16px">⟩</button>
+    <button class="btn btn-sm" onclick="toggleHelp()" style="padding:4px 10px">✕</button>
+  </div>
+  <div id="help-body" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div style="padding:10px 12px;border-bottom:1px solid var(--b1)">
+      <input id="help-search" placeholder="🔍 Поиск по справке..." oninput="filterHelp(this.value)"
+        style="width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:13px;padding:8px 12px;outline:none"/>
+    </div>
+    <div id="help-content" style="flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin"></div>
+  </div>
+</div>
+
+<!-- ── ONBOARDING OVERLAY ───────────────────────────────────────── -->
+<div id="onboard-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:950;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:32px;max-width:480px;width:90%;position:relative">
+    <div style="font-size:32px;text-align:center;margin-bottom:12px" id="ob-ico">👋</div>
+    <div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--t1);text-align:center;margin-bottom:8px" id="ob-title">Добро пожаловать!</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.7;text-align:center;margin-bottom:20px" id="ob-text"></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap" id="ob-actions"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+      <div style="font-size:11px;color:var(--t3)" id="ob-step"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" id="ob-skip" onclick="skipOnboard()">Пропустить</button>
+        <button class="btn btn-a btn-sm" id="ob-next" onclick="nextOnboard()">Далее →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip element -->
+<div id="tooltip" style="display:none;position:fixed;background:var(--bg);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--t2);max-width:240px;line-height:1.5;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none"></div>
+
 </body>
 </html>

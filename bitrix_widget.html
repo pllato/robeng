@@ -130,11 +130,10 @@ async function fbGet(path){
   return r.json();
 }
 async function fbSet(path,data){
-  // Write via Cloudflare Worker proxy
-  const r=await fetch('https://robeng-notify.uurraa.workers.dev/fbwrite',{
-    method:'POST',
+  const r=await fetch(`${FB_URL}/${path}.json`,{
+    method:'PUT',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({path,data})
+    body:JSON.stringify(data)
   });
   if(!r.ok)throw new Error('Write failed: '+r.status);
   return r.json();

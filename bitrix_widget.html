@@ -199,6 +199,18 @@ function _loadDealById(dealId){
       if(sAge)document.getElementById("s-age").value=sAge;
       if(sLvl=="370")document.getElementById("s-level").value="beginner";
       if(sLvl=="372")document.getElementById("s-level").value="continuing";
+
+      // Дата начала из сделки
+      const beginDate=deal["BEGINDATE"]||deal["UF_CRM_1740640185649"]||"";
+      if(beginDate){
+        const d=new Date(beginDate);
+        if(!isNaN(d)){
+          document.getElementById("s-date-start").value=d.toISOString().slice(0,10);
+          // Дата окончания = +1 месяц
+          const dEnd=new Date(d);dEnd.setMonth(dEnd.getMonth()+1);
+          document.getElementById("s-date-end").value=dEnd.toISOString().slice(0,10);
+        }
+      }
       if(sName)info.innerHTML+="<br><span style=\"color:#0a7c4a\">🎓 Ученик: "+sName+"</span>";
 
       // Контакт = родитель

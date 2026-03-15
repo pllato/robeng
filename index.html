@@ -1345,6 +1345,8 @@ function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'das
 function nav(el){
   // Close more menu on nav
   if(_moreOpen && el && el.dataset && el.dataset.p){_moreOpen=false;const m=document.getElementById('more-menu');const b=document.getElementById('ni-more');if(m)m.style.display='none';if(b)b.style.background='';}
+  // Update help panel if open
+  if(helpOpen) setTimeout(()=>updateHelpForPanel(curPanel()), 50);
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
@@ -4461,12 +4463,7 @@ function filterHelp(q){
   renderHelpContent(null, q.toLowerCase().trim());
 }
 
-// Update help panel when navigating
-const _origNav = nav;
-function nav(el){
-  _origNav(el);
-  if(helpOpen) setTimeout(()=>updateHelpForPanel(curPanel()), 50);
-}
+// Update help panel when navigating — handled inside main nav function
 
 // ── TOOLTIPS ─────────────────────────────────────────────────────
 const TOOLTIPS = {

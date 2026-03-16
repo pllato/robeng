@@ -518,16 +518,38 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     </div>
     <!-- STUDENTS -->
     <div class="panel" id="panel-students">
-      <div class="filters">
-        <input class="fsel" id="stu-search" placeholder="🔍 Поиск по имени, телефону, родителю..." oninput="renderStudents()" style="min-width:260px"/>
-        <span class="fl">Предмет:</span>
-        <select class="fsel" id="stu-subj-f" onchange="renderStudents()"><option value="">Все</option></select>
-        <span class="fl">Статус:</span>
-        <select class="fsel" id="stu-status-f" onchange="renderStudents()">
-          <option value="">Все</option><option value="active">Активные</option><option value="inactive">Неактивные</option><option value="ended">Завершённые</option>
-        </select>
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;padding:0 0 12px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="stab-all" onclick="setStuTab('all')" style="font-size:12px">📋 Все</button>
+        <button class="btn btn-sm" id="stab-starts" onclick="setStuTab('starts')" style="font-size:12px">🚀 Старты</button>
+        <button class="btn btn-sm" id="stab-renewals" onclick="setStuTab('renewals')" style="font-size:12px">🔄 Продления <span id="renewals-badge" style="background:var(--rd);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px;display:none"></span></button>
+        <button class="btn btn-sm" id="stab-delayed" onclick="setStuTab('delayed')" style="font-size:12px">⏳ Ожидают оплаты</button>
       </div>
-      <div id="stu-list"></div>
+      <!-- All students tab -->
+      <div id="stab-content-all">
+        <div class="filters">
+          <input class="fsel" id="stu-search" placeholder="🔍 Поиск по имени, телефону, родителю..." oninput="renderStudents()" style="min-width:260px"/>
+          <span class="fl">Предмет:</span>
+          <select class="fsel" id="stu-subj-f" onchange="renderStudents()"><option value="">Все</option></select>
+          <span class="fl">Статус:</span>
+          <select class="fsel" id="stu-status-f" onchange="renderStudents()">
+            <option value="">Все</option><option value="active">Активные</option><option value="inactive">Неактивные</option><option value="ended">Завершённые</option>
+          </select>
+        </div>
+        <div id="stu-list"></div>
+      </div>
+      <!-- Starts tab -->
+      <div id="stab-content-starts" style="display:none">
+        <div id="stu-starts-list"></div>
+      </div>
+      <!-- Renewals tab -->
+      <div id="stab-content-renewals" style="display:none">
+        <div id="stu-renewals-list"></div>
+      </div>
+      <!-- Delayed payments tab -->
+      <div id="stab-content-delayed" style="display:none">
+        <div id="stu-delayed-list"></div>
+      </div>
     </div>
     <!-- JOURNAL -->
     <div class="panel" id="panel-journal">
@@ -1262,7 +1284,7 @@ fbAuth.onAuthStateChanged(user=>{
         const data=snap2.val();
         if(data){S=data;if(!S.journal)S.journal=[];if(!S.scheduleHistory)S.scheduleHistory={};}
         applyScheduledAvail();deduplicateEnrollments();updateWL();renderDashboard();startDbListener();
-        setTimeout(()=>{initTooltips();showOnboarding();},800);
+        setTimeout(()=>{initTooltips();showOnboarding();updateRenewalsBadge();setStuTab("all");},800);
       });
     });
   } else {
@@ -2685,6 +2707,7 @@ function pickEnrollment(stuId){
 }
 
 function renderStudents(){
+  updateRenewalsBadge();
   fillSubjSel();
   const subjF=document.getElementById('stu-subj-f')?.value||'';
   const statusF=document.getElementById('stu-status-f')?.value||'';
@@ -2793,6 +2816,244 @@ function renderStudents(){
     </div>`;
   }).join('');
 }
+// ── STUDENT TABS ──────────────────────────────────────────────────
+let curStuTab = 'all';
+
+function setStuTab(tab){
+  curStuTab = tab;
+  ['all','starts','renewals','delayed'].forEach(t=>{
+    const btn=document.getElementById('stab-'+t);
+    const content=document.getElementById('stab-content-'+t);
+    if(btn) btn.className = 'btn btn-sm' + (t===tab?' btn-a':'');
+    if(content) content.style.display = t===tab?'':'none';
+  });
+  if(tab==='starts') renderStarts();
+  if(tab==='renewals') renderRenewals();
+  if(tab==='delayed') renderDelayed();
+}
+
+function stuDuration(dateStart, dateEnd){
+  const s=new Date(dateStart), e=dateEnd?new Date(dateEnd):new Date();
+  const months=Math.round((e-s)/(1000*60*60*24*30));
+  if(months<1) return 'менее месяца';
+  if(months===1) return '1 месяц';
+  if(months<5) return months+' месяца';
+  return months+' месяцев';
+}
+
+function fmtDateRu(d){
+  if(!d)return '—';
+  const dt=new Date(d);
+  return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function daysUntil(dateStr){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.round((d-today)/(1000*60*60*24));
+}
+
+function renderStarts(){
+  const el=document.getElementById('stu-starts-list');
+  if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  const in3=new Date(); in3.setDate(in3.getDate()+3); const in3s=in3.toISOString().slice(0,10);
+
+  const items=(S.enrollments||[]).filter(e=>{
+    if(e.inactive)return false;
+    if(!e.dateStart)return false;
+    const days=daysUntil(e.dateStart);
+    // Show: today or in past 1 day (未отмеченные) or upcoming 3 days, and not yet marked started
+    return days>=-1&&days<=3&&!e.startConfirmed;
+  }).sort((a,b)=>a.dateStart.localeCompare(b.dateStart));
+
+  if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">🎉 Нет предстоящих стартов</div>';return;}
+
+  el.innerHTML=items.map(e=>{
+    const stu=S.students?.find(s=>s.id===e.studentId);
+    const t=S.teachers?.find(t=>String(t.id)===String(e.teacherId));
+    const days=daysUntil(e.dateStart);
+    const daysLabel=days===0?'<span style="color:var(--gn);font-weight:700">Сегодня</span>':
+      days===1?'<span style="color:var(--am)">Завтра</span>':
+      days<0?`<span style="color:var(--rd)">${Math.abs(days)} дн. назад</span>`:
+      `<span style="color:var(--t2)">через ${days} дн.</span>`;
+    const dur=stuDuration(e.dateStart);
+    return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Старт ${fmtDateRu(e.dateStart)} · ${daysLabel}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">Длительность: ${dur}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-a" onclick="confirmStart(${e.id})" style="font-size:12px">✅ Старт прошёл</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRenewals(){
+  const el=document.getElementById('stu-renewals-list');
+  if(!el)return;
+  const items=(S.enrollments||[]).filter(e=>{
+    if(e.inactive)return false;
+    if(!e.dateEnd)return false;
+    const days=daysUntil(e.dateEnd);
+    return days>=-1&&days<=3&&!e.renewalHandled;
+  }).sort((a,b)=>a.dateEnd.localeCompare(b.dateEnd));
+
+  // Update badge
+  const badge=document.getElementById('renewals-badge');
+  if(badge){badge.textContent=items.length;badge.style.display=items.length?'':'none';}
+
+  if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">✅ Нет предстоящих продлений</div>';return;}
+
+  el.innerHTML=items.map(e=>{
+    const stu=S.students?.find(s=>s.id===e.studentId);
+    const t=S.teachers?.find(t=>String(t.id)===String(e.teacherId));
+    const days=daysUntil(e.dateEnd);
+    const daysLabel=days===0?'<span style="color:var(--rd);font-weight:700">Сегодня</span>':
+      days<0?`<span style="color:var(--rd);font-weight:700">Просрочено ${Math.abs(days)} дн.</span>`:
+      `<span style="color:var(--am)">через ${days} дн.</span>`;
+    const dur=stuDuration(e.dateStart, null);
+    return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Оканчивается ${fmtDateRu(e.dateEnd)} · ${daysLabel}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">Обучается: ${dur} · Старт: ${fmtDateRu(e.dateStart)}</div>
+          ${e.renewalComment?`<div style="font-size:11px;color:var(--am);margin-top:3px">💬 ${e.renewalComment}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:12px">🔄 Продлить</button>
+          <button class="btn btn-sm" onclick="markDelayed(${e.id})" style="font-size:12px;background:rgba(245,200,66,.15);color:var(--am)">⏳ Оплата задерживается</button>
+          <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:12px;background:rgba(240,89,117,.1);color:var(--rd)">✕ Деактивировать</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDelayed(){
+  const el=document.getElementById('stu-delayed-list');
+  if(!el)return;
+  const items=(S.enrollments||[]).filter(e=>e.paymentDelayed&&!e.inactive)
+    .sort((a,b)=>(a.paymentDueDate||'').localeCompare(b.paymentDueDate||''));
+
+  if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">✅ Нет задерживающихся оплат</div>';return;}
+
+  el.innerHTML=items.map(e=>{
+    const stu=S.students?.find(s=>s.id===e.studentId);
+    const t=S.teachers?.find(t=>String(t.id)===String(e.teacherId));
+    const dur=stuDuration(e.dateStart, null);
+    return `<div class="card" style="margin-bottom:10px;padding:14px 16px;border-left:3px solid var(--am)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Обучается: ${dur}</div>
+          ${e.paymentDueDate?`<div style="font-size:12px;color:var(--am);margin-top:3px">⏳ Ожидаем оплату до: <strong>${fmtDateRu(e.paymentDueDate)}</strong></div>`:''}
+          ${e.renewalComment?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 ${e.renewalComment}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:12px">🔄 Продлить</button>
+          <button class="btn btn-sm" onclick="clearDelayed(${e.id})" style="font-size:12px">✓ Оплата получена</button>
+          <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:12px;background:rgba(240,89,117,.1);color:var(--rd)">✕ Деактивировать</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmStart(enrollId){
+  const link=prompt('Ссылка на видео первого урока (необязательно):','');
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  S.enrollments[idx].startConfirmed=true;
+  S.enrollments[idx].startConfirmedDate=new Date().toISOString().slice(0,10);
+  if(link) S.enrollments[idx].startVideoUrl=link;
+  // Send video for review if link provided
+  if(link){
+    if(!S.videoReports)S.videoReports={};
+    const key=enrollId+'_start_'+new Date().toISOString().slice(0,10);
+    S.videoReports[key]={enrollId,url:link,status:'pending',ts:Date.now(),type:'start'};
+  }
+  logAction('start_confirmed','Старт подтверждён: '+(S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—'),'');
+  save();renderStarts();toast('Старт отмечен!');
+}
+
+function renewEnroll(enrollId){
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  const e=S.enrollments[idx];
+  const oldEnd=new Date(e.dateEnd||new Date());
+  const newEnd=new Date(oldEnd);newEnd.setMonth(newEnd.getMonth()+1);
+  const newEndStr=newEnd.toISOString().slice(0,10);
+  if(!confirm('Продлить до '+fmtDateRu(newEndStr)+'?'))return;
+  S.enrollments[idx].dateEnd=newEndStr;
+  S.enrollments[idx].renewalHandled=false; // reset so it won't show until near new end
+  S.enrollments[idx].paymentDelayed=false;
+  S.enrollments[idx].paymentDueDate='';
+  S.enrollments[idx].renewalComment='';
+  const stuName=S.students?.find(s=>s.id===e.studentId)?.name||'—';
+  logAction('renewal','Продлено: '+stuName,'до '+newEndStr);
+  save();renderRenewals();renderDelayed();toast('Абонемент продлён до '+fmtDateRu(newEndStr));
+}
+
+function markDelayed(enrollId){
+  const dueDate=prompt('Ожидаемая дата оплаты (ГГГГ-ММ-ДД):',new Date(Date.now()+7*86400000).toISOString().slice(0,10));
+  if(!dueDate)return;
+  const comment=prompt('Комментарий (необязательно):','');
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  S.enrollments[idx].paymentDelayed=true;
+  S.enrollments[idx].paymentDueDate=dueDate;
+  S.enrollments[idx].renewalComment=comment||'';
+  S.enrollments[idx].renewalHandled=true;
+  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—';
+  logAction('payment_delayed','Оплата задерживается: '+stuName,'до '+dueDate);
+  save();renderRenewals();renderDelayed();toast('Отмечено — оплата ожидается до '+fmtDateRu(dueDate));
+}
+
+function clearDelayed(enrollId){
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  // After payment received - renew
+  renewEnroll(enrollId);
+}
+
+function deactivateEnroll(enrollId){
+  const REASONS=['Дорого','Не устроило качество','Личные причины'];
+  const reason=prompt('Причина деактивации:
+'+REASONS.map((r,i)=>`${i+1}. ${r}`).join('
+')+'
+
+Введи номер или свой текст:','');
+  if(reason===null)return;
+  const num=parseInt(reason);
+  let reasonText;
+  if(num>=1&&num<=REASONS.length) reasonText=REASONS[num-1];
+  else reasonText=reason; // free text
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  S.enrollments[idx].inactive=true;
+  S.enrollments[idx].deactivationReason=reasonText;
+  S.enrollments[idx].deactivationDate=new Date().toISOString().slice(0,10);
+  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—';
+  logAction('deactivate','Деактивирован: '+stuName,'Причина: '+reasonText);
+  save();renderRenewals();renderStudents();toast('Ученик деактивирован');
+}
+
+// Update renewals badge on data load
+function updateRenewalsBadge(){
+  const items=(S.enrollments||[]).filter(e=>{
+    if(e.inactive||!e.dateEnd)return false;
+    return daysUntil(e.dateEnd)<=3&&!e.renewalHandled;
+  });
+  const badge=document.getElementById('renewals-badge');
+  if(badge){badge.textContent=items.length;badge.style.display=items.length?'':'none';}
+}
+
 function delEnroll(id){
   if(!confirm('Удалить запись?\nМожно восстановить из Корзины в течение 30 дней.'))return;
   const delE=S.enrollments.find(e=>e.id===id);

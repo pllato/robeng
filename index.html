@@ -3024,16 +3024,11 @@ function clearDelayed(enrollId){
 
 function deactivateEnroll(enrollId){
   const REASONS=['Дорого','Не устроило качество','Личные причины'];
-  const reason=prompt('Причина деактивации:
-'+REASONS.map((r,i)=>`${i+1}. ${r}`).join('
-')+'
-
-Введи номер или свой текст:','');
+  const msg='Причина деактивации:\n1. Дорого\n2. Не устроило качество\n3. Личные причины\n4. Другое (введи текст)\n\nВведи номер или свою причину:';
+  const reason=prompt(msg,'');
   if(reason===null)return;
   const num=parseInt(reason);
-  let reasonText;
-  if(num>=1&&num<=REASONS.length) reasonText=REASONS[num-1];
-  else reasonText=reason; // free text
+  const reasonText=(num>=1&&num<=REASONS.length)?REASONS[num-1]:reason;
   const idx=S.enrollments.findIndex(e=>e.id===enrollId);
   if(idx<0)return;
   S.enrollments[idx].inactive=true;
@@ -3043,8 +3038,6 @@ function deactivateEnroll(enrollId){
   logAction('deactivate','Деактивирован: '+stuName,'Причина: '+reasonText);
   save();renderRenewals();renderStudents();toast('Ученик деактивирован');
 }
-
-// Update renewals badge on data load
 function updateRenewalsBadge(){
   const items=(S.enrollments||[]).filter(e=>{
     if(e.inactive||!e.dateEnd)return false;

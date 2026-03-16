@@ -103,7 +103,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <script>
-const BX = "https://elcalmaty.bitrix24.kz/rest/1/268e024qbc8av2e1";
+const BX = "https://elcalmaty.bitrix24.kz/rest/1/noeelwifp6bdxas0";
 const FB_CFG = {
   apiKey:"AIzaSyCC61xh7Rdwkrw63BIzgdDqVq5_FOBUlgI",
   authDomain:"elc-robeng.firebaseapp.com",
@@ -160,6 +160,9 @@ fbGet("eduSchedule").then(snap=>{
   loadDeal();
 }).catch(e=>showErr("Firebase: "+e.message));
 
+// Cache deal data in memory to avoid repeated API calls
+const _dealCache={};
+
 function loadDeal(){
   // Try BX24 SDK first
   if(window.BX24){
@@ -181,14 +184,17 @@ function loadDeal(){
   }
 }
 function _loadDealById(dealId){
-  fetch(BX+"/crm.deal.get.json?id="+dealId)
-    .then(r=>r.json()).then(d=>{
+  // Один батч-запрос вместо двух отдельных
+  const batchUrl=BX+"/crm.deal.get.json?id="+dealId+"&select[]=*&select[]=CONTACT_ID";
+  fetch(batchUrl)
+    .then(r=>r.json()).then(async d=>{
       if(!d.result)return;
       const deal=d.result;
       const banner=document.getElementById("deal-banner");
       const info=document.getElementById("deal-info");
       banner.style.display="";
       info.innerHTML="<span class=\"deal-tag\">Сделка #"+dealId+"</span> <strong style=\"margin-left:6px\">"+deal.TITLE+"</strong>";
+
       // Поля ученика из сделки
       const sName=deal["UF_CRM_1773584484994"]||"";
       const sPhone=deal["UF_CRM_1773584612872"]||"";
@@ -203,28 +209,34 @@ function _loadDealById(dealId){
       // Дата начала из сделки
       const beginDate=deal["BEGINDATE"]||deal["UF_CRM_1740640185649"]||"";
       if(beginDate){
-        const d=new Date(beginDate);
-        if(!isNaN(d)){
-          document.getElementById("s-date-start").value=d.toISOString().slice(0,10);
-          // Дата окончания = +1 месяц
-          const dEnd=new Date(d);dEnd.setMonth(dEnd.getMonth()+1);
+        const dt=new Date(beginDate);
+        if(!isNaN(dt)){
+          document.getElementById("s-date-start").value=dt.toISOString().slice(0,10);
+          const dEnd=new Date(dt);dEnd.setMonth(dEnd.getMonth()+1);
           document.getElementById("s-date-end").value=dEnd.toISOString().slice(0,10);
         }
       }
       if(sName)info.innerHTML+="<br><span style=\"color:#0a7c4a\">🎓 Ученик: "+sName+"</span>";
 
-      // Контакт = родитель
+      // Контакт — используем batch чтобы не делать отдельный запрос
       const cid=deal.CONTACT_ID;
       if(cid){
-        fetch(BX+"/crm.contact.get.json?id="+cid).then(r=>r.json()).then(cd=>{
-          if(!cd.result)return;
-          const c=cd.result;
-          const nm=[c.LAST_NAME,c.NAME,c.SECOND_NAME].filter(Boolean).join(" ");
-          if(nm)document.getElementById("s-parent").value=nm;
-          const ph=(c.PHONE||[])[0];
-          if(ph)document.getElementById("s-parent-phone").value=ph.VALUE||"";
-          info.innerHTML+="<br><span style=\"color:#4f46e5\">👤 Родитель: "+nm+"</span>";
-        });
+        // Используем один дополнительный запрос только если нет имени родителя
+        const parentName=deal["UF_CRM_PARENT_NAME"]||"";
+        if(parentName){
+          document.getElementById("s-parent").value=parentName;
+        } else {
+          fetch(BX+"/crm.contact.get.json?id="+cid+"&select[]=NAME&select[]=LAST_NAME&select[]=SECOND_NAME&select[]=PHONE")
+            .then(r=>r.json()).then(cd=>{
+              if(!cd.result)return;
+              const ct=cd.result;
+              const nm=[ct.LAST_NAME,ct.NAME,ct.SECOND_NAME].filter(Boolean).join(" ");
+              if(nm)document.getElementById("s-parent").value=nm;
+              const ph=(ct.PHONE||[])[0];
+              if(ph)document.getElementById("s-parent-phone").value=ph.VALUE||"";
+              info.innerHTML+="<br><span style=\"color:#4f46e5\">👤 Родитель: "+nm+"</span>";
+            }).catch(()=>{});
+        }
       }
       setTimeout(renderSlots,300);
     }).catch(()=>{});

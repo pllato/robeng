@@ -2885,8 +2885,8 @@ function renderStarts(){
     if(e.inactive)return false;
     if(!e.dateStart)return false;
     const days=daysUntil(e.dateStart);
-    // Show: today or in past 1 day (未отмеченные) or upcoming 3 days, and not yet marked started
-    return days>=-1&&days<=3&&!e.startConfirmed;
+    // Show all upcoming starts not yet confirmed
+    return !e.startConfirmed;
   }).sort((a,b)=>a.dateStart.localeCompare(b.dateStart));
 
   if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">🎉 Нет предстоящих стартов</div>';return;}
@@ -2922,7 +2922,7 @@ function renderRenewals(){
     if(e.inactive)return false;
     if(!e.dateEnd)return false;
     const days=daysUntil(e.dateEnd);
-    return days>=-1&&days<=3&&!e.renewalHandled;
+    return !e.renewalHandled;
   }).sort((a,b)=>a.dateEnd.localeCompare(b.dateEnd));
 
   // Update badge
@@ -3064,7 +3064,7 @@ function deactivateEnroll(enrollId){
 function updateRenewalsBadge(){
   const items=(S.enrollments||[]).filter(e=>{
     if(e.inactive||!e.dateEnd)return false;
-    return daysUntil(e.dateEnd)<=3&&!e.renewalHandled;
+    return !e.renewalHandled;
   });
   const badge=document.getElementById('renewals-badge');
   if(badge){badge.textContent=items.length;badge.style.display=items.length?'':'none';}

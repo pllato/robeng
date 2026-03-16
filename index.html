@@ -2703,7 +2703,7 @@ function renderExtraSlots(){
   container.innerHTML=_extraSlots.map((slot,idx)=>{
     const teacherOpts=teachers.map(t=>`<option value="${t.id}" ${String(slot.teacherId)===String(t.id)?'selected':''}>${t.name}</option>`).join('');
     const DS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-    const dayBtns=DS.map((d,di)=>`<button type="button" class="day-btn ${slot.days.includes(di)?'active':''}" onclick="toggleExtraDay(${idx},${di},this)">${d}</button>`).join('');
+    const dayBtns=DS.map((d,di)=>`<button type="button" class="day-btn ${slot.days.includes(di)?'active':''}" data-slot="${idx}" data-day="${di}" onclick="toggleExtraDay(parseInt(this.dataset.slot),parseInt(this.dataset.day),this)">${d}</button>`).join('');
 
     // Get available times for selected teacher
     const avail=slot.teacherId?getTeacherAvailTimes(slot.teacherId,slot.days):[];

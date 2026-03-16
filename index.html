@@ -521,6 +521,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <!-- Tabs -->
       <div style="display:flex;gap:4px;padding:0 0 12px;flex-wrap:wrap">
         <button class="btn btn-sm" id="stab-all" onclick="setStuTab('all')" style="font-size:12px">📋 Все</button>
+        <button class="btn btn-sm" id="stab-active" onclick="setStuTab('active')" style="font-size:12px">✅ Активные</button>
         <button class="btn btn-sm" id="stab-starts" onclick="setStuTab('starts')" style="font-size:12px">🚀 Старты</button>
         <button class="btn btn-sm" id="stab-renewals" onclick="setStuTab('renewals')" style="font-size:12px">🔄 Перестарты <span id="renewals-badge" style="background:var(--rd);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px;display:none"></span></button>
         <button class="btn btn-sm" id="stab-delayed" onclick="setStuTab('delayed')" style="font-size:12px">⏳ Оплата задерживается</button>
@@ -538,6 +539,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           </select>
         </div>
         <div id="stu-list"></div>
+      </div>
+      <!-- Active tab -->
+      <div id="stab-content-active" style="display:none">
+        <div id="stu-active-list"></div>
       </div>
       <!-- Starts tab -->
       <div id="stab-content-starts" style="display:none">
@@ -2848,12 +2853,13 @@ let curStuTab = 'all';
 
 function setStuTab(tab){
   curStuTab = tab;
-  ['all','starts','renewals','delayed','lost'].forEach(t=>{
+  ['all','active','starts','renewals','delayed','lost'].forEach(t=>{
     const btn=document.getElementById('stab-'+t);
     const content=document.getElementById('stab-content-'+t);
     if(btn) btn.className = 'btn btn-sm' + (t===tab?' btn-a':'');
     if(content) content.style.display = t===tab?'':'none';
   });
+  if(tab==='active') renderActive();
   if(tab==='starts') renderStarts();
   if(tab==='renewals') renderRenewals();
   if(tab==='delayed') renderDelayed();
@@ -2879,6 +2885,39 @@ function daysUntil(dateStr){
   const today=new Date(); today.setHours(0,0,0,0);
   const d=new Date(dateStr); d.setHours(0,0,0,0);
   return Math.round((d-today)/(1000*60*60*24));
+}
+
+function renderActive(){
+  const el=document.getElementById('stu-active-list');
+  if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  const items=(S.enrollments||[]).filter(e=>
+    !e.inactive&&enrollActive(e,today)
+  ).sort((a,b)=>a.dateEnd.localeCompare(b.dateEnd));
+
+  if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">Нет активных учеников</div>';return;}
+
+  el.innerHTML=items.map(e=>{
+    const stu=S.students?.find(s=>s.id===e.studentId);
+    const t=S.teachers?.find(t=>String(t.id)===String(e.teacherId));
+    const dur=stuDuration(e.dateStart,null);
+    const days=daysUntil(e.dateEnd);
+    const endLabel=days<=3
+      ?'<span style="color:var(--rd);font-weight:600">заканч. через '+days+' дн.</span>'
+      :'<span style="color:var(--t3)">до '+fmtDateRu(e.dateEnd)+'</span>';
+    return `<div class="card" style="margin-bottom:8px;padding:12px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Обучается: ${dur} · ${endLabel}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:11px">🔄 Перестарт</button>
+          <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:11px;background:rgba(240,89,117,.1);color:var(--rd)">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderStarts(){

@@ -3128,14 +3128,74 @@ function renderRenewals(){
     const isToday=days===0;
     const isPast=days<0;
     const cardBorder=isToday?'border:2px solid var(--gn);background:rgba(63,216,142,.05)':isPast?'border:2px solid var(--rd)':'';
+
+    // ── Статистика за последние 30 дней ──
+    const dates30=dateRange(30);
+    const lessonDates=lessonDatesInRange(e, dates30);
+    const total=lessonDates.length;
+    let done=0,miss=0,makeup=0;
+    lessonDates.forEach(dt=>{
+      const a=(S.attendance||{})[attKey(e.id,dt)];
+      if(a==='done')done++;
+      else if(a==='miss')makeup++;  // miss+makeup counted together
+      else if(a==='makeup')makeup++;
+    });
+    miss=lessonDates.filter(dt=>(S.attendance||{})[attKey(e.id,dt)]==='miss').length;
+    const unmarked=total-done-miss-makeup;
+    const attPct=total>0?Math.round((done+makeup)/total*100):null;
+    const attColor=attPct===null?'var(--t3)':attPct>=80?'var(--gn)':attPct>=50?'var(--am)':'var(--rd)';
+
+    // Видео отчёты за 30 дней
+    const vr=S.videoReports||{};
+    const vrKeys=Object.keys(vr).filter(k=>k.startsWith(e.id+'_'));
+    // последние 5 видео отчётов
+    const recentVR=vrKeys
+      .map(k=>({key:k,date:k.replace(e.id+'_','').slice(0,10),...vr[k]}))
+      .filter(v=>v.date>=dates30[0])
+      .sort((a,b)=>b.date.localeCompare(a.date))
+      .slice(0,5);
+    const vrApproved=recentVR.filter(v=>v.status==='approved').length;
+    const vrPending=recentVR.filter(v=>v.status==='pending').length;
+    const vrRejected=recentVR.filter(v=>v.status==='rejected').length;
+
+    // Attendance mini-bar
+    const attBar=total>0?`
+      <div style="display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--t3);min-width:80px">Посещаемость 30д:</span>
+        <div style="display:flex;gap:3px">
+          ${done>0?`<span style="background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">✓ ${done}</span>`:''}
+          ${miss>0?`<span style="background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">✗ ${miss}</span>`:''}
+          ${makeup>0?`<span style="background:var(--ambg);border:1px solid rgba(245,200,66,.3);color:var(--am);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">↩ ${makeup}</span>`:''}
+          ${unmarked>0?`<span style="background:var(--bg3);border:1px solid var(--b1);color:var(--t3);font-size:10px;padding:1px 7px;border-radius:5px">? ${unmarked}</span>`:''}
+        </div>
+        ${attPct!==null?`<span style="font-size:10px;font-weight:700;color:${attColor}">${attPct}%</span>`:''}
+      </div>`:'<div style="font-size:10px;color:var(--t3);margin-top:6px">Нет уроков за 30 дней</div>';
+
+    // Video reports row
+    const vrRow=recentVR.length>0?`
+      <div style="display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--t3);min-width:80px">Видео отчёты:</span>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          ${recentVR.map(v=>{
+            const statusColor=v.status==='approved'?'var(--gn)':v.status==='rejected'?'var(--rd)':'var(--am)';
+            const statusIcon=v.status==='approved'?'✓':v.status==='rejected'?'✗':'⏳';
+            const dateLabel=v.date?v.date.slice(5).replace('-','.'):'';
+            return `<a href="${v.url||'#'}" target="_blank" title="${v.url||''}" style="background:var(--bg3);border:1px solid var(--b1);border-radius:5px;padding:1px 7px;font-size:10px;font-weight:600;color:${statusColor};text-decoration:none;cursor:pointer">${statusIcon} ${dateLabel}</a>`;
+          }).join('')}
+        </div>
+        ${vrPending>0?`<span style="font-size:10px;color:var(--am)">· ${vrPending} на проверке</span>`:''}
+      </div>`:'';
+
     return `<div class="card" style="margin-bottom:10px;padding:14px 16px;${cardBorder}">
       ${isToday?'<div style="font-size:11px;font-weight:700;color:var(--gn);margin-bottom:6px;letter-spacing:.05em">💳 ВЫСТАВИТЬ СЧЁТ СЕГОДНЯ</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-        <div>
+        <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
           <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'-'} · Оканчивается ${fmtDateRu(e.dateEnd)} · ${daysLabel}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">Обучается: ${dur} · Старт: ${fmtDateRu(e.dateStart)}</div>
           ${e.renewalComment?`<div style="font-size:11px;color:var(--am);margin-top:3px">💬 ${e.renewalComment}</div>`:''}
+          ${attBar}
+          ${vrRow}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="setVacation(${e.id})" style="font-size:12px;background:rgba(56,189,248,.1);color:var(--tl)">🏖 Отпуск</button>

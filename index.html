@@ -911,6 +911,11 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div class="warn-box" id="s-time-warn"></div>
       <div class="warn-box" id="s-conflict-warn"></div>
     </div>
+
+    <!-- Extra slots -->
+    <div id="extra-slots-container"></div>
+    <button type="button" class="btn btn-sm" onclick="addExtraSlot()" style="margin-bottom:13px;width:100%;border:1px dashed var(--b2);background:transparent;color:var(--t3)">+ Добавить ещё день / преподавателя</button>
+
     <div class="fr-row">
       <div class="fr"><label>📆 Дата начала</label><input type="date" id="s-date-start"/></div>
       <div class="fr"><label>📆 Дата окончания</label><input type="date" id="s-date-end"/></div>
@@ -2669,6 +2674,97 @@ function setDays(days,skipUpdate){
 }
 function getDays(){return[...document.querySelectorAll('.day-btn.sel')].map(b=>parseInt(b.dataset.d));}
 
+
+// ── EXTRA SLOTS (multiple teachers/days per student) ─────────────
+let _extraSlots = []; // [{teacherId, days[], ti}]
+
+function addExtraSlot(){
+  const idx=_extraSlots.length;
+  _extraSlots.push({teacherId:'', days:[], ti:-1});
+  renderExtraSlots();
+}
+
+function removeExtraSlot(idx){
+  _extraSlots.splice(idx,1);
+  renderExtraSlots();
+}
+
+function clearExtraSlots(){
+  _extraSlots=[];
+  renderExtraSlots();
+}
+
+function renderExtraSlots(){
+  const container=document.getElementById('extra-slots-container');
+  if(!container)return;
+  if(!_extraSlots.length){container.innerHTML='';return;}
+
+  const teachers=(S.teachers||[]).filter(t=>t.status==='active');
+  container.innerHTML=_extraSlots.map((slot,idx)=>{
+    const teacherOpts=teachers.map(t=>`<option value="${t.id}" ${String(slot.teacherId)===String(t.id)?'selected':''}>${t.name}</option>`).join('');
+    const DS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const dayBtns=DS.map((d,di)=>`<button type="button" class="day-btn ${slot.days.includes(di)?'active':''}" onclick="toggleExtraDay(${idx},${di},this)">${d}</button>`).join('');
+
+    // Get available times for selected teacher
+    const avail=slot.teacherId?getTeacherAvailTimes(slot.teacherId,slot.days):[];
+    const timeOpts=avail.length
+      ? avail.map(ti=>`<option value="${ti}" ${slot.ti===ti?'selected':''}>${TIMES[ti]}</option>`).join('')
+      : '<option value="">— выбери дни сначала —</option>';
+
+    return `<div style="background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);padding:13px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--t2)">📅 Доп. занятие ${idx+1}</div>
+        <button type="button" class="btn btn-sm" onclick="removeExtraSlot(${idx})" style="color:var(--rd);padding:2px 8px">✕</button>
+      </div>
+      <div class="fr">
+        <label>Преподаватель</label>
+        <select onchange="updateExtraTeacher(${idx},this.value)">${teacherOpts}</select>
+      </div>
+      <div class="fr">
+        <label>Дни</label>
+        <div class="day-picker">${dayBtns}</div>
+      </div>
+      <div class="fr" style="margin-bottom:0">
+        <label>Время</label>
+        <select onchange="updateExtraTime(${idx},this.value)">${timeOpts}</select>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getTeacherAvailTimes(tid, days){
+  if(!days.length)return[];
+  const av=getTeacherAvailNow(tid);
+  const times=[];
+  for(let ti=0;ti<TIMES.length;ti++){
+    if(days.every(d=>av[d]&&av[d][ti]))times.push(ti);
+  }
+  return times;
+}
+
+function getTeacherAvailNow(tid){
+  return(S.avail||{})[String(tid)]||(S.avail||{})[parseInt(tid)]||{};
+}
+
+function toggleExtraDay(slotIdx, day, btn){
+  const slot=_extraSlots[slotIdx];
+  if(!slot)return;
+  const i=slot.days.indexOf(day);
+  if(i>=0)slot.days.splice(i,1);
+  else slot.days.push(day);
+  slot.ti=-1;
+  renderExtraSlots();
+}
+
+function updateExtraTeacher(slotIdx, tid){
+  if(_extraSlots[slotIdx])_extraSlots[slotIdx].teacherId=tid;
+  renderExtraSlots();
+}
+
+function updateExtraTime(slotIdx, ti){
+  if(_extraSlots[slotIdx])_extraSlots[slotIdx].ti=parseInt(ti);
+}
+
 function saveStudent(){
   const name=document.getElementById('s-name').value.trim();if(!name){toast('Введите ФИО',true);return;}
   const days=getDays();if(!days.length){toast('Выберите дни',true);return;}
@@ -2719,6 +2815,13 @@ function saveStudent(){
     if(idx>=0)S.enrollments[idx]={...S.enrollments[idx],studentId:stu.id,teacherId:tid,slots,dateStart,dateEnd,topic,notes};
   } else {
     S.enrollments.push({id:Date.now(),studentId:stu.id,teacherId:tid,slots,dateStart,dateEnd,topic,notes});
+  // Extra slots - additional enrollments
+  _extraSlots.forEach((es,i)=>{
+    if(!es.teacherId||!es.days.length||es.ti<0)return;
+    const eSlots=es.days.map(d=>({day:d,ti:es.ti}));
+    S.enrollments.push({id:Date.now()+i+1,studentId:stu.id,teacherId:es.teacherId,slots:eSlots,dateStart,dateEnd,topic,notes});
+  });
+  clearExtraSlots();
   }
   const actSt=S.students.find(s=>s.id===stu.id);const actT=teacher(tid);
   logAction('enroll',editSId?`Изменена запись: ${name}`:`Записан: ${name}`,`${actT?.name||'—'} · ${slots.map(s=>DS[s.day]).join(' ')} ${TIMES[ti]} · ${fmtDate(dateStart)}–${fmtDate(dateEnd)}`);

@@ -2867,6 +2867,42 @@ function setStuTab(tab){
   if(tab==='lost') renderLost();
 }
 
+function renderLost(){
+  const el=document.getElementById('stu-lost-list');
+  if(!el)return;
+  const items=(S.enrollments||[]).filter(e=>e.inactive)
+    .sort((a,b)=>(b.deactivationDate||'').localeCompare(a.deactivationDate||''));
+  if(!items.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:13px">Нет деактивированных учеников</div>';return;}
+  el.innerHTML=items.map(e=>{
+    const stu=S.students?.find(s=>s.id===e.studentId);
+    const t=S.teachers?.find(t=>String(t.id)===String(e.teacherId));
+    const dur=stuDuration(e.dateStart,e.deactivationDate||e.dateEnd);
+    return `<div class="card" style="margin-bottom:10px;padding:14px 16px;border-left:3px solid var(--rd)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Обучался: ${dur}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">Старт: ${fmtDateRu(e.dateStart)} · Деактивирован: ${fmtDateRu(e.deactivationDate||'')}</div>
+          <div style="font-size:12px;color:var(--rd);margin-top:3px">Причина: ${e.deactivationReason||'—'}</div>
+        </div>
+        <button class="btn btn-sm btn-a" onclick="reactivateEnroll(${e.id})" style="font-size:12px">↩ Восстановить</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function reactivateEnroll(enrollId){
+  if(!confirm('Восстановить ученика?'))return;
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  S.enrollments[idx].inactive=false;
+  S.enrollments[idx].deactivationReason='';
+  S.enrollments[idx].deactivationDate='';
+  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—';
+  logAction('reactivate','Восстановлен: '+stuName,'');
+  save();renderLost();renderStudents();toast('Ученик восстановлен');
+}
+
 function stuDuration(dateStart, dateEnd){
   const s=new Date(dateStart), e=dateEnd?new Date(dateEnd):new Date();
   const months=Math.round((e-s)/(1000*60*60*24*30));

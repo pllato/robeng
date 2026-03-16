@@ -1314,6 +1314,13 @@ document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.
 function fmtDate(s){if(!s)return'';const d=new Date(s);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;}
 function addMonth(s){const d=new Date(s);d.setMonth(d.getMonth()+1);return d.toISOString().slice(0,10);}
 function enrollActive(e,dt){return e.dateStart<=dt&&e.dateEnd>=dt;}
+function enrollPending(e,dt){return e.dateStart>dt&&e.dateEnd>=dt&&!e.inactive;}
+function enrollStartsSoon(e,dt){const d=daysUntilDate(e.dateStart,dt);return d>=0&&d<=3;}
+function daysUntilDate(dateStr,fromDate){
+  const f=new Date(fromDate);f.setHours(0,0,0,0);
+  const d=new Date(dateStr);d.setHours(0,0,0,0);
+  return Math.round((d-f)/(1000*60*60*24));
+}
 
 // Get the avail grid for a teacher on a given date
 // Checks scheduleHistory first (newest entry with fromDate <= dateStr), falls back to S.avail
@@ -1345,7 +1352,7 @@ function countAtSlot(tid,day,ti){
   return S.enrollments.filter(e=>
     String(e.teacherId)===String(tid)&&
     !e.inactive&&
-    enrollActive(e,today)&&
+    (enrollActive(e,today)||enrollPending(e,today))&&
     e.slots.some(sl=>sl.day===day&&sl.ti===ti)
   ).length;
 }
@@ -2285,6 +2292,15 @@ function buildSchedTable(tid,wd,today,isCurWeek){
             </div>`:''}
           </div>`;
         });
+        // Pending (future start) slots
+        pendingEnrs.forEach(pe=>{
+          if(enrs.find(x=>x.id===pe.id))return;
+          const pst=student(pe.studentId);
+          html+=`<div class="slot-booked" style="padding:4px 6px;opacity:0.65;border:1.5px dashed var(--am)">`;
+          html+=`<div style="font-size:11px;font-weight:600;color:var(--t2)">${pst?pst.name.split(' ')[0]:'?'}</div>`;
+          html+=`<div style="font-size:9px;color:var(--am)">🚀 ${fmtDate(pe.dateStart)}</div>`;
+          html+=`</div>`;
+        });
         if(enrs.length<MAX_PER_SLOT)html+=`<div class="slot-free" onclick="openSlotAdd('${tid}',${d},${ti},'${time}')">+</div>`;
       }
       html+=`</div>`;
@@ -2966,7 +2982,8 @@ function renderDelayed(){
 }
 
 function confirmStart(enrollId){
-  const link=prompt('Ссылка на видео первого урока (необязательно):','');
+  const link=prompt('Ссылка на видео первого урока (обязательно):','');
+  if(!link||!link.trim()){toast('Необходимо прикрепить ссылку на видео!',true);return;}
   const idx=S.enrollments.findIndex(e=>e.id===enrollId);
   if(idx<0)return;
   S.enrollments[idx].startConfirmed=true;

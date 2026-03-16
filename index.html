@@ -2274,9 +2274,10 @@ function buildSchedTable(tid,wd,today,isCurWeek){
           const isTuWed=dowOfDt===1||dowOfDt===2; // Вторник или Среда
           // slot color based on attendance
           let slotClass=SBC[ci];
-          if(att==='done')slotClass='slot-booked'+' sb1';
-          else if(att==='miss')slotClass='slot-booked'+' sb4';
-          else if(att==='makeup')slotClass='slot-booked'+' sb2';
+          if(att==='done')slotClass='slot-booked sb1';
+          else if(att==='miss')slotClass='slot-booked sb4';
+          else if(att==='makeup')slotClass='slot-booked sb2';
+          else if(att==='vacation')slotClass='slot-booked sb-vac';
           else slotClass=`slot-booked ${SBC[ci]}`;
           // Compatibility badge
           const stData=st?S.students.find(s=>s.id===st.id):null;
@@ -2912,6 +2913,7 @@ function renderActive(){
           <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Обучается: ${dur} · ${endLabel}</div>
         </div>
         <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="setVacation(${e.id})" style="font-size:11px;background:rgba(56,189,248,.1);color:var(--tl)">🏖 Отпуск</button>
           <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:11px">🔄 Перестарт</button>
           <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:11px;background:rgba(240,89,117,.1);color:var(--rd)">✕</button>
         </div>
@@ -2948,8 +2950,8 @@ function renderStarts(){
     return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Старт ${fmtDateRu(e.dateStart)} · ${daysLabel}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'-'} · Старт ${fmtDateRu(e.dateStart)} · ${daysLabel}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">Длительность: ${dur}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2987,12 +2989,13 @@ function renderRenewals(){
     return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Оканчивается ${fmtDateRu(e.dateEnd)} · ${daysLabel}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'-'} · Оканчивается ${fmtDateRu(e.dateEnd)} · ${daysLabel}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">Обучается: ${dur} · Старт: ${fmtDateRu(e.dateStart)}</div>
           ${e.renewalComment?`<div style="font-size:11px;color:var(--am);margin-top:3px">💬 ${e.renewalComment}</div>`:''}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="setVacation(${e.id})" style="font-size:12px;background:rgba(56,189,248,.1);color:var(--tl)">🏖 Отпуск</button>
           <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:12px">🔄 Продлить</button>
           <button class="btn btn-sm" onclick="markDelayed(${e.id})" style="font-size:12px;background:rgba(245,200,66,.15);color:var(--am)">⏳ Оплата задерживается</button>
           <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:12px;background:rgba(240,89,117,.1);color:var(--rd)">✕ Деактивировать</button>
@@ -3017,8 +3020,8 @@ function renderDelayed(){
     return `<div class="card" style="margin-bottom:10px;padding:14px 16px;border-left:3px solid var(--am)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'—'}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'—'} · Обучается: ${dur}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'-'} · Обучается: ${dur}</div>
           ${e.paymentDueDate?`<div style="font-size:12px;color:var(--am);margin-top:3px">⏳ Ожидаем оплату до: <strong>${fmtDateRu(e.paymentDueDate)}</strong></div>`:''}
           ${e.renewalComment?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 ${e.renewalComment}</div>`:''}
         </div>
@@ -3046,7 +3049,7 @@ function confirmStart(enrollId){
     const key=enrollId+'_start_'+new Date().toISOString().slice(0,10);
     S.videoReports[key]={enrollId,url:link,status:'pending',ts:Date.now(),type:'start'};
   }
-  logAction('start_confirmed','Старт подтверждён: '+(S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—'),'');
+  logAction('start_confirmed','Старт подтверждён: '+(S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'-'),'');
   save();renderStarts();toast('Старт отмечен!');
 }
 
@@ -3063,7 +3066,7 @@ function renewEnroll(enrollId){
   S.enrollments[idx].paymentDelayed=false;
   S.enrollments[idx].paymentDueDate='';
   S.enrollments[idx].renewalComment='';
-  const stuName=S.students?.find(s=>s.id===e.studentId)?.name||'—';
+  const stuName=S.students?.find(s=>s.id===e.studentId)?.name||'-';
   logAction('renewal','Продлено: '+stuName,'до '+newEndStr);
   save();renderRenewals();renderDelayed();toast('Абонемент продлён до '+fmtDateRu(newEndStr));
 }
@@ -3078,9 +3081,9 @@ function markDelayed(enrollId){
   S.enrollments[idx].paymentDueDate=dueDate;
   S.enrollments[idx].renewalComment=comment||'';
   S.enrollments[idx].renewalHandled=true;
-  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—';
+  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'-';
   logAction('payment_delayed','Оплата задерживается: '+stuName,'до '+dueDate);
-  save();renderRenewals();renderDelayed();toast('Отмечено — оплата ожидается до '+fmtDateRu(dueDate));
+  save();renderRenewals();renderDelayed();toast('Отмечено - оплата ожидается до '+fmtDateRu(dueDate));
 }
 
 function clearDelayed(enrollId){
@@ -3102,7 +3105,7 @@ function deactivateEnroll(enrollId){
   S.enrollments[idx].inactive=true;
   S.enrollments[idx].deactivationReason=reasonText;
   S.enrollments[idx].deactivationDate=new Date().toISOString().slice(0,10);
-  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'—';
+  const stuName=S.students?.find(s=>s.id===S.enrollments[idx].studentId)?.name||'-';
   logAction('deactivate','Деактивирован: '+stuName,'Причина: '+reasonText);
   save();renderRenewals();renderStudents();toast('Ученик деактивирован');
 }
@@ -3119,7 +3122,7 @@ function delEnroll(id){
   if(!confirm('Удалить запись?\nМожно восстановить из Корзины в течение 30 дней.'))return;
   const delE=S.enrollments.find(e=>e.id===id);
   const delSt=delE?student(delE.studentId):null;
-  trashPut('enrollment',delE,`Запись: ${delSt?.name||'—'} · ${delE?.slots?.map(s=>DS[s.day]).join(' ')||''} ${TIMES[delE?.slots[0]?.ti]||''}`);
+  trashPut('enrollment',delE,`Запись: ${delSt?.name||'-'} · ${delE?.slots?.map(s=>DS[s.day]).join(' ')||''} ${TIMES[delE?.slots[0]?.ti]||''}`);
   logAction('other',`Удалена запись${delSt?' ученика: '+delSt.name:''}`,'');
   S.enrollments=S.enrollments.filter(e=>e.id!==id);
   save();renderStudents();toast('Перемещено в корзину');
@@ -3128,12 +3131,74 @@ function deleteStudent(stuId){
   const st=student(stuId);
   if(!confirm(`Удалить ученика ${st?.name||''}?\nМожно восстановить из Корзины в течение 30 дней.`))return;
   const enrs=S.enrollments.filter(e=>e.studentId===stuId);
-  trashPut('student',{student:st,enrollments:enrs},`Ученик: ${st?.name||'—'}`);
-  logAction('other',`Удалён ученик: ${st?.name||'—'}`,'');
+  trashPut('student',{student:st,enrollments:enrs},`Ученик: ${st?.name||'-'}`);
+  logAction('other',`Удалён ученик: ${st?.name||'-'}`,'');
   S.enrollments=S.enrollments.filter(e=>e.studentId!==stuId);
   S.students=S.students.filter(s=>s.id!==stuId);
   save();renderStudents();toast('Перемещено в корзину');
 }
+
+function setVacation(enrollId){
+  const idx=S.enrollments.findIndex(e=>e.id===enrollId);
+  if(idx<0)return;
+  const e=S.enrollments[idx];
+  const stu=S.students?.find(s=>s.id===e.studentId);
+
+  // Show vacation modal
+  const today=new Date().toISOString().slice(0,10);
+  const from=prompt('Отпуск с (ГГГГ-ММ-ДД):', today);
+  if(!from)return;
+  const to=prompt('Отпуск по (ГГГГ-ММ-ДД):', '');
+  if(!to)return;
+
+  const dFrom=new Date(from); const dTo=new Date(to);
+  if(isNaN(dFrom)||isNaN(dTo)||dFrom>dTo){toast('Неверные даты',true);return;}
+
+  // Count vacation days (only lesson days)
+  const slots=e.slots||[];
+  const lessonDays=slots.map(sl=>sl.day);
+  let vacDays=0;
+  const cur=new Date(dFrom);
+  while(cur<=dTo){
+    const dow=(cur.getDay()+6)%7;
+    if(lessonDays.includes(dow))vacDays++;
+    cur.setDate(cur.getDate()+1);
+  }
+
+  const msg='Отпуск: '+fmtDateRu(from)+' - '+fmtDateRu(to)+'\nУроков в период: '+vacDays+'\n\nOK - продлить абонемент на '+vacDays+' ур.\nОтмена - просто пропуск';
+  const choice=confirm(msg);
+
+  // Save vacation period
+  if(!S.enrollments[idx].vacations) S.enrollments[idx].vacations=[];
+  S.enrollments[idx].vacations.push({from, to, days:vacDays, extendAbonement:choice, ts:Date.now()});
+
+  if(choice){
+    // Extend dateEnd by vacation lesson days
+    const newEnd=new Date(e.dateEnd||today);
+    newEnd.setDate(newEnd.getDate()+vacDays);
+    S.enrollments[idx].dateEnd=newEnd.toISOString().slice(0,10);
+    toast('Отпуск сохранён, абонемент продлён на '+vacDays+' уроков');
+  } else {
+    toast('Отпуск сохранён, уроки помечены как пропуск');
+  }
+
+  // Mark attendance as vacation for all lesson days in period
+  if(!S.attendance)S.attendance={};
+  const cur2=new Date(dFrom);
+  while(cur2<=dTo){
+    const dow=(cur2.getDay()+6)%7;
+    const dateStr=cur2.toISOString().slice(0,10);
+    if(lessonDays.includes(dow)){
+      const key=enrollId+'_'+dateStr;
+      if(!S.attendance[key]) S.attendance[key]='vacation';
+    }
+    cur2.setDate(cur2.getDate()+1);
+  }
+
+  logAction('vacation','Отпуск: '+(stu?.name||'-'),from+' - '+to+(choice?' (абонемент продлён)':' (пропуск)'));
+  save();renderActive();renderRenewals();
+}
+
 function reactivateEnroll(enrollId){
   const e=S.enrollments.find(x=>x.id===enrollId);if(!e)return;
   const st=student(e.studentId);

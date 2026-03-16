@@ -1323,8 +1323,8 @@ function toast(msg,err){const el=document.getElementById('toast');el.textContent
 document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 function fmtDate(s){if(!s)return'';const d=new Date(s);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;}
 function addMonth(s){const d=new Date(s);d.setMonth(d.getMonth()+1);return d.toISOString().slice(0,10);}
-function enrollActive(e,dt){return e.dateStart<=dt&&e.dateEnd>=dt;}
-function enrollPending(e,dt){return e.dateStart>dt&&e.dateEnd>=dt&&!e.inactive;}
+function enrollActive(e,dt){return !e.inactive&&e.dateStart<=dt;}
+function enrollPending(e,dt){return e.dateStart>dt&&!e.inactive;}
 function enrollStartsSoon(e,dt){const d=daysUntilDate(e.dateStart,dt);return d>=0&&d<=3;}
 function daysUntilDate(dateStr,fromDate){
   const f=new Date(fromDate);f.setHours(0,0,0,0);

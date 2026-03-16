@@ -522,8 +522,9 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div style="display:flex;gap:4px;padding:0 0 12px;flex-wrap:wrap">
         <button class="btn btn-sm" id="stab-all" onclick="setStuTab('all')" style="font-size:12px">📋 Все</button>
         <button class="btn btn-sm" id="stab-starts" onclick="setStuTab('starts')" style="font-size:12px">🚀 Старты</button>
-        <button class="btn btn-sm" id="stab-renewals" onclick="setStuTab('renewals')" style="font-size:12px">🔄 Продления <span id="renewals-badge" style="background:var(--rd);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px;display:none"></span></button>
-        <button class="btn btn-sm" id="stab-delayed" onclick="setStuTab('delayed')" style="font-size:12px">⏳ Ожидают оплаты</button>
+        <button class="btn btn-sm" id="stab-renewals" onclick="setStuTab('renewals')" style="font-size:12px">🔄 Перестарты <span id="renewals-badge" style="background:var(--rd);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px;display:none"></span></button>
+        <button class="btn btn-sm" id="stab-delayed" onclick="setStuTab('delayed')" style="font-size:12px">⏳ Оплата задерживается</button>
+        <button class="btn btn-sm" id="stab-lost" onclick="setStuTab('lost')" style="font-size:12px">💔 Потерянные</button>
       </div>
       <!-- All students tab -->
       <div id="stab-content-all">
@@ -549,6 +550,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <!-- Delayed payments tab -->
       <div id="stab-content-delayed" style="display:none">
         <div id="stu-delayed-list"></div>
+      </div>
+      <!-- Lost tab -->
+      <div id="stab-content-lost" style="display:none">
+        <div id="stu-lost-list"></div>
       </div>
     </div>
     <!-- JOURNAL -->
@@ -2843,7 +2848,7 @@ let curStuTab = 'all';
 
 function setStuTab(tab){
   curStuTab = tab;
-  ['all','starts','renewals','delayed'].forEach(t=>{
+  ['all','starts','renewals','delayed','lost'].forEach(t=>{
     const btn=document.getElementById('stab-'+t);
     const content=document.getElementById('stab-content-'+t);
     if(btn) btn.className = 'btn btn-sm' + (t===tab?' btn-a':'');
@@ -2852,6 +2857,7 @@ function setStuTab(tab){
   if(tab==='starts') renderStarts();
   if(tab==='renewals') renderRenewals();
   if(tab==='delayed') renderDelayed();
+  if(tab==='lost') renderLost();
 }
 
 function stuDuration(dateStart, dateEnd){

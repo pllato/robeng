@@ -2286,7 +2286,7 @@ function buildSchedTable(tid,wd,today,isCurWeek){
           const compatTag=(agGrp||lvl)?`<span style="font-size:8px;color:var(--t3);background:var(--bg4);border-radius:4px;padding:1px 4px;white-space:nowrap">${agGrp?AGE_GROUP_LABELS[agGrp]||'':''}${agGrp&&lvl?' ':''}${lvl?LEVEL_LABELS[lvl]||'':''}</span>`:'';
           html+=`<div class="${slotClass}" style="padding:4px 6px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:3px">
-              <div class="sb-name" onclick="showDetail(${e.id})" style="cursor:pointer;flex:1">${st?st.name.split(' ')[0]:'?'}</div>
+              <div class="sb-name" onclick="showDetail(${e.id})" style="cursor:pointer;flex:1">${att==='vacation'?'🏖 ':''} ${st?st.name.split(' ')[0]:'?'}</div>
               ${repSent
                 ?`<span class="rep-badge rep-sent" onclick="event.stopPropagation();toggleReport(${e.id},'${dt}')" title="Отчёт отправлен — нажмите для отмены">✉</span>`
                 :(dt?`<span class="rep-badge rep-unsent" onclick="event.stopPropagation();toggleReport(${e.id},'${dt}')" title="Отправить отчёт родителям">✉?</span>`:'')

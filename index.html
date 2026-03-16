@@ -2986,7 +2986,11 @@ function renderRenewals(){
       days<0?`<span style="color:var(--rd);font-weight:700">Просрочено ${Math.abs(days)} дн.</span>`:
       `<span style="color:var(--am)">через ${days} дн.</span>`;
     const dur=stuDuration(e.dateStart, null);
-    return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
+    const isToday=days===0;
+    const isPast=days<0;
+    const cardBorder=isToday?'border:2px solid var(--gn);background:rgba(63,216,142,.05)':isPast?'border:2px solid var(--rd)':'';
+    return `<div class="card" style="margin-bottom:10px;padding:14px 16px;${cardBorder}">
+      ${isToday?'<div style="font-size:11px;font-weight:700;color:var(--gn);margin-bottom:6px;letter-spacing:.05em">💳 ВЫСТАВИТЬ СЧЁТ СЕГОДНЯ</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
@@ -3026,8 +3030,7 @@ function renderDelayed(){
           ${e.renewalComment?`<div style="font-size:11px;color:var(--t3);margin-top:2px">💬 ${e.renewalComment}</div>`:''}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-a" onclick="renewEnroll(${e.id})" style="font-size:12px">🔄 Продлить</button>
-          <button class="btn btn-sm" onclick="clearDelayed(${e.id})" style="font-size:12px">✓ Оплата получена</button>
+          <button class="btn btn-sm btn-a" onclick="clearDelayed(${e.id})" style="font-size:12px">✓ Оплата получена</button>
           <button class="btn btn-sm" onclick="deactivateEnroll(${e.id})" style="font-size:12px;background:rgba(240,89,117,.1);color:var(--rd)">✕ Деактивировать</button>
         </div>
       </div>
@@ -3089,8 +3092,18 @@ function markDelayed(enrollId){
 function clearDelayed(enrollId){
   const idx=S.enrollments.findIndex(e=>e.id===enrollId);
   if(idx<0)return;
-  // After payment received - renew
-  renewEnroll(enrollId);
+  const e=S.enrollments[idx];
+  const oldEnd=new Date(e.dateEnd||new Date());
+  const newEnd=new Date(oldEnd);newEnd.setMonth(newEnd.getMonth()+1);
+  const newEndStr=newEnd.toISOString().slice(0,10);
+  S.enrollments[idx].dateEnd=newEndStr;
+  S.enrollments[idx].paymentDelayed=false;
+  S.enrollments[idx].paymentDueDate='';
+  S.enrollments[idx].renewalComment='';
+  S.enrollments[idx].renewalHandled=false;
+  const stuName=S.students?.find(s=>s.id===e.studentId)?.name||'—';
+  logAction('payment_received','Оплата получена: '+stuName,'до '+newEndStr);
+  save();renderDelayed();renderRenewals();toast('Оплата получена, абонемент до '+fmtDateRu(newEndStr));
 }
 
 function deactivateEnroll(enrollId){

@@ -2248,6 +2248,12 @@ function buildSchedTable(tid,wd,today,isCurWeek){
       if(!isAvail){html+=`<div class="slot-blocked"></div>`;}
       else{
         const enrs=enrollmentsAt(tid,d,ti,dt);
+        // Also show pending (future start) enrollments to show slot is reserved
+        const pendingEnrs=(S.enrollments||[]).filter(e=>
+          String(e.teacherId)===String(tid)&&!e.inactive&&!e.startConfirmed&&
+          e.dateStart>today&&e.dateEnd>=(dt||today)&&
+          e.slots.some(sl=>sl.day===d&&sl.ti===ti)
+        );
         enrs.forEach(e=>{
           const st=student(e.studentId);const ci=e.id%5;
           const att=dt?getAtt(e.id,dt):null;

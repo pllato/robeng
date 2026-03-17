@@ -2176,7 +2176,7 @@ function setAtt(enrollId,dateStr,val,user){
   const labels={done:'Урок проведён',miss:'Пропуск',makeup:'Отработан'};
   logAction('attendance',`${labels[val]||val}: ${st?.name||'—'}`,`${t?.name||'—'} · ${dateStr}`);
   save();renderSchedule();
-  // WhatsApp уведомление родителю только при пропуске урока
+  // WhatsApp уведомление только при пропуске урока
   if(!isToggleOff && st && val==='miss'){
     const parentPhone=st.parentPhone||'';
     const studentPhone=st.phone||'';
@@ -4134,7 +4134,9 @@ function onVideoFileSelect(input){
   const nameEl = document.getElementById('video-file-name');
   const dz = document.getElementById('video-drop-zone');
   const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-  nameEl.textContent = '✓ ' + file.name + ' · ' + sizeMB + ' МБ';
+  const sizeHint = sizeMB > 50 ? ' — загрузка займёт ~' + Math.round(sizeMB / 5) + ' мин' : sizeMB > 20 ? ' — ~1 мин' : '';
+  nameEl.textContent = '✓ ' + file.name + ' · ' + sizeMB + ' МБ' + sizeHint;
+  nameEl.style.color = sizeMB > 50 ? 'var(--am)' : 'var(--gn)';
   nameEl.style.display = '';
   dz.style.borderColor = 'var(--ac)';
 }
@@ -4156,34 +4158,41 @@ async function submitVideo(){
   const statusEl = document.getElementById('video-upload-status');
   btn.disabled = true;
   progress.style.display = '';
-  bar.style.width = '0%';
-  statusEl.textContent = 'Загружаем видео в Telegram...';
+  bar.style.width = '3%';
+  const sizeMB = (_videoSelectedFile.size / 1024 / 1024).toFixed(1);
+  statusEl.textContent = 'Загружаем видео (' + sizeMB + ' МБ)...';
   try {
-    const form = new FormData();
-    form.append('file', _videoSelectedFile, _videoSelectedFile.name);
-    form.append('enrollId', String(_videoEnrollId));
-    form.append('date', _videoDateStr);
-    form.append('studentName', st?.name||'—');
-    form.append('teacherName', t?.name||'—');
-    form.append('parentPhone', st?.parentPhone||'');
-    form.append('studentPhone', st?.phone||'');
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', VIDEO_WORKER_URL+'/upload-video', true);
-    xhr.upload.onprogress = (ev) => {
-      if(ev.lengthComputable){ bar.style.width = Math.round(ev.loaded/ev.total*90)+'%'; }
-    };
-    const result = await new Promise((resolve, reject) => {
-      xhr.onload = () => {
-        try { resolve(JSON.parse(xhr.responseText)); }
-        catch(e){ reject(new Error('Ответ сервера: '+xhr.responseText)); }
-      };
-      xhr.onerror = () => reject(new Error('Ошибка сети'));
-      xhr.send(form);
+    // Метаданные в URL-параметрах, файл как raw body — стриминг без буферизации в Worker
+    const params = new URLSearchParams({
+      enrollId: String(_videoEnrollId),
+      date: _videoDateStr,
+      studentName: st?.name||'—',
+      teacherName: t?.name||'—',
+      parentPhone: st?.parentPhone||'',
+      studentPhone: st?.phone||'',
+      fileName: _videoSelectedFile.name,
     });
-
+    // Прогресс-бар: анимация пропорциональна размеру файла (~3-5 МБ/с через Worker)
+    const estSec = Math.max(8, sizeMB / 4);
+    let fakeP = 3;
+    const tick = 85 / (estSec * 1000 / 600);
+    const fakeTimer = setInterval(() => {
+      fakeP = Math.min(fakeP + tick, 88);
+      bar.style.width = fakeP.toFixed(0) + '%';
+      if(fakeP > 70) statusEl.textContent = 'Ждём ответа от Telegram...';
+      else if(fakeP > 40) statusEl.textContent = 'Отправляем в Telegram (' + sizeMB + ' МБ)...';
+    }, 600);
+    const resp = await fetch(VIDEO_WORKER_URL + '/upload-video-stream?' + params, {
+      method: 'POST',
+      headers: { 'Content-Type': _videoSelectedFile.type || 'video/mp4' },
+      body: _videoSelectedFile,
+    });
+    clearInterval(fakeTimer);
+    if(!resp.ok && resp.status !== 200){
+      throw new Error('HTTP ' + resp.status);
+    }
+    const result = await resp.json();
     if(!result.ok) throw new Error(result.error||'Ошибка загрузки');
-
     bar.style.width = '100%';
     statusEl.textContent = '✓ Видео загружено!';
 
@@ -4376,7 +4385,7 @@ function reviewVideo(decision, parentComment, teacherFb){
         }
       });
     });
-    // WhatsApp родителям при одобрении
+    // WhatsApp + Telegram родителям при одобрении
     if(decision==='approved'){
       videoRef.child(_videoReviewId).once('value').then(vSnap2=>{
         const vd2=vSnap2.val();if(!vd2)return;
@@ -4390,18 +4399,7 @@ function reviewVideo(decision, parentComment, teacherFb){
           const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
           const playerUrl=vd2.url||'';
           const sendWA=(phone,msg)=>{if(phone)notifyWhatsApp(phone,msg);};
-
-          // Отправляем видео в личку Telegram подписчикам (после одобрения)
-          fetch('https://flat-pond-6e68.uurraa.workers.dev/send-tg-parent',{
-            method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              enrollId:vd2.enrollId,date:vd2.dateStr,
-              studentName:vd2.studentName||'—',teacherName:vd2.teacherName||'—',
-              parentPhone,studentPhone,playerUrl,comment:parentComment||''
-            })
-          }).catch(()=>{});
-
-          const TG_DEFAULT_LINK='https://t.me/ELC_RobengBot';
+          const TG_DEFAULT='https://t.me/ELC_RobengBot';
           const TG_LINE='\n\n━━━━━━━━━━━━━━\n📱 Если у вас не открывается видео, то вы можете подписаться на наш Telegram бот @ELC_RobengBot — там можно смотреть видео уроков и получать новости школы.\n';
           const buildMsg=(tgLink)=>
             'Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
@@ -4410,19 +4408,28 @@ function reviewVideo(decision, parentComment, teacherFb){
             '📅 Дата: '+dateRu+'\n\n'+
             (parentComment?parentComment+'\n\n':'')+
             '▶️ Смотреть видео: '+playerUrl+
-            TG_LINE+(tgLink||TG_DEFAULT_LINK);
+            TG_LINE+(tgLink||TG_DEFAULT);
+          // Отправить видео в личку Telegram подписчикам
+          fetch('https://flat-pond-6e68.uurraa.workers.dev/send-tg-parent',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              enrollId:vd2.enrollId,date:vd2.dateStr,
+              studentName:vd2.studentName||'—',teacherName:vd2.teacherName||'—',
+              parentPhone,studentPhone,playerUrl,comment:parentComment||''
+            })
+          }).catch(()=>{});
+          // WhatsApp с ссылкой на бот (персональной или дефолтной)
           fetch('https://flat-pond-6e68.uurraa.workers.dev/get-bot-link',{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({phone:parentPhone.replace(/\D/g,''),studentName:vd2.studentName||'—'})
           }).then(r=>r.json()).then(d=>{
-            // Если не подписан — даём персональную ссылку, иначе обычную
-            const tgLink=d.ok&&d.botLink?d.botLink:TG_DEFAULT_LINK;
+            const tgLink=d.ok&&d.botLink?d.botLink:TG_DEFAULT;
             const msg=buildMsg(tgLink);
             sendWA(parentPhone,msg);
             if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,msg);
           }).catch(()=>{
-            sendWA(parentPhone,buildMsg(TG_DEFAULT_LINK));
-            if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,buildMsg(TG_DEFAULT_LINK));
+            sendWA(parentPhone,buildMsg(TG_DEFAULT));
+            if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,buildMsg(TG_DEFAULT));
           });
         }
       });

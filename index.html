@@ -1622,34 +1622,32 @@ function changeDashWeek(dir){
   renderDashboard();
 }
 
-// Возвращает массив дат для периода Чт14→Чт14 с offset неделями назад
+// Возвращает массив дат для периода Чт→Чт с offset неделями
+// offset=0 — текущая неделя (прошлый Чт → следующий Чт, даже если ещё не завершилась)
+// offset=-1 — прошлая неделя, и т.д.
 function getThuToThuDashDates(offset){
   const now=new Date();
-  const todayDow=now.getDay(); // 0=Вс, 4=Чт
-  // Найти "текущий" четверг 14:00 как конец периода
-  let daysToThu=(4-todayDow+7)%7; // дней до следующего Чт
-  // Если сегодня Чт и время >= 14:00 — конец = сегодня, иначе прошлый Чт
-  let endThu=new Date(now);
-  if(todayDow===4&&now.getHours()>=14){
-    // сегодня Чт после 14 — конец сегодня
-    endThu.setHours(14,0,0,0);
-  } else {
-    // ищем прошлый Чт
-    const daysSinceThu=(todayDow-4+7)%7||7;
-    endThu.setDate(now.getDate()-daysSinceThu);
-    endThu.setHours(14,0,0,0);
-  }
-  // Сдвиг: offset=-1 значит неделю назад
+  const todayDow=now.getDay(); // 0=Вс, 1=Пн, 2=Вт, 3=Ср, 4=Чт, 5=Пт, 6=Сб
+
+  // Прошлый четверг = начало текущей недели
+  // Если сегодня Чт (4) — начало сегодня, иначе ищем назад
+  const daysSinceLastThu=(todayDow+7-4)%7; // 0 если сегодня Чт
+  const startThu=new Date(now);
+  startThu.setDate(now.getDate()-daysSinceLastThu);
+  startThu.setHours(0,0,0,0);
+
+  // Следующий четверг = конец текущей недели (startThu + 7 дней)
+  const endThu=new Date(startThu);
+  endThu.setDate(startThu.getDate()+7);
+
+  // Применяем offset (0 = текущая, -1 = прошлая, и т.д.)
+  startThu.setDate(startThu.getDate()+offset*7);
   endThu.setDate(endThu.getDate()+offset*7);
-  const startThu=new Date(endThu);
-  startThu.setDate(endThu.getDate()-7);
-  // Массив дат
+
+  // Строим массив дат от startThu до endThu включительно
   const dates=[];
   const cur=new Date(startThu);
-  cur.setHours(0,0,0,0);
-  const endDay=new Date(endThu);
-  endDay.setHours(0,0,0,0);
-  while(cur<=endDay){
+  while(cur<=endThu){
     dates.push(cur.toISOString().slice(0,10));
     cur.setDate(cur.getDate()+1);
   }
@@ -2955,6 +2953,7 @@ function checkConflicts(){
 
 function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
   editSId=id||null;fillSubjSel();
+  clearExtraSlots();
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('m-stu-ttl').textContent=id?'Редактировать запись':'Добавить ученика';
   document.getElementById('s-time-warn').style.display='none';
@@ -2982,6 +2981,18 @@ function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
       document.getElementById('s-age').value=stuData.age||'';
       document.getElementById('s-level').value=stuData.level||'beginner';
     }
+    // Load sibling enrollments (same student, different slots) as extra slots
+    const siblings=S.enrollments.filter(x=>x.studentId===e.studentId&&x.id!==id&&!x.inactive);
+    siblings.forEach(sib=>{
+      const idx=_extraSlots.length;
+      _extraSlots.push({
+        teacherId:String(sib.teacherId),
+        days:sib.slots.map(sl=>sl.day),
+        ti:sib.slots[0]?.ti??-1,
+        siblingId:sib.id // track existing enrollment id
+      });
+    });
+    renderExtraSlots();
   } else {
     document.getElementById('s-name').value='';
     document.getElementById('s-phone').value='';
@@ -3146,18 +3157,49 @@ function saveStudent(){
   const slots=days.map(d=>({day:d,ti}));
 
   if(editSId){
+    // Update main enrollment
     const idx=S.enrollments.findIndex(e=>e.id===editSId);
     if(idx>=0)S.enrollments[idx]={...S.enrollments[idx],studentId:stu.id,teacherId:tid,slots,dateStart,dateEnd,topic,notes};
+    // Handle sibling enrollments from extra slots
+    const mainEnroll=S.enrollments[idx];
+    const existingSiblingIds=S.enrollments
+      .filter(e=>e.studentId===stu.id&&e.id!==editSId&&!e.inactive)
+      .map(e=>e.id);
+    // Track which sibling ids are still in _extraSlots
+    const keptIds=new Set();
+    _extraSlots.forEach((es,i)=>{
+      if(!es.teacherId||!es.days.length||es.ti<0)return;
+      const eSlots=es.days.map(d=>({day:d,ti:es.ti}));
+      const esTeacherId=isNaN(es.teacherId)?es.teacherId:parseInt(es.teacherId);
+      if(es.siblingId&&S.enrollments.find(e=>e.id===es.siblingId)){
+        // Update existing sibling
+        const si=S.enrollments.findIndex(e=>e.id===es.siblingId);
+        if(si>=0)S.enrollments[si]={...S.enrollments[si],teacherId:esTeacherId,slots:eSlots,dateStart,dateEnd,topic,notes};
+        keptIds.add(es.siblingId);
+      } else {
+        // Create new sibling
+        const newId=Date.now()+i+1;
+        S.enrollments.push({id:newId,studentId:stu.id,teacherId:esTeacherId,slots:eSlots,dateStart,dateEnd,topic,notes});
+        keptIds.add(newId);
+      }
+    });
+    // Remove sibling enrollments that were deleted (not in _extraSlots anymore)
+    existingSiblingIds.forEach(sid=>{
+      if(!keptIds.has(sid)){
+        S.enrollments=S.enrollments.filter(e=>e.id!==sid);
+      }
+    });
   } else {
     S.enrollments.push({id:Date.now(),studentId:stu.id,teacherId:tid,slots,dateStart,dateEnd,topic,notes});
-  // Extra slots - additional enrollments
-  _extraSlots.forEach((es,i)=>{
-    if(!es.teacherId||!es.days.length||es.ti<0)return;
-    const eSlots=es.days.map(d=>({day:d,ti:es.ti}));
-    S.enrollments.push({id:Date.now()+i+1,studentId:stu.id,teacherId:es.teacherId,slots:eSlots,dateStart,dateEnd,topic,notes});
-  });
-  clearExtraSlots();
+    // Extra slots - additional enrollments
+    _extraSlots.forEach((es,i)=>{
+      if(!es.teacherId||!es.days.length||es.ti<0)return;
+      const eSlots=es.days.map(d=>({day:d,ti:es.ti}));
+      const esTeacherId=isNaN(es.teacherId)?es.teacherId:parseInt(es.teacherId);
+      S.enrollments.push({id:Date.now()+i+1,studentId:stu.id,teacherId:esTeacherId,slots:eSlots,dateStart,dateEnd,topic,notes});
+    });
   }
+  clearExtraSlots();
   const actSt=S.students.find(s=>s.id===stu.id);const actT=teacher(tid);
   logAction('enroll',editSId?`Изменена запись: ${name}`:`Записан: ${name}`,`${actT?.name||'—'} · ${slots.map(s=>DS[s.day]).join(' ')} ${TIMES[ti]} · ${fmtDate(dateStart)}–${fmtDate(dateEnd)}`);
   save();close1('m-student');renderStudents();renderSchedule();toast('Ученик записан');
@@ -3812,25 +3854,8 @@ function setRptPeriodThu(){
 }
 
 function getThuToThuDates(){
-  // Find last Thursday (or today if Thursday and before 14:00)
-  const now=new Date();
-  const todayDow=now.getDay(); // 0=Вс, 4=Чт
-  // Days since last Thursday
-  let daysBack=(todayDow+3)%7; // Thu=4: (4+3)%7=0, Fri=5: 1, ..., Wed=3: 6
-  if(daysBack===0&&now.getHours()<14)daysBack=7; // If Thu before 14:00, go to previous Thu
-  const thu2=new Date(now);
-  thu2.setDate(now.getDate()-daysBack);
-  thu2.setHours(0,0,0,0);
-  const thu1=new Date(thu2);
-  thu1.setDate(thu2.getDate()-7);
-  // Build array of dates from thu1 to thu2 inclusive
-  const dates=[];
-  const cur=new Date(thu1);
-  while(cur<=thu2){
-    dates.push(cur.toISOString().slice(0,10));
-    cur.setDate(cur.getDate()+1);
-  }
-  return dates;
+  // Текущая неделя: прошлый Чт → следующий Чт (включительно)
+  return getThuToThuDashDates(0);
 }
 
 function calcTeacherStats(t, dates){

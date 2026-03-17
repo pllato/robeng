@@ -644,6 +644,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           <button class="vt-btn active" id="rpt-7" onclick="setRptPeriod(7)">7 дней</button>
           <button class="vt-btn" id="rpt-30" onclick="setRptPeriod(30)">30 дней</button>
           <button class="vt-btn" id="rpt-90" onclick="setRptPeriod(90)">90 дней</button>
+          <button class="vt-btn" id="rpt-thu" onclick="setRptPeriodThu()">Чт→Чт (неделя)</button>
         </div>
       </div>
       <div id="rpt-body"></div>
@@ -1343,6 +1344,8 @@ fbAuth.onAuthStateChanged(user=>{
         startDbListener();
         autoBackupOnLogin();
         setInterval(createAutoBackup, 24*60*60*1000);
+        // WhatsApp reminder 5 min before lesson
+        startLessonReminders();
       });
     }).catch(()=>{
       // No user record — treat as teacher, admin should add them
@@ -2143,15 +2146,17 @@ function saveAvail(){save();toast('Доступность сохранена');}
 // ── Schedule history UI ──────────────────────────────────────────
 function renderAvailHistory(){
   const _ar=document.getElementById('avail-sel').value;
-  const tid=isNaN(_ar)?_ar:(parseInt(_ar)||null);if(!tid)return;
-  const hist=((S.scheduleHistory||{})[tid]||[]).slice().sort((a,b)=>b.fromDate.localeCompare(a.fromDate));
+  if(!_ar)return;
+  const tidStr=String(_ar);
+  const tidNum=parseInt(_ar);
+  const hist=((S.scheduleHistory||{})[tidStr]||(S.scheduleHistory||{})[tidNum]||[]).slice().sort((a,b)=>b.fromDate.localeCompare(a.fromDate));
   const el=document.getElementById('avail-history-list');
   if(!hist.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">История расписаний пуста.<br>Базовое расписание задаётся в разделе «Текущее».</div></div>';return;}
   const today=new Date().toISOString().slice(0,10);
   el.innerHTML=hist.map((h,i)=>{
     const isActive=h.fromDate<=today&&(!hist[i-1]||hist[i-1].fromDate>today);
     const isFuture=h.fromDate>today;
-    const cnt=Object.values(h.avail).reduce((s,row)=>s+Object.values(row).filter(Boolean).length,0);
+    const cnt=Object.values(h.avail||{}).reduce((s,row)=>s+Object.values(row).filter(Boolean).length,0);
     return`<div style="background:var(--bg2);border:1px solid ${isActive?'var(--acb)':isFuture?'rgba(245,200,66,.3)':'var(--b1)'};border-radius:var(--rl);padding:14px 17px;margin-bottom:9px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="flex:1;min-width:180px">
         <div style="font-size:13px;font-weight:600;color:var(--t1)">С ${fmtDate(h.fromDate)} <span style="font-size:11px;font-weight:400;color:var(--t3)">· ${cnt} слотов</span></div>
@@ -2160,8 +2165,8 @@ function renderAvailHistory(){
         ${!isActive&&!isFuture?'<div style="margin-top:4px"><span style="font-size:11px;color:var(--t3)">Архив — заменено более новым расписанием</span></div>':''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${isFuture?`<button class="btn btn-xs btn-g" onclick="applySchedNow(${tid},'${h.fromDate}')" title="Применить немедленно">Применить сейчас</button>`:''}
-        <button class="btn btn-xs btn-r" onclick="deleteSchedHistory(${tid},'${h.fromDate}')">Удалить</button>
+        ${isFuture?`<button class="btn btn-xs btn-g" onclick="applySchedNow('${tidStr}','${h.fromDate}')" title="Применить немедленно">Применить сейчас</button>`:''}
+        <button class="btn btn-xs btn-r" onclick="deleteSchedHistory('${tidStr}','${h.fromDate}')">Удалить</button>
       </div>
     </div>`;
   }).join('');
@@ -2169,23 +2174,31 @@ function renderAvailHistory(){
 
 function deleteSchedHistory(tid,fromDate){
   if(!confirm('Удалить это расписание?'))return;
-  if(!S.scheduleHistory[tid])return;
-  S.scheduleHistory[tid]=S.scheduleHistory[tid].filter(h=>h.fromDate!==fromDate);
+  const tidStr=String(tid);
+  if(S.scheduleHistory[tidStr])S.scheduleHistory[tidStr]=S.scheduleHistory[tidStr].filter(h=>h.fromDate!==fromDate);
+  const tidNum=parseInt(tid);
+  if(S.scheduleHistory[tidNum])S.scheduleHistory[tidNum]=S.scheduleHistory[tidNum].filter(h=>h.fromDate!==fromDate);
   save();renderAvailHistory();toast('Удалено');
 }
 function applySchedNow(tid,fromDate){
   if(!confirm('Применить это расписание немедленно как текущее?'))return;
-  const hist=(S.scheduleHistory[tid]||[]);
-  const entry=hist.find(h=>h.fromDate===fromDate);if(!entry)return;
+  // Normalize tid - find actual key used in scheduleHistory
+  const tidStr=String(tid);
+  if(!S.scheduleHistory)S.scheduleHistory={};
+  const hist=S.scheduleHistory[tidStr]||S.scheduleHistory[parseInt(tid)]||[];
+  const histKey=S.scheduleHistory[tidStr]?tidStr:(S.scheduleHistory[parseInt(tid)]?parseInt(tid):tidStr);
+  const entry=hist.find(h=>h.fromDate===fromDate);if(!entry){toast('Запись не найдена',true);return;}
   const snap={};
   for(let d=0;d<7;d++){snap[d]={};for(let ti=0;ti<TIMES.length;ti++)snap[d][ti]=!!(entry.avail[d]&&entry.avail[d][ti]);}
-  S.avail[tid]=snap;
+  // Save to both string and numeric keys for compatibility
+  S.avail[tidStr]=snap;
   const today=new Date().toISOString().slice(0,10);
   entry.fromDate=today;
-  S.scheduleHistory[tid].sort((a,b)=>b.fromDate.localeCompare(a.fromDate));
+  if(!S.scheduleHistory[tidStr])S.scheduleHistory[tidStr]=[];
+  S.scheduleHistory[tidStr]=hist.slice().sort((a,b)=>b.fromDate.localeCompare(a.fromDate));
   const t=teacher(tid);
   logAction('teacher',`Расписание применено досрочно: ${t?.name||'—'}`,`С ${fmtDate(today)}`);
-  save();renderAvailHistory();if(availTab==='current')renderAvail();toast('Расписание применено');
+  save();renderAvailHistory();if(availTab==='current')renderAvail();toast('✅ Расписание применено!');
 }
 
 // ── New schedule from date ────────────────────────────────────────
@@ -3636,10 +3649,44 @@ function renderJournal(){
 
 // ── REPORTS ───────────────────────────────────────────────────────
 let rptPeriod=7;
+let rptCustomDates=null; // null = use rptPeriod, otherwise array of dates
+
 function setRptPeriod(days){
   rptPeriod=days;
+  rptCustomDates=null;
   [7,30,90].forEach(d=>{const b=document.getElementById('rpt-'+d);if(b)b.classList.toggle('active',d===days);});
+  const bthu=document.getElementById('rpt-thu');if(bthu)bthu.classList.remove('active');
   renderReports();
+}
+
+// Период с прошлого Чт 14:00 по текущий Чт 14:00
+function setRptPeriodThu(){
+  rptCustomDates=getThuToThuDates();
+  [7,30,90].forEach(d=>{const b=document.getElementById('rpt-'+d);if(b)b.classList.remove('active');});
+  const bthu=document.getElementById('rpt-thu');if(bthu)bthu.classList.add('active');
+  renderReports();
+}
+
+function getThuToThuDates(){
+  // Find last Thursday (or today if Thursday and before 14:00)
+  const now=new Date();
+  const todayDow=now.getDay(); // 0=Вс, 4=Чт
+  // Days since last Thursday
+  let daysBack=(todayDow+3)%7; // Thu=4: (4+3)%7=0, Fri=5: 1, ..., Wed=3: 6
+  if(daysBack===0&&now.getHours()<14)daysBack=7; // If Thu before 14:00, go to previous Thu
+  const thu2=new Date(now);
+  thu2.setDate(now.getDate()-daysBack);
+  thu2.setHours(0,0,0,0);
+  const thu1=new Date(thu2);
+  thu1.setDate(thu2.getDate()-7);
+  // Build array of dates from thu1 to thu2 inclusive
+  const dates=[];
+  const cur=new Date(thu1);
+  while(cur<=thu2){
+    dates.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
 }
 
 function calcTeacherStats(t, dates){
@@ -3722,7 +3769,10 @@ function calcTeacherStats(t, dates){
 
 function renderReports(){
   const today=new Date().toISOString().slice(0,10);
-  const dates=dateRange(rptPeriod);
+  const dates=rptCustomDates||dateRange(rptPeriod);
+  const periodLabel=rptCustomDates
+    ?`Чт→Чт: ${fmtDate(dates[0])} — ${fmtDate(dates[dates.length-1])}`
+    :`${rptPeriod} дней`;
   const el=document.getElementById('rpt-body');
   if(!el)return;
 
@@ -3745,6 +3795,7 @@ function renderReports(){
   }),{lessons:0,done:0,miss:0,makeup:0,restarts:0,hours:0});
 
   el.innerHTML=`
+  <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Период: <b style="color:var(--t2)">${periodLabel}</b></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px">
     <div class="stat"><div class="stat-lbl">Уроков всего</div><div class="stat-val ct">${totals.lessons}</div></div>
     <div class="stat"><div class="stat-lbl">✓ Проведено</div><div class="stat-val cg">${totals.done}</div></div>
@@ -4030,31 +4081,46 @@ function renderUsers(){
       const isAdmin=u.role==='admin';
       const isTeacher=u.role==='teacher';
       const isSelf=uid===curUid;
-      // Check active status from S.teachers
       const tRec=isTeacher?S.teachers.find(t=>String(t.id)===String(uid)||String(t.uid)===String(uid)):null;
       const isActive=tRec?tRec.status!=='inactive':true;
-      return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 17px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div class="av av${isAdmin?'0':'1'}" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${(u.name||u.email||'?').slice(0,2).toUpperCase()}</div>
-        <div style="flex:1;min-width:160px">
-          <div style="font-size:14px;font-weight:600;color:var(--t1)">${u.name||'—'} ${isSelf?'<span style="font-size:10px;color:var(--t3)">(вы)</span>':''}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:2px">${u.email||'—'}</div>
+      return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 17px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="av av${isAdmin?'0':'1'}" style="width:36px;height:36px;font-size:12px;flex-shrink:0">${(u.name||u.email||'?').slice(0,2).toUpperCase()}</div>
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:14px;font-weight:600;color:var(--t1)">${u.name||'—'} ${isSelf?'<span style="font-size:10px;color:var(--t3)">(вы)</span>':''}</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:2px">${u.email||'—'}</div>
+            ${u.phone?`<div style="font-size:11px;color:var(--t3);margin-top:1px">📱 ${u.phone}</div>`:'<div style="font-size:11px;color:var(--rd);margin-top:1px">📱 Телефон не указан</div>'}
+          </div>
+          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;${isAdmin?'background:var(--acbg);border:1px solid var(--acb);color:var(--ac2)':'background:var(--gnbg);border:1px solid rgba(63,216,142,.25);color:var(--gn)'}">
+            ${isAdmin?'👑 Админ':'👨‍🏫 Преподаватель'}
+          </span>
+          ${isTeacher&&tRec?`<button class="btn btn-xs" style="${isActive?'background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn)':'background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd)'}" onclick="toggleTeacherActive('${uid}',${isActive})">
+            ${isActive?'✓ Активен':'✗ Неактивен'}
+          </button>`:''}
+          <button class="btn btn-xs" onclick="editUserProfile('${uid}','${(u.name||'').replace(/'/g,"\\'")}','${u.phone||''}')">✎ Редактировать</button>
+          ${!isSelf?`
+          <select onchange="changeUserRole('${uid}',this.value)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:12px;padding:5px 8px">
+            <option value="admin" ${isAdmin?'selected':''}>Администратор</option>
+            <option value="teacher" ${!isAdmin?'selected':''}>Преподаватель</option>
+          </select>
+          <button class="btn btn-xs btn-r" onclick="removeUser('${uid}','${u.email||''}')">Удалить</button>`:''}
         </div>
-        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;${isAdmin?'background:var(--acbg);border:1px solid var(--acb);color:var(--ac2)':'background:var(--gnbg);border:1px solid rgba(63,216,142,.25);color:var(--gn)'}">
-          ${isAdmin?'👑 Админ':'👨‍🏫 Преподаватель'}
-        </span>
-        ${isTeacher&&tRec?`<button class="btn btn-xs" style="${isActive?'background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn)':'background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd)'}" onclick="toggleTeacherActive('${uid}',${isActive})" title="${isActive?'Нажмите чтобы деактивировать':'Нажмите чтобы активировать'}">
-          ${isActive?'✓ Активен':'✗ Неактивен'}
-        </button>`:''}
-        ${!isSelf?`
-        <select onchange="changeUserRole('${uid}',this.value)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:12px;padding:5px 8px">
-          <option value="admin" ${isAdmin?'selected':''}>Администратор</option>
-          <option value="teacher" ${!isAdmin?'selected':''}>Преподаватель</option>
-        </select>
-        <button class="btn btn-xs btn-r" onclick="removeUser('${uid}','${u.email||''}')">Удалить</button>
-        `:''}
       </div>`;
     }).join('');
   }).catch(()=>{el.innerHTML='<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Ошибка загрузки</div></div>';});
+}
+
+function editUserProfile(uid, currentName, currentPhone){
+  const name=prompt('Имя:', currentName);
+  if(name===null)return;
+  const phone=prompt('Телефон WhatsApp (формат: +7XXXXXXXXXX):', currentPhone);
+  if(phone===null)return;
+  const updates={};
+  if(name.trim())updates.name=name.trim();
+  updates.phone=phone.trim();
+  usersRef.child(uid).update(updates)
+    .then(()=>{toast('Профиль обновлён');renderUsers();})
+    .catch(err=>toast('Ошибка: '+err.message,true));
 }
 
 function changeUserRole(uid,newRole){
@@ -5161,6 +5227,66 @@ function updateChatBadge(n){
   if(!b)return;
   if(n===0){b.style.display='none';return;}
   b.textContent=n;b.style.display='';
+}
+
+// ── WhatsApp уведомления за 5 минут до урока ─────────────────────
+let _reminderSentKeys = new Set(); // чтобы не слать дважды за сессию
+
+function startLessonReminders(){
+  // Проверяем каждую минуту
+  setInterval(checkLessonReminders, 60*1000);
+  checkLessonReminders(); // сразу при запуске
+}
+
+function checkLessonReminders(){
+  const now=new Date();
+  const today=now.toISOString().slice(0,10);
+  const nowMinutes=now.getHours()*60+now.getMinutes();
+
+  S.enrollments.forEach(e=>{
+    if(e.inactive)return;
+    if(!enrollActive(e,today))return;
+    const dow=(now.getDay()+6)%7;
+    const sl=e.slots.find(s=>s.day===dow);
+    if(!sl)return;
+
+    const lessonTime=TIMES[sl.ti]; // "13:00"
+    const [lh,lm]=lessonTime.split(':').map(Number);
+    const lessonMinutes=lh*60+lm;
+    const diff=lessonMinutes-nowMinutes;
+
+    // Отправляем за 5-6 минут (окно 1 мин чтобы не пропустить)
+    if(diff<5||diff>6)return;
+
+    const key=`${e.id}_${today}_${lessonTime}`;
+    if(_reminderSentKeys.has(key))return;
+    _reminderSentKeys.add(key);
+
+    const st=student(e.studentId);
+    const t=teacher(e.teacherId);
+    if(!st)return;
+
+    const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const d=now.getDate(),mo=now.getMonth();
+    const dateRu=`${d} ${months[mo]}`;
+
+    const msg=`⏰ Напоминание об уроке!\n\n👤 Ученик: ${st.name}\n👩‍🏫 Преподаватель: ${t?.name||'—'}\n🕐 Время: ${lessonTime}\n📅 ${dateRu}\n📖 ${e.topic||'Английский'}\n\nУрок начнётся через 5 минут!`;
+
+    // Отправляем родителю и ученику
+    if(st.parentPhone) notifyWhatsApp(st.parentPhone,msg);
+    if(st.phone&&st.phone!==st.parentPhone) notifyWhatsApp(st.phone,msg);
+
+    // Также уведомляем преподавателя через его телефон из appUsers
+    usersRef.once('value').then(us=>{
+      const udata=us.val()||{};
+      const tEntry=Object.entries(udata).find(([uid,u])=>u.name===t?.name||uid===String(t?.id)||uid===String(t?.uid));
+      if(tEntry&&tEntry[1].phone){
+        const tPhone=tEntry[1].phone;
+        const tMsg=`⏰ Через 5 минут урок!\n\n👤 Ученик: ${st.name}\n🕐 ${lessonTime} · ${dateRu}\n📖 ${e.topic||'Английский'}`;
+        notifyWhatsApp(tPhone, tMsg);
+      }
+    });
+  });
 }
 
 function startTeamChatBadgeListener(){

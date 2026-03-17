@@ -926,31 +926,54 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="warn-box" id="s-compat-warn" style="display:none"></div>
     <div class="fr"><label>Преподаватель</label><select id="s-teacher" onchange="onTeacherChange();checkCompatibility()"></select></div>
     <div class="divider"></div>
+
+    <!-- ── Unified slot picker ── -->
     <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);padding:13px;margin-bottom:13px">
       <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:10px">📅 Расписание занятий</div>
-      <div class="fr">
-        <label>Дни недели</label>
-        <div class="preset-row">
-          <button class="pre-btn" onclick="setDays([0,2,4])">Пн Ср Пт</button>
-          <button class="pre-btn" onclick="setDays([1,3,5])">Вт Чт Сб</button>
-          <button class="pre-btn" onclick="setDays([5,6])">Сб Вс</button>
-          <button class="pre-btn" onclick="setDays([0,1,2,3,4])">Будни</button>
-          <button class="pre-btn" onclick="setDays([0,2])">Пн Ср</button>
-          <button class="pre-btn" onclick="setDays([1,3])">Вт Чт</button>
+
+      <!-- Selected slot display -->
+      <div id="s-slot-display" style="display:none;background:var(--acbg);border:1px solid var(--acb);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <span style="font-size:13px;font-weight:600;color:var(--ac2)" id="s-slot-label">—</span>
+          <span style="font-size:11px;color:var(--t3);margin-left:8px" id="s-slot-teacher-lbl"></span>
         </div>
-        <div class="day-picker" id="day-picker">
-          <button class="day-btn" data-d="0" onclick="toggleDay(this)">Пн</button>
-          <button class="day-btn" data-d="1" onclick="toggleDay(this)">Вт</button>
-          <button class="day-btn" data-d="2" onclick="toggleDay(this)">Ср</button>
-          <button class="day-btn" data-d="3" onclick="toggleDay(this)">Чт</button>
-          <button class="day-btn" data-d="4" onclick="toggleDay(this)">Пт</button>
-          <button class="day-btn" data-d="5" onclick="toggleDay(this)">Сб</button>
-          <button class="day-btn" data-d="6" onclick="toggleDay(this)">Вс</button>
-        </div>
+        <button type="button" onclick="clearMainSlot()" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:16px">✕</button>
       </div>
-      <div class="fr" style="margin-bottom:0">
-        <label>Время урока</label>
-        <select id="s-time" onchange="checkConflicts()"></select>
+
+      <!-- Standard slots section -->
+      <div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Стандартные слоты</div>
+      <div id="s-std-slots" style="max-height:220px;overflow-y:auto;margin-bottom:4px">
+        <div style="font-size:12px;color:var(--t3);padding:8px 0">Выберите преподавателя</div>
+      </div>
+
+      <!-- Nonstandard grid section -->
+      <div id="s-ns-toggle" style="display:flex;align-items:center;gap:8px;margin:10px 0 6px;cursor:pointer;user-select:none" onclick="toggleModalNS()">
+        <div style="flex:1;height:1px;background:var(--b1)"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--am)" id="s-ns-lbl">⚡ Нестандартный слот ▼</div>
+        <div style="flex:1;height:1px;background:var(--b1)"></div>
+      </div>
+      <div id="s-ns-section" style="display:none">
+        <div style="font-size:11px;color:var(--am);background:var(--ambg);border:1px solid rgba(245,200,66,.25);border-radius:6px;padding:6px 10px;margin-bottom:8px">
+          Нажмите на свободную ячейку в расписании преподавателя
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:6px;display:flex;gap:10px;flex-wrap:wrap">
+          <span>🟢 Свободно</span><span>🟡 1 занято</span><span>🔴 Полное</span><span style="color:var(--ac2)">🔷 Выбрано</span>
+        </div>
+        <div style="overflow-x:auto"><div id="s-ns-grid"></div></div>
+      </div>
+
+      <!-- Hidden elements used by save logic -->
+      <div style="display:none">
+        <div class="day-picker" id="day-picker">
+          <button class="day-btn" data-d="0">Пн</button>
+          <button class="day-btn" data-d="1">Вт</button>
+          <button class="day-btn" data-d="2">Ср</button>
+          <button class="day-btn" data-d="3">Чт</button>
+          <button class="day-btn" data-d="4">Пт</button>
+          <button class="day-btn" data-d="5">Сб</button>
+          <button class="day-btn" data-d="6">Вс</button>
+        </div>
+        <select id="s-time"></select>
       </div>
       <div class="warn-box" id="s-time-warn"></div>
       <div class="warn-box" id="s-conflict-warn"></div>
@@ -2971,51 +2994,145 @@ function onStuSubjChange(preTeacherId){
   fillTeacherSel(sj,preTeacherId);
   updateTimeOptions();
 }
-function onTeacherChange(){updateTimeOptions();}
+function onTeacherChange(){renderModalStdSlots();renderModalNSGrid();}
+
+let _modalNSOpen=false;
+
+function toggleModalNS(){
+  _modalNSOpen=!_modalNSOpen;
+  document.getElementById('s-ns-section').style.display=_modalNSOpen?'':'none';
+  document.getElementById('s-ns-lbl').textContent=_modalNSOpen?'⚡ Нестандартный слот ▲':'⚡ Нестандартный слот ▼';
+  if(_modalNSOpen) renderModalNSGrid();
+}
+
+// Set slot from standard card or NS grid — updates hidden fields
+function setModalSlot(days, ti, teacherId){
+  // Update hidden day-picker
+  setDays(days, true);
+  // Update hidden s-time
+  const sel=document.getElementById('s-time');
+  sel.innerHTML=TIMES.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
+  sel.value=ti;
+  // Update teacher if given
+  if(teacherId!==undefined){
+    document.getElementById('s-teacher').value=teacherId;
+  }
+  // Show display badge
+  const tid=isNaN(document.getElementById('s-teacher').value)?document.getElementById('s-teacher').value:parseInt(document.getElementById('s-teacher').value);
+  const t=teacher(tid);
+  document.getElementById('s-slot-display').style.display='flex';
+  document.getElementById('s-slot-label').textContent=days.map(d=>DS[d]).join(' · ')+' · '+TIMES[ti];
+  document.getElementById('s-slot-teacher-lbl').textContent=t?t.name:'';
+  checkConflicts();
+}
+
+function clearMainSlot(){
+  setDays([],true);
+  document.getElementById('s-slot-display').style.display='none';
+  document.getElementById('s-slot-label').textContent='—';
+  renderModalStdSlots();
+  renderModalNSGrid();
+}
+
+function renderModalStdSlots(){
+  const el=document.getElementById('s-std-slots');
+  if(!S){el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Загрузка...</div>';return;}
+  const tidRaw=document.getElementById('s-teacher').value;
+  if(!tidRaw){el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Выберите преподавателя</div>';return;}
+  const tid=isNaN(tidRaw)?tidRaw:parseInt(tidRaw);
+  const av=getTeacherAvailNow(tid);
+  const today=new Date().toISOString().slice(0,10);
+  const PATS_M=[{key:'mwf',days:[0,2,4],label:'Пн · Ср · Пт'},{key:'tts',days:[1,3,5],label:'Вт · Чт · Сб'}];
+  const slots=[];
+  for(let ti=0;ti<TIMES.length;ti++){
+    PATS_M.forEach(pat=>{
+      if(!pat.days.every(d=>av[d]&&av[d][ti]))return;
+      const maxOcc=Math.max(...pat.days.map(d=>countAtSlot(tid,d,ti)));
+      const free=Math.max(0,MAX_PER_SLOT-maxOcc);
+      if(free<=0)return;
+      const enrs=S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&!e.inactive&&enrollActive(e,today)&&e.slots.some(sl=>pat.days.includes(sl.day)&&sl.ti===ti));
+      const names=enrs.map(e=>{const s=student(e.studentId);return s?s.name.split(' ')[0]:'?';});
+      slots.push({pat,ti,free,names});
+    });
+  }
+  if(!slots.length){el.innerHTML='<div style="font-size:12px;color:var(--t3);padding:8px 0">Нет стандартных слотов у этого преподавателя</div>';return;}
+
+  const curDays=getDays(), curTi=parseInt(document.getElementById('s-time').value||'0');
+  el.innerHTML=slots.map(s=>{
+    const isSel=s.pat.days.join(',')===curDays.join(',')&&s.ti===curTi;
+    const ns=s.names.length?`<div style="font-size:10px;color:var(--t3);margin-top:1px">С: ${s.names.join(', ')}</div>`:'';
+    const pips=Array.from({length:MAX_PER_SLOT},(_,i)=>`<span style="width:7px;height:7px;border-radius:50%;display:inline-block;border:1.5px solid ${i<MAX_PER_SLOT-s.free?'rgba(240,89,117,.6)':'rgba(63,216,142,.5)'};background:${i<MAX_PER_SLOT-s.free?'rgba(240,89,117,.2)':'rgba(63,216,142,.15)'};margin:0 1px"></span>`).join('');
+    return`<div onclick="setModalSlot([${s.pat.days}],${s.ti})" style="background:${isSel?'var(--acbg)':'var(--bg2)'};border:1.5px solid ${isSel?'var(--acb)':'var(--b1)'};border-radius:8px;padding:8px 10px;margin-bottom:5px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .12s">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${TIMES[s.ti]} <span style="font-size:11px;color:var(--t3)">${s.pat.label}</span></div>
+        ${ns}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        <div style="display:flex">${pips}</div>
+        <span style="font-size:10px;font-weight:600;color:var(--gn)">${s.free} своб.</span>
+        ${isSel?'<span style="font-size:10px;color:var(--ac2);font-weight:700">✓</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderModalNSGrid(){
+  const el=document.getElementById('s-ns-grid');
+  if(!S||!_modalNSOpen){el.innerHTML='';return;}
+  const tidRaw=document.getElementById('s-teacher').value;
+  if(!tidRaw){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Выберите преподавателя</div>';return;}
+  const tid=isNaN(tidRaw)?tidRaw:parseInt(tidRaw);
+  const av=getTeacherAvailNow(tid);
+  const curDays=getDays(), curTi=parseInt(document.getElementById('s-time').value||'-1');
+
+  let html=`<div style="display:grid;grid-template-columns:40px repeat(7,1fr);min-width:320px;border:1px solid var(--b1);border-radius:8px;overflow:hidden">`;
+  // Header
+  html+=`<div style="background:var(--bg4);padding:4px 2px;font-size:9px;color:var(--t3)"></div>`;
+  DS.forEach(d=>{html+=`<div style="background:var(--bg4);font-size:9px;font-weight:700;color:var(--t3);text-align:center;padding:4px 2px">${d}</div>`;});
+
+  for(let ti=0;ti<TIMES.length;ti++){
+    const rowHasAv=Array.from({length:7},(_,d)=>av[d]&&av[d][ti]).some(Boolean);
+    if(!rowHasAv)continue;
+    html+=`<div style="background:var(--bg3);font-size:9px;color:var(--t3);text-align:right;padding:3px 5px;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:flex-end">${TIMES[ti]}</div>`;
+    for(let d=0;d<7;d++){
+      const avail=av[d]&&av[d][ti];
+      const occ=avail?countAtSlot(tid,d,ti):0;
+      const isSel=avail&&curDays.length===1&&curDays[0]===d&&curTi===ti;
+      const today=new Date().toISOString().slice(0,10);
+      const names=avail?S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&!e.inactive&&enrollActive(e,today)&&e.slots.some(sl=>sl.day===d&&sl.ti===ti)).map(e=>{const s=student(e.studentId);return s?s.name.split(' ')[0]:'?';}):[];
+
+      let bg,border,cursor;
+      if(!avail){bg='var(--bg1)';border='var(--b1)';cursor='default';}
+      else if(isSel){bg='rgba(124,92,252,.2)';border='var(--ac)';cursor='pointer';}
+      else if(occ>=MAX_PER_SLOT){bg='rgba(240,89,117,.1)';border='rgba(240,89,117,.2)';cursor='not-allowed';}
+      else if(occ>0){bg='rgba(245,200,66,.07)';border='rgba(245,200,66,.3)';cursor='pointer';}
+      else{bg='rgba(63,216,142,.07)';border='rgba(63,216,142,.2)';cursor='pointer';}
+
+      let inner='';
+      if(avail&&occ>0&&!isSel){
+        inner=names.slice(0,1).map(n=>`<div style="font-size:8px;color:var(--t3);line-height:1.1">${n}</div>`).join('');
+        inner+=`<div style="display:flex;gap:1px;justify-content:center">${Array.from({length:MAX_PER_SLOT},(_,i)=>`<span style="width:5px;height:5px;border-radius:50%;background:${i<occ?'rgba(240,89,117,.6)':'rgba(63,216,142,.4)'}"></span>`).join('')}</div>`;
+      } else if(isSel){inner=`<span style="font-size:10px;color:var(--ac2)">✓</span>`;}
+      else if(avail&&occ===0){inner=`<div style="display:flex;gap:1px;justify-content:center">${Array.from({length:MAX_PER_SLOT},()=>`<span style="width:5px;height:5px;border-radius:50%;background:rgba(63,216,142,.4)"></span>`).join('')}</div>`;}
+
+      if(avail&&occ<MAX_PER_SLOT){
+        html+=`<div onclick="setModalSlot([${d}],${ti})" style="border-top:1px solid var(--b1);border-left:1px solid var(--b1);min-height:28px;background:${bg};border-color:${border};cursor:${cursor};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;transition:all .1s" title="${DS[d]} ${TIMES[ti]}${names.length?' — '+names.join(', '):''}  (${MAX_PER_SLOT-occ} своб.)">${inner}</div>`;
+      } else {
+        html+=`<div style="border-top:1px solid var(--b1);border-left:1px solid var(--b1);min-height:28px;background:${bg};cursor:${cursor};display:flex;align-items:center;justify-content:center" title="${!avail?'Не работает':'Заполнено'}">${inner}</div>`;
+      }
+    }
+  }
+  html+=`</div>`;
+  el.innerHTML=html;
+}
 
 // ── KEY FUNCTION: filter time list to only available times ──────
 function updateTimeOptions(){
-  const _tidRaw=document.getElementById('s-teacher').value;
-  const tid=isNaN(_tidRaw)?_tidRaw:parseInt(_tidRaw);
-  const days=getDays();
+  // Now handled by setModalSlot — keep for compatibility
   const sel=document.getElementById('s-time');
-  const warnTime=document.getElementById('s-time-warn');
-  const prevVal=sel.value;
-
-  if(!tid||!days.length){
-    // No teacher or no days: show all times, no warning
-    sel.innerHTML=TIMES.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
-    sel.value=prevVal||0;
-    warnTime.style.display='none';
-    return;
-  }
-
-  const av=getTeacherAvailNow(tid);
-  // A time is "available" if teacher has avail on ALL selected days at that timeIdx
-  const available=[];
-  for(let ti=0;ti<TIMES.length;ti++){
-    const ok=days.every(d=>av[d]&&av[d][ti]);
-    if(ok)available.push(ti);
-  }
-
-  if(!available.length){
-    // Teacher has NO available time for the selected days combination
-    sel.innerHTML=TIMES.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
-    sel.value=prevVal||0;
-    warnTime.style.display='';
-    warnTime.textContent='⚠ У выбранного преподавателя нет доступного времени для выбранных дней';
-    checkConflicts();
-    return;
-  }
-
-  // Rebuild select with only available times
-  sel.innerHTML=available.map(ti=>`<option value="${ti}">${TIMES[ti]}</option>`).join('');
-  // Restore previous if still available, else pick first
-  if(available.includes(parseInt(prevVal)))sel.value=prevVal;
-  else sel.value=available[0];
-
-  warnTime.style.display='none';
-  checkConflicts();
+  if(!sel.innerHTML) sel.innerHTML=TIMES.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
+  renderModalStdSlots();
+  if(_modalNSOpen) renderModalNSGrid();
 }
 
 function checkConflicts(){
@@ -3038,10 +3155,17 @@ function checkConflicts(){
 function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
   editSId=id||null;fillSubjSel();
   clearExtraSlots();
+  _modalNSOpen=false;
+  document.getElementById('s-ns-section').style.display='none';
+  document.getElementById('s-ns-lbl').textContent='⚡ Нестандартный слот ▼';
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('m-stu-ttl').textContent=id?'Редактировать запись':'Добавить ученика';
   document.getElementById('s-time-warn').style.display='none';
   document.getElementById('s-conflict-warn').style.display='none';
+  // Init hidden s-time
+  const sel=document.getElementById('s-time');
+  sel.innerHTML=TIMES.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
+
   if(id){
     const e=S.enrollments.find(x=>x.id===id);
     const st=student(e.studentId);
@@ -3054,27 +3178,22 @@ function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
     fillTeacherSel(document.getElementById('s-subj').value,e.teacherId);
     const days=e.slots.map(sl=>sl.day);const ti=e.slots[0]?.ti||0;
     setDays(days,true);
-    updateTimeOptions();
-    document.getElementById('s-time').value=ti;
+    sel.value=ti;
     document.getElementById('s-date-start').value=e.dateStart;
     document.getElementById('s-date-end').value=e.dateEnd;
     document.getElementById('s-topic').value=e.topic;
     document.getElementById('s-notes').value=e.notes||'';
     const stuData=S.students.find(s=>s.id===e.studentId);
-    if(stuData){
-      document.getElementById('s-age').value=stuData.age||'';
-      document.getElementById('s-level').value=stuData.level||'beginner';
-    }
-    // Load sibling enrollments (same student, different slots) as extra slots
+    if(stuData){document.getElementById('s-age').value=stuData.age||'';document.getElementById('s-level').value=stuData.level||'beginner';}
+    // Show selected slot badge
+    const t=teacher(e.teacherId);
+    document.getElementById('s-slot-display').style.display='flex';
+    document.getElementById('s-slot-label').textContent=days.map(d=>DS[d]).join(' · ')+' · '+TIMES[ti];
+    document.getElementById('s-slot-teacher-lbl').textContent=t?t.name:'';
+    // Load sibling enrollments as extra slots
     const siblings=S.enrollments.filter(x=>x.studentId===e.studentId&&x.id!==id&&!x.inactive);
     siblings.forEach(sib=>{
-      const idx=_extraSlots.length;
-      _extraSlots.push({
-        teacherId:String(sib.teacherId),
-        days:sib.slots.map(sl=>sl.day),
-        ti:sib.slots[0]?.ti??-1,
-        siblingId:sib.id // track existing enrollment id
-      });
+      _extraSlots.push({teacherId:String(sib.teacherId),days:sib.slots.map(sl=>sl.day),ti:sib.slots[0]?.ti??-1,siblingId:sib.id});
     });
     renderExtraSlots();
   } else {
@@ -3086,20 +3205,24 @@ function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
     document.getElementById('s-notes').value='';
     document.getElementById('s-date-start').value=today;
     document.getElementById('s-date-end').value=addMonth(today);
+    document.getElementById('s-slot-display').style.display='none';
     fillTeacherSel(document.getElementById('s-subj').value,preTeacherId);
-    setDays(preDays||[0,2,4],true);
-    updateTimeOptions();
-    if(preTimeIdx!==undefined)document.getElementById('s-time').value=preTimeIdx;
+    if(preDays){setDays(preDays,true);sel.value=preTimeIdx||0;
+      const tid=document.getElementById('s-teacher').value;const t=teacher(tid);
+      document.getElementById('s-slot-display').style.display='flex';
+      document.getElementById('s-slot-label').textContent=preDays.map(d=>DS[d]).join(' · ')+' · '+TIMES[preTimeIdx||0];
+      document.getElementById('s-slot-teacher-lbl').textContent=t?t.name:'';
+    }
   }
+  renderModalStdSlots();
   checkConflicts();
   open1('m-student');
 }
 
-function toggleDay(btn){btn.classList.toggle('sel');updateTimeOptions();}
+function toggleDay(btn){btn.classList.toggle('sel');}
 function setDays(days,skipUpdate){
   const picker=document.getElementById('day-picker');
   if(picker) picker.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('sel',days.includes(parseInt(b.dataset.d))));
-  if(!skipUpdate)updateTimeOptions();
 }
 function getDays(){
   // Only get days from main day picker, NOT extra slot pickers

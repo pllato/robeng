@@ -707,10 +707,38 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   <div class="modal">
     <div class="mt">🎥 Загрузить запись урока</div>
     <div id="m-video-info" style="font-size:12px;color:var(--t2);background:var(--bg3);padding:8px 12px;border-radius:var(--r);margin-bottom:14px"></div>
-    <div class="fr">
-      <label>Ссылка на видео</label>
-      <input type="url" id="video-url" placeholder="https://youtube.com/... или https://drive.google.com/..."/>
-      <div style="font-size:11px;color:var(--t3);margin-top:4px">YouTube, Google Drive, Loom, Яндекс Диск — любая ссылка</div>
+    <!-- Вкладки -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="btn btn-sm" id="vtab-file" onclick="setVideoTab('file')" style="flex:1;font-size:12px;background:var(--acbg);border-color:var(--acb);color:var(--ac2)">📁 Загрузить файл</button>
+      <button class="btn btn-sm" id="vtab-link" onclick="setVideoTab('link')" style="flex:1;font-size:12px">🔗 Вставить ссылку</button>
+    </div>
+    <!-- Вкладка: загрузка файла -->
+    <div id="vtab-file-content">
+      <div class="fr">
+        <label>Файл видео</label>
+        <div id="video-drop-zone" onclick="document.getElementById('video-file-input').click()"
+          style="border:2px dashed var(--b2);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--bg3)">
+          <div style="font-size:28px;margin-bottom:6px">📹</div>
+          <div style="font-size:13px;color:var(--t2);font-weight:500">Нажмите чтобы выбрать видео</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:3px">MP4, MOV, AVI · до 2 ГБ</div>
+          <div id="video-file-name" style="margin-top:8px;font-size:12px;color:var(--ac2);display:none"></div>
+        </div>
+        <input type="file" id="video-file-input" accept="video/*" style="display:none" onchange="onVideoFileSelect(this)"/>
+      </div>
+      <div id="video-upload-progress" style="display:none;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:6px" id="video-upload-status">Загрузка...</div>
+        <div style="background:var(--bg3);border-radius:20px;height:6px;overflow:hidden">
+          <div id="video-progress-bar" style="height:100%;background:var(--ac);border-radius:20px;width:0%;transition:width .3s"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Вкладка: ссылка -->
+    <div id="vtab-link-content" style="display:none">
+      <div class="fr">
+        <label>Ссылка на видео</label>
+        <input type="url" id="video-url" placeholder="https://youtube.com/... или https://drive.google.com/..."/>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">YouTube, Google Drive, Loom — любая ссылка</div>
+      </div>
     </div>
     <div class="fr">
       <label>Комментарий (необязательно)</label>
@@ -719,7 +747,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="warn-box" id="video-err"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video')">Отмена</button>
-      <button class="btn btn-a" onclick="submitVideoLink()">Отправить на проверку</button>
+      <button class="btn btn-a" id="video-submit-btn" onclick="submitVideo()">Отправить на проверку</button>
     </div>
   </div>
 </div>
@@ -2703,7 +2731,7 @@ function renderExtraSlots(){
   container.innerHTML=_extraSlots.map((slot,idx)=>{
     const teacherOpts=teachers.map(t=>`<option value="${t.id}" ${String(slot.teacherId)===String(t.id)?'selected':''}>${t.name}</option>`).join('');
     const DS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-    const dayBtns=DS.map((d,di)=>`<button type="button" class="day-btn ${slot.days.includes(di)?'sel':''}" data-slot="${idx}" data-day="${di}" onclick="toggleExtraDay(parseInt(this.dataset.slot),parseInt(this.dataset.day),this)">${d}</button>`).join('');
+    const dayBtns=DS.map((d,di)=>`<button type="button" class="day-btn ${slot.days.includes(di)?'active':''}" data-slot="${idx}" data-day="${di}" onclick="toggleExtraDay(parseInt(this.dataset.slot),parseInt(this.dataset.day),this)">${d}</button>`).join('');
 
     // Get available times for selected teacher
     const avail=slot.teacherId?getTeacherAvailTimes(slot.teacherId,slot.days):[];
@@ -3128,74 +3156,14 @@ function renderRenewals(){
     const isToday=days===0;
     const isPast=days<0;
     const cardBorder=isToday?'border:2px solid var(--gn);background:rgba(63,216,142,.05)':isPast?'border:2px solid var(--rd)':'';
-
-    // ── Статистика за последние 30 дней ──
-    const dates30=dateRange(30);
-    const lessonDates=lessonDatesInRange(e, dates30);
-    const total=lessonDates.length;
-    let done=0,miss=0,makeup=0;
-    lessonDates.forEach(dt=>{
-      const a=(S.attendance||{})[attKey(e.id,dt)];
-      if(a==='done')done++;
-      else if(a==='miss')makeup++;  // miss+makeup counted together
-      else if(a==='makeup')makeup++;
-    });
-    miss=lessonDates.filter(dt=>(S.attendance||{})[attKey(e.id,dt)]==='miss').length;
-    const unmarked=total-done-miss-makeup;
-    const attPct=total>0?Math.round((done+makeup)/total*100):null;
-    const attColor=attPct===null?'var(--t3)':attPct>=80?'var(--gn)':attPct>=50?'var(--am)':'var(--rd)';
-
-    // Видео отчёты за 30 дней
-    const vr=S.videoReports||{};
-    const vrKeys=Object.keys(vr).filter(k=>k.startsWith(e.id+'_'));
-    // последние 5 видео отчётов
-    const recentVR=vrKeys
-      .map(k=>({key:k,date:k.replace(e.id+'_','').slice(0,10),...vr[k]}))
-      .filter(v=>v.date>=dates30[0])
-      .sort((a,b)=>b.date.localeCompare(a.date))
-      .slice(0,5);
-    const vrApproved=recentVR.filter(v=>v.status==='approved').length;
-    const vrPending=recentVR.filter(v=>v.status==='pending').length;
-    const vrRejected=recentVR.filter(v=>v.status==='rejected').length;
-
-    // Attendance mini-bar
-    const attBar=total>0?`
-      <div style="display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap">
-        <span style="font-size:10px;color:var(--t3);min-width:80px">Посещаемость 30д:</span>
-        <div style="display:flex;gap:3px">
-          ${done>0?`<span style="background:var(--gnbg);border:1px solid rgba(63,216,142,.3);color:var(--gn);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">✓ ${done}</span>`:''}
-          ${miss>0?`<span style="background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">✗ ${miss}</span>`:''}
-          ${makeup>0?`<span style="background:var(--ambg);border:1px solid rgba(245,200,66,.3);color:var(--am);font-size:10px;font-weight:600;padding:1px 7px;border-radius:5px">↩ ${makeup}</span>`:''}
-          ${unmarked>0?`<span style="background:var(--bg3);border:1px solid var(--b1);color:var(--t3);font-size:10px;padding:1px 7px;border-radius:5px">? ${unmarked}</span>`:''}
-        </div>
-        ${attPct!==null?`<span style="font-size:10px;font-weight:700;color:${attColor}">${attPct}%</span>`:''}
-      </div>`:'<div style="font-size:10px;color:var(--t3);margin-top:6px">Нет уроков за 30 дней</div>';
-
-    // Video reports row
-    const vrRow=recentVR.length>0?`
-      <div style="display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap">
-        <span style="font-size:10px;color:var(--t3);min-width:80px">Видео отчёты:</span>
-        <div style="display:flex;gap:3px;flex-wrap:wrap">
-          ${recentVR.map(v=>{
-            const statusColor=v.status==='approved'?'var(--gn)':v.status==='rejected'?'var(--rd)':'var(--am)';
-            const statusIcon=v.status==='approved'?'✓':v.status==='rejected'?'✗':'⏳';
-            const dateLabel=v.date?v.date.slice(5).replace('-','.'):'';
-            return `<a href="${v.url||'#'}" target="_blank" title="${v.url||''}" style="background:var(--bg3);border:1px solid var(--b1);border-radius:5px;padding:1px 7px;font-size:10px;font-weight:600;color:${statusColor};text-decoration:none;cursor:pointer">${statusIcon} ${dateLabel}</a>`;
-          }).join('')}
-        </div>
-        ${vrPending>0?`<span style="font-size:10px;color:var(--am)">· ${vrPending} на проверке</span>`:''}
-      </div>`:'';
-
     return `<div class="card" style="margin-bottom:10px;padding:14px 16px;${cardBorder}">
       ${isToday?'<div style="font-size:11px;font-weight:700;color:var(--gn);margin-bottom:6px;letter-spacing:.05em">💳 ВЫСТАВИТЬ СЧЁТ СЕГОДНЯ</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-        <div style="flex:1;min-width:0">
+        <div>
           <div style="font-size:15px;font-weight:700;color:var(--t1)">${stu?.name||'-'}</div>
           <div style="font-size:12px;color:var(--t3);margin-top:2px">${t?.name||'-'} · Оканчивается ${fmtDateRu(e.dateEnd)} · ${daysLabel}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">Обучается: ${dur} · Старт: ${fmtDateRu(e.dateStart)}</div>
           ${e.renewalComment?`<div style="font-size:11px;color:var(--am);margin-top:3px">💬 ${e.renewalComment}</div>`:''}
-          ${attBar}
-          ${vrRow}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="setVacation(${e.id})" style="font-size:12px;background:rgba(56,189,248,.1);color:var(--tl)">🏖 Отпуск</button>
@@ -4062,6 +4030,18 @@ function openVideoUpload(enrollId,dateStr){
     (isAdminForTeacher?`<br><span style="font-size:10px;color:var(--am)">⚡ Вы загружаете от имени преподавателя</span>`:'');
   document.getElementById('video-url').value='';
   document.getElementById('video-comment').value='';
+  // Сброс вкладки и файла
+  _videoSelectedFile = null;
+  _videoTab = 'file';
+  setVideoTab('file');
+  const dz = document.getElementById('video-drop-zone');
+  if(dz) dz.style.borderColor='var(--b2)';
+  const fn = document.getElementById('video-file-name');
+  if(fn){ fn.style.display='none'; fn.textContent=''; }
+  const prog = document.getElementById('video-upload-progress');
+  if(prog) prog.style.display='none';
+  const submitBtn = document.getElementById('video-submit-btn');
+  if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Отправить на проверку'; }
   const errEl=document.getElementById('video-err');
   errEl.style.display='none';errEl.style.background='';errEl.style.borderColor='';errEl.style.color='';
   const existing=getVideoStatus(enrollId,dateStr);
@@ -4076,6 +4056,131 @@ function openVideoUpload(enrollId,dateStr){
   }
   open1('m-video');
 }
+// ── VIDEO UPLOAD (Telegram) ───────────────────────────────────────
+const VIDEO_WORKER_URL = 'https://flat-pond-6e68.uurraa.workers.dev';
+let _videoSelectedFile = null;
+let _videoTab = 'file'; // 'file' | 'link'
+
+function setVideoTab(tab){
+  _videoTab = tab;
+  const isFile = tab === 'file';
+  document.getElementById('vtab-file-content').style.display = isFile ? '' : 'none';
+  document.getElementById('vtab-link-content').style.display = isFile ? 'none' : '';
+  const fBtn = document.getElementById('vtab-file');
+  const lBtn = document.getElementById('vtab-link');
+  if(fBtn){ fBtn.style.background=isFile?'var(--acbg)':''; fBtn.style.borderColor=isFile?'var(--acb)':'var(--b2)'; fBtn.style.color=isFile?'var(--ac2)':'var(--t2)'; }
+  if(lBtn){ lBtn.style.background=isFile?'':'var(--acbg)'; lBtn.style.borderColor=isFile?'var(--b2)':'var(--acb)'; lBtn.style.color=isFile?'var(--t2)':'var(--ac2)'; }
+}
+
+function onVideoFileSelect(input){
+  const file = input.files[0];
+  if(!file) return;
+  _videoSelectedFile = file;
+  const nameEl = document.getElementById('video-file-name');
+  const dz = document.getElementById('video-drop-zone');
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  nameEl.textContent = `✓ ${file.name} · ${sizeMB} МБ`;
+  nameEl.style.display = '';
+  dz.style.borderColor = 'var(--ac)';
+}
+
+async function submitVideo(){
+  const errEl = document.getElementById('video-err');
+  errEl.style.background='var(--rdbg)';errEl.style.borderColor='rgba(240,89,117,.3)';errEl.style.color='var(--rd)';
+  errEl.style.display='none';
+
+  // Если вкладка ссылки — используем старую логику
+  if(_videoTab === 'link'){
+    submitVideoLink();
+    return;
+  }
+
+  // Вкладка файла
+  if(!_videoSelectedFile){ errEl.textContent='Выберите файл видео'; errEl.style.display=''; return; }
+  if(!_videoEnrollId||!_videoDateStr){ errEl.textContent='Ошибка: не выбран урок'; errEl.style.display=''; return; }
+
+  const e = S.enrollments.find(x=>String(x.id)===String(_videoEnrollId));
+  if(!e){ errEl.textContent='Ошибка: запись не найдена'; errEl.style.display=''; return; }
+
+  const st = student(e.studentId);
+  const t = teacher(e.teacherId);
+
+  const btn = document.getElementById('video-submit-btn');
+  const progress = document.getElementById('video-upload-progress');
+  const bar = document.getElementById('video-progress-bar');
+  const statusEl = document.getElementById('video-upload-status');
+
+  btn.disabled = true;
+  progress.style.display = '';
+  bar.style.width = '0%';
+  statusEl.textContent = 'Загружаем видео в Telegram...';
+
+  // Симулируем прогресс пока идёт загрузка (XHR не даёт прогресс для upload через fetch)
+  let pct = 0;
+  const progressInterval = setInterval(()=>{
+    if(pct < 85){ pct += Math.random()*8; bar.style.width = Math.min(pct,85)+'%'; }
+  }, 400);
+
+  try {
+    const fd = new FormData();
+    fd.append('video', _videoSelectedFile, _videoSelectedFile.name);
+    fd.append('enrollId', String(_videoEnrollId));
+    fd.append('date', _videoDateStr);
+    fd.append('studentName', st?.name||'—');
+    fd.append('teacherName', t?.name||'—');
+
+    const resp = await fetch(VIDEO_WORKER_URL+'/upload', { method:'POST', body:fd });
+    const data = await resp.json();
+
+    clearInterval(progressInterval);
+
+    if(!data.ok){ throw new Error(data.error||'Ошибка загрузки'); }
+
+    bar.style.width = '100%';
+    statusEl.textContent = '✓ Видео загружено!';
+
+    // Сохраняем запись в Firebase с playerUrl вместо youtube ссылки
+    const comment = document.getElementById('video-comment').value.trim();
+    const user = fbAuth.currentUser?.email||'—';
+    const key = videoKey(_videoEnrollId, _videoDateStr);
+    const record = {
+      id: key,
+      enrollId: String(_videoEnrollId),
+      dateStr: _videoDateStr,
+      teacherId: String(e.teacherId),
+      teacherName: t?.name||'—',
+      studentName: st?.name||'—',
+      url: data.playerUrl,           // ссылка на плеер
+      telegramFileId: data.fileId,   // file_id в Telegram
+      uploadType: 'telegram',
+      teacherComment: comment||'',
+      submittedAt: new Date().toISOString(),
+      submittedBy: user,
+      status: 'pending'
+    };
+
+    await videoRef.child(key).set(record);
+    logAction('other', `Видео урока загружено: ${st?.name||'—'}`, `${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
+    save();
+
+    const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
+    if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
+
+    close1('m-video');
+    toast('✓ Видео загружено и отправлено на проверку');
+    updateVideoBadge();
+    renderSchedule();
+    _videoSelectedFile = null;
+
+  } catch(err) {
+    clearInterval(progressInterval);
+    progress.style.display = 'none';
+    btn.disabled = false;
+    errEl.textContent = 'Ошибка: '+err.message;
+    errEl.style.display = '';
+  }
+}
+
 function submitVideoLink(){
   const url=document.getElementById('video-url').value.trim();
   const comment=document.getElementById('video-comment').value.trim();

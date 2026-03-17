@@ -758,7 +758,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="warn-box" id="video-err"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video')">Отмена</button>
-      <button class="btn btn-a" id="video-submit-btn" onclick="submitVideo()">Отправить родителям 📤</button>
+      <button class="btn btn-a" id="video-submit-btn" onclick="submitVideo()">Отправить родителям и на проверку 📤</button>
     </div>
   </div>
 </div>
@@ -803,8 +803,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div id="m-vr-err" style="display:none;color:var(--rd);font-size:12px;margin-bottom:8px;padding:8px 12px;background:var(--rdbg);border:1px solid rgba(240,89,117,.3);border-radius:var(--r)"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video-review')">Закрыть</button>
-      <button class="btn btn-r" onclick="onVrDecisionHover('rejected');reviewVideoDecision('rejected')" onmouseenter="onVrDecisionHover('rejected')">❌ Отклонить</button>
-      <button class="btn btn-g" onclick="onVrDecisionHover('approved');reviewVideoDecision('approved')" onmouseenter="onVrDecisionHover('approved')">✅ Одобрить</button>
+      <button class="btn btn-r" onclick="reviewVideoDecision('rejected')" onmouseenter="onVrDecisionHover('rejected')">❌ Отклонить</button>
+      <button class="btn btn-g" onclick="reviewVideoDecision('approved')" onmouseenter="onVrDecisionHover('approved')">✅ Одобрить</button>
     </div>
   </div>
 </div>
@@ -4662,7 +4662,7 @@ function openVideoUpload(enrollId,dateStr){
   const prog = document.getElementById('video-upload-progress');
   if(prog) prog.style.display='none';
   const submitBtn = document.getElementById('video-submit-btn');
-  if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Отправить на проверку'; }
+  if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Отправить родителям и на проверку 📤'; }
   const errEl=document.getElementById('video-err');
   errEl.style.display='none';errEl.style.background='';errEl.style.borderColor='';errEl.style.color='';
   const existing=getVideoStatus(enrollId,dateStr);
@@ -4917,7 +4917,7 @@ function submitVideoLink(){
       // Отправляем родителям сразу
       sendVideoToParent(record);
       save();
-      if(btn){btn.disabled=false;btn.textContent='Отправить родителям 📤';}
+      if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
       close1('m-video');
       renderSchedule();
       updateVideoBadge();
@@ -4931,7 +4931,7 @@ function submitVideoLink(){
     })
     .catch(err=>{
       console.error('Video submit error:',err);
-      if(btn){btn.disabled=false;btn.textContent='Отправить родителям 📤';}
+      if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
       errEl.textContent='Ошибка Firebase: '+err.message;
       errEl.style.display='';
     });
@@ -5005,9 +5005,11 @@ function setVrRejectPhrase(idx){
 function reviewVideoDecision(decision){
   const errEl=document.getElementById('m-vr-err');
   errEl.style.display='none';
+  // Всегда показываем нужный блок перед валидацией
+  onVrDecisionHover(decision);
   if(decision==='approved'){
     const comment=document.getElementById('m-vr-parent-comment').value.trim();
-    if(!comment){errEl.textContent='Пожалуйста, добавьте комментарий для родителей перед одобрением.';errEl.style.display='';return;}
+    if(!comment){errEl.textContent='Пожалуйста, добавьте комментарий для преподавателя перед одобрением.';errEl.style.display='';return;}
     reviewVideo(decision, comment, '');
   } else {
     const fb=document.getElementById('m-vr-teacher-fb').value.trim();

@@ -2794,6 +2794,7 @@ function renderFreeSlots(){
 
       // Track which days were already covered by a standard pattern group
       const coveredByPattern=new Set();
+      const shownWithFree=new Set(); // days shown as free via a pattern
 
       pats.forEach(pat=>{
         const coveredDays=pat.days.filter(d=>availDays.includes(d));
@@ -2805,6 +2806,8 @@ function renderFreeSlots(){
         coveredDays.forEach(d=>{ occPerDay[d]=countAtSlot(t.id,d,ti); });
         const maxOcc=Math.max(...coveredDays.map(d=>occPerDay[d]));
         const free=Math.max(0,MAX_PER_SLOT-maxOcc);
+        // Mark days that are shown as free in this pattern
+        if(free>0) coveredDays.filter(d=>occPerDay[d]<MAX_PER_SLOT).forEach(d=>shownWithFree.add(d));
         if(free===0)return;
 
         // Is this a full pattern or partial?
@@ -2848,10 +2851,11 @@ function renderFreeSlots(){
         groups[gKey].rows.push({t,free,names,slotAgeGroup,slotLevel,existGroups,coveredDays,isNonStandard});
       });
 
-      // Also show single days NOT covered by any standard pattern (e.g. Пт when Вт·Чт·Сб is used)
-      if(!daysF){ // only when no days filter
+      // Single-day slots: show if the day has free spots AND wasn't already shown as free in a pattern
+      // This catches days like Пт 18:30 where Пн+Ср 18:30 are full so pattern showed free=0
+      if(!daysF){
         availDays.forEach(d=>{
-          if(coveredByPattern.has(d))return; // already shown in a pattern
+          if(shownWithFree.has(d))return; // already visible as part of a free pattern
           const occ=countAtSlot(t.id,d,ti);
           const free=Math.max(0,MAX_PER_SLOT-occ);
           if(free===0)return;
@@ -2872,7 +2876,6 @@ function renderFreeSlots(){
           if(ageF&&occ>0&&slotAgeGroup&&slotAgeGroup!==ageF)return;
           if(levelF&&occ>0&&slotLevel&&slotLevel!==levelF)return;
 
-          // Use a dummy pat for single-day
           const pat={key:'single',days:[d],label:DS[d],color:'var(--am)'};
           if(!groups[gKey])groups[gKey]={pat,ti,label,isNonStandard:true,rows:[]};
           groups[gKey].rows.push({t,free,names,slotAgeGroup,slotLevel,existGroups,coveredDays:[d],isNonStandard:true});

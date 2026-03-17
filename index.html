@@ -4666,6 +4666,7 @@ function openVideoUpload(enrollId,dateStr){
   const errEl=document.getElementById('video-err');
   errEl.style.display='none';errEl.style.background='';errEl.style.borderColor='';errEl.style.color='';
   const existing=getVideoStatus(enrollId,dateStr);
+  _videoIsReupload = !!(existing && existing.submittedAt); // уже загружалось ранее
   if(existing){
     document.getElementById('video-url').value=existing.url||'';
     document.getElementById('video-comment').value=existing.teacherComment||'';
@@ -4681,6 +4682,7 @@ function openVideoUpload(enrollId,dateStr){
 const VIDEO_WORKER_URL = 'https://flat-pond-6e68.uurraa.workers.dev';
 let _videoSelectedFile = null;
 let _videoTab = 'file';
+let _videoIsReupload = false; // true если видео уже было отправлено ранее
 
 function setVideoTab(tab){
   _videoTab = tab;
@@ -4864,9 +4866,10 @@ async function submitVideo(){
     };
     await videoRef.child(key).set(record);
     logAction('other', 'Видео урока загружено: '+(st?.name||'—'), (t?.name||'—')+' · '+fmtDate(_videoDateStr));
-    // Отправляем родителям только при ПЕРВОЙ загрузке (не при переотправке после отклонения)
-    const wasAlreadySent = !!(S.videoReports && S.videoReports[key] && S.videoReports[key].submittedAt);
-    if(!wasAlreadySent) sendVideoToParent(record);
+    // Отправляем родителям только при ПЕРВОЙ загрузке
+    // Проверяем был ли уже отправлен через наличие submittedAt в старой записи ДО перезаписи
+    // (мы уже перезаписали запись, поэтому проверяем флаг _isReupload установленный при открытии)
+    if(!_videoIsReupload) sendVideoToParent(record);
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
@@ -4926,8 +4929,7 @@ function submitVideoLink(){
     .then(()=>{
       logAction('other',`Видео урока отправлено: ${st?.name||'—'}`,`${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
       // Отправляем родителям только при ПЕРВОЙ загрузке
-      const wasAlreadySent2 = !!(S.videoReports && S.videoReports[key] && S.videoReports[key].submittedAt);
-      if(!wasAlreadySent2) sendVideoToParent(record);
+      if(!_videoIsReupload) sendVideoToParent(record);
       save();
       if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
       close1('m-video');

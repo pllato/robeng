@@ -4160,9 +4160,9 @@ async function submitVideo(){
   progress.style.display = '';
   bar.style.width = '3%';
   const sizeMB = (_videoSelectedFile.size / 1024 / 1024).toFixed(1);
-  statusEl.textContent = 'Загружаем видео (' + sizeMB + ' МБ)...';
+  statusEl.textContent = 'Подготовка загрузки...';
   try {
-    // Метаданные в URL-параметрах, файл как raw body — стриминг без буферизации в Worker
+    // Шаг 1: получаем presigned URL от Worker
     const params = new URLSearchParams({
       enrollId: String(_videoEnrollId),
       date: _videoDateStr,
@@ -4171,28 +4171,48 @@ async function submitVideo(){
       parentPhone: st?.parentPhone||'',
       studentPhone: st?.phone||'',
       fileName: _videoSelectedFile.name,
+      contentType: _videoSelectedFile.type || 'video/mp4',
     });
-    // Прогресс-бар: анимация пропорциональна размеру файла (~3-5 МБ/с через Worker)
-    const estSec = Math.max(8, sizeMB / 4);
-    let fakeP = 3;
-    const tick = 85 / (estSec * 1000 / 600);
-    const fakeTimer = setInterval(() => {
-      fakeP = Math.min(fakeP + tick, 88);
-      bar.style.width = fakeP.toFixed(0) + '%';
-      if(fakeP > 70) statusEl.textContent = 'Ждём ответа от Telegram...';
-      else if(fakeP > 40) statusEl.textContent = 'Отправляем в Telegram (' + sizeMB + ' МБ)...';
-    }, 600);
-    const resp = await fetch(VIDEO_WORKER_URL + '/upload-video-stream?' + params, {
+    const prepResp = await fetch(VIDEO_WORKER_URL + '/upload-video-stream?' + params, {
       method: 'POST',
-      headers: { 'Content-Type': _videoSelectedFile.type || 'video/mp4' },
-      body: _videoSelectedFile,
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     });
-    clearInterval(fakeTimer);
-    if(!resp.ok && resp.status !== 200){
-      throw new Error('HTTP ' + resp.status);
-    }
-    const result = await resp.json();
-    if(!result.ok) throw new Error(result.error||'Ошибка загрузки');
+    const prepData = await prepResp.json();
+    if(!prepData.ok) throw new Error(prepData.error || 'Ошибка подготовки');
+
+    // Шаг 2: загружаем файл НАПРЯМУЮ в R2 через XHR (есть прогресс-бар)
+    statusEl.textContent = `Загружаем видео (${sizeMB} МБ)...`;
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', prepData.presignedUrl, true);
+      xhr.setRequestHeader('Content-Type', _videoSelectedFile.type || 'video/mp4');
+      xhr.upload.onprogress = (ev) => {
+        if(ev.lengthComputable){
+          const pct = Math.round(ev.loaded / ev.total * 90);
+          bar.style.width = pct + '%';
+          if(pct > 70) statusEl.textContent = 'Почти готово...';
+        }
+      };
+      xhr.onload = () => {
+        if(xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error('Ошибка загрузки: HTTP ' + xhr.status));
+      };
+      xhr.onerror = () => reject(new Error('Ошибка сети при загрузке'));
+      xhr.send(_videoSelectedFile);
+    });
+
+    // Шаг 3: сообщаем Worker что загрузка завершена
+    statusEl.textContent = 'Сохраняем...';
+    bar.style.width = '95%';
+    const finishResp = await fetch(VIDEO_WORKER_URL + '/finish-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollId: String(_videoEnrollId), date: _videoDateStr }),
+    });
+    const finishData = await finishResp.json();
+    if(!finishData.ok) throw new Error(finishData.error || 'Ошибка завершения');
+
     bar.style.width = '100%';
     statusEl.textContent = '✓ Видео загружено!';
 

@@ -4707,12 +4707,22 @@ function onVideoFileSelect(input){
   dz.style.borderColor = 'var(--ac)';
 }
 
-// ── Быстрые фразы для комментария ПРЕПОДАВАТЕЛЯ при загрузке ─────
+// ── Быстрые фразы ПРЕПОДАВАТЕЛЯ при загрузке (для родителей) ─────
+const TEACHER_PHRASES = [
+  '⭐ Урок прошёл отлично! Ученик активно работал и хорошо усвоил материал.',
+  '💪 Ученик старается и делает успехи. Продолжаем в том же духе!',
+  '📈 Виден хороший прогресс! Ученик развивается и улучшает свои навыки.',
+  '🎯 На уроке активно работали над практикой. Молодец!',
+  '🌟 Отличная работа! Ученик показал хорошие результаты на занятии.',
+  '📚 Материал урока хорошо усвоен. Рекомендуем закрепить дома.',
+  '🔄 Продолжаем планомерную работу. Прогресс есть, движемся вперёд!',
+  '✨ Случайный',
+];
 function setTeacherPhrase(idx){
   const el=document.getElementById('video-comment');
   if(!el)return;
-  if(idx===7){el.value=VR_PHRASES[Math.floor(Math.random()*VR_PHRASES.length)];}
-  else{el.value=VR_PHRASES[idx]||'';}
+  if(idx===7){el.value=TEACHER_PHRASES[Math.floor(Math.random()*(TEACHER_PHRASES.length-1))];}
+  else{el.value=TEACHER_PHRASES[idx]||'';}
   el.focus();
 }
 
@@ -5031,22 +5041,33 @@ function reviewVideo(decision, parentComment, teacherFb){
     }
     save();
     const labels={approved:'✅ Одобрено',rejected:'❌ Отклонено'};
-    // Уведомляем преподавателя
+    // Уведомляем преподавателя — push + WhatsApp
     videoRef.child(_videoReviewId).once('value').then(vSnap=>{
       const vd=vSnap.val();if(!vd)return;
       usersRef.once('value').then(us=>{
         const udata=us.val()||{};
         const entry=Object.entries(udata).find(([uid,u])=>u.name===vd.teacherName);
         if(entry){
-          sendNotification(decision==='approved'?'video_approved':'video_rejected',entry[0],null,{
+          const [uid,uInfo]=entry;
+          // Push уведомление
+          sendNotification(decision==='approved'?'video_approved':'video_rejected',uid,null,{
             studentName:vd.studentName,dateStr:vd.dateStr,adminComment
           });
+          // WhatsApp преподавателю
+          const tPhone=uInfo.phone;
+          if(tPhone){
+            const [,m,d]=(vd.dateStr||'').split('-');
+            const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+            const dateRu=d&&m?`${d} ${months[parseInt(m)-1]}`:(vd.dateStr||'');
+            const icon=decision==='approved'?'✅':'❌';
+            const msg=`${icon} Видео урока ${decision==='approved'?'одобрено':'отклонено'}\n\n`+
+              `👤 Ученик: ${vd.studentName||'—'}\n`+
+              `📅 Дата: ${dateRu}\n\n`+
+              `💬 Комментарий администратора:\n${adminComment}`;
+            notifyWhatsApp(tPhone, msg);
+          }
         }
       });
-      // При одобрении — уведомляем только преподавателя, родителям повторно не отправляем
-      if(decision==='rejected'){
-        // уже обработано выше через sendNotification
-      }
     });
     logAction('other',`Видео урока ${labels[decision]||decision}`,adminComment?'Комментарий: '+adminComment:'');
     close1('m-video-review');

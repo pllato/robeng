@@ -1300,15 +1300,7 @@ fbAuth.onAuthStateChanged(user=>{
       const role = udata?.role || 'teacher';
       const displayName = udata?.name || user.email;
       document.getElementById('user-email').textContent=displayName;
-      // Find teacher record linked to this user
-      let teacherId = null;
-      if(role==='teacher'){
-        // Teacher id = uid (set in saveNewUser) or find by name match
-        const linkedT = S && S.teachers ? S.teachers.find(t=>t.uid===user.uid||t.id===user.uid) : null;
-        teacherId = linkedT ? linkedT.id : null;
-      }
-      document.getElementById('user-email').textContent=displayName;
-      // Load app data
+      // Load app data first, then apply role
       dbRef.once('value').then(snap2=>{
         const data=snap2.val();
         if(data){
@@ -1324,8 +1316,13 @@ fbAuth.onAuthStateChanged(user=>{
           if(!Array.isArray(S.teachers))S.teachers=[];
         } else {
           dbRef.set(S);
-          // First launch — create admin record for this user
           usersRef.child(user.uid).set({email:user.email,name:'Администратор',role:'admin',createdAt:new Date().toISOString()});
+        }
+        // Find teacher record AFTER data loaded
+        let teacherId = null;
+        if(role==='teacher'){
+          const linkedT = S.teachers.find(t=>String(t.uid)===String(user.uid)||String(t.id)===String(user.uid));
+          teacherId = linkedT ? linkedT.id : user.uid; // fallback to uid itself
         }
         applyScheduledAvail();
         deduplicateEnrollments();
@@ -1467,21 +1464,46 @@ function renderPanel(p){
   else if(p==='teachers'){fillSubjSel();renderTeachers();}
   else if(p==='availability'){
     fillTSel();
-    // Teacher: auto-select own record and hide selector
+    const sel=document.getElementById('avail-sel');
+    const selLbl=sel?.previousElementSibling;
     if(currentRole==='teacher'&&currentTeacherId){
-      const sel=document.getElementById('avail-sel');
-      if(sel)sel.value=currentTeacherId;
-      // Show/hide avail-tab-requests for teacher
+      if(sel){sel.value=currentTeacherId;sel.style.display='none';}
+      // hide label "Преподаватель:" before selector
+      const filters=document.querySelector('#panel-availability .filters');
+      if(filters) filters.style.display='none';
       const reqBtn=document.getElementById('avt-requests');
       if(reqBtn)reqBtn.style.display='none';
     } else {
+      if(sel)sel.style.display='';
+      const filters=document.querySelector('#panel-availability .filters');
+      if(filters)filters.style.display='';
       const reqBtn=document.getElementById('avt-requests');
       if(reqBtn)reqBtn.style.display='';
       updateAvailReqBadge();
     }
     renderAvail();
   }
-  else if(p==='schedule'){fillTSel();updateWL();renderSchedule();}
+  else if(p==='schedule'){
+    fillTSel();updateWL();
+    if(currentRole==='teacher'&&currentTeacherId){
+      // Force single-teacher view, hide teacher selector
+      schedView='one';
+      document.getElementById('vt-one').classList.add('active');
+      document.getElementById('vt-all').classList.remove('active');
+      document.getElementById('sched-t-lbl').style.display='none';
+      document.getElementById('sched-sel').style.display='none';
+      const vt=document.getElementById('vt-one');
+      if(vt)vt.closest('.view-toggle').style.display='none';
+      const sel=document.getElementById('sched-sel');
+      if(sel)sel.value=currentTeacherId;
+    } else {
+      document.getElementById('sched-t-lbl').style.display='';
+      document.getElementById('sched-sel').style.display='';
+      const vt=document.getElementById('vt-one');
+      if(vt)vt.closest('.view-toggle').style.display='';
+    }
+    renderSchedule();
+  }
   else if(p==='freeSlots'){fillFsFilters();renderFreeSlots();}
   else if(p==='students'){fillSubjSel();renderStudents();}
   else if(p==='reports'){renderReports();}
@@ -2993,7 +3015,7 @@ function renderStudents(){
   let students_filtered=S.students.filter(st=>{
     // Teacher sees only their own students
     if(currentRole==='teacher'&&currentTeacherId){
-      const hasMyEnroll=S.enrollments.some(e=>e.studentId===st.id&&e.teacherId===currentTeacherId);
+      const hasMyEnroll=S.enrollments.some(e=>e.studentId===st.id&&String(e.teacherId)===String(currentTeacherId));
       if(!hasMyEnroll)return false;
     }
     if(subjF&&st.subjId!==parseInt(subjF))return false;
@@ -3002,7 +3024,7 @@ function renderStudents(){
       if(!hay.includes(search))return false;
     }
     if(statusF){
-      const allEnrs=S.enrollments.filter(e=>e.studentId===st.id);
+      const allEnrs=S.enrollments.filter(e=>e.studentId===st.id&&(currentRole!=='teacher'||String(e.teacherId)===String(currentTeacherId)));
       const hasActive=allEnrs.some(e=>enrollActive(e,today)&&!e.inactive);
       const hasInactive=allEnrs.some(e=>e.inactive);
       const hasEnded=allEnrs.some(e=>!enrollActive(e,today)&&!e.inactive);
@@ -3018,8 +3040,12 @@ function renderStudents(){
 
   el.innerHTML=students_filtered.map((st,i)=>{
     const sj=subj(st.subjId);
-    // ALL enrollments for this student, sorted: active → inactive → ended, newest first
-    const allEnrs=S.enrollments.filter(e=>e.studentId===st.id).sort((a,b)=>{
+    // ALL enrollments for this student (filtered for teacher role), sorted: active → inactive → ended, newest first
+    const allEnrs=S.enrollments.filter(e=>{
+      if(e.studentId!==st.id)return false;
+      if(currentRole==='teacher'&&currentTeacherId&&String(e.teacherId)!==String(currentTeacherId))return false;
+      return true;
+    }).sort((a,b)=>{
       const rank=e=>(enrollActive(e,today)&&!e.inactive)?0:(e.inactive?1:2);
       const r=rank(a)-rank(b);
       return r!==0?r:b.dateEnd.localeCompare(a.dateEnd);

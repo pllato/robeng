@@ -4864,8 +4864,9 @@ async function submitVideo(){
     };
     await videoRef.child(key).set(record);
     logAction('other', 'Видео урока загружено: '+(st?.name||'—'), (t?.name||'—')+' · '+fmtDate(_videoDateStr));
-    // Отправляем родителям сразу при загрузке
-    sendVideoToParent(record);
+    // Отправляем родителям только при ПЕРВОЙ загрузке (не при переотправке после отклонения)
+    const wasAlreadySent = !!(S.videoReports && S.videoReports[key] && S.videoReports[key].submittedAt);
+    if(!wasAlreadySent) sendVideoToParent(record);
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
@@ -4924,8 +4925,9 @@ function submitVideoLink(){
   videoRef.child(key).set(record)
     .then(()=>{
       logAction('other',`Видео урока отправлено: ${st?.name||'—'}`,`${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
-      // Отправляем родителям сразу
-      sendVideoToParent(record);
+      // Отправляем родителям только при ПЕРВОЙ загрузке
+      const wasAlreadySent2 = !!(S.videoReports && S.videoReports[key] && S.videoReports[key].submittedAt);
+      if(!wasAlreadySent2) sendVideoToParent(record);
       save();
       if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
       close1('m-video');

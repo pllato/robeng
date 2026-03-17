@@ -4401,33 +4401,28 @@ function reviewVideo(decision, parentComment, teacherFb){
             })
           }).catch(()=>{});
 
+          const TG_DEFAULT_LINK='https://t.me/ELC_RobengBot';
+          const TG_LINE='\n\n━━━━━━━━━━━━━━\n📱 Если у вас не открывается видео, то вы можете подписаться на наш Telegram бот @ELC_RobengBot — там можно смотреть видео уроков и получать новости школы.\n';
+          const buildMsg=(tgLink)=>
+            'Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
+            '👤 Ученик: '+(vd2.studentName||'—')+'\n'+
+            '👩\u200d🏫 Преподаватель: '+(vd2.teacherName||'—')+'\n'+
+            '📅 Дата: '+dateRu+'\n\n'+
+            (parentComment?parentComment+'\n\n':'')+
+            '▶️ Смотреть видео: '+playerUrl+
+            TG_LINE+(tgLink||TG_DEFAULT_LINK);
           fetch('https://flat-pond-6e68.uurraa.workers.dev/get-bot-link',{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({phone:parentPhone.replace(/\D/g,''),studentName:vd2.studentName||'—'})
           }).then(r=>r.json()).then(d=>{
-            const tgLine=d.ok&&d.botLink
-              ?'\n\n━━━━━━━━━━━━━━\n📱 Также можно получать видео уроков и новости школы напрямую в нашем Telegram боте:\n'+d.botLink
-              :'\n\n━━━━━━━━━━━━━━\n📱 Подпишитесь на наш Telegram бот @ELC_RobengBot — там можно смотреть видео уроков и получать новости школы.';
-            const msg=
-              'Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
-              '👤 Ученик: '+(vd2.studentName||'—')+'\n'+
-              '👩\u200d🏫 Преподаватель: '+(vd2.teacherName||'—')+'\n'+
-              '📅 Дата: '+dateRu+'\n\n'+
-              (parentComment?parentComment+'\n\n':'')+
-              '▶️ Смотреть видео: '+playerUrl+tgLine;
+            // Если не подписан — даём персональную ссылку, иначе обычную
+            const tgLink=d.ok&&d.botLink?d.botLink:TG_DEFAULT_LINK;
+            const msg=buildMsg(tgLink);
             sendWA(parentPhone,msg);
             if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,msg);
           }).catch(()=>{
-            const msg=
-              'Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
-              '👤 Ученик: '+(vd2.studentName||'—')+'\n'+
-              '👩\u200d🏫 Преподаватель: '+(vd2.teacherName||'—')+'\n'+
-              '📅 Дата: '+dateRu+'\n\n'+
-              (parentComment?parentComment+'\n\n':'')+
-              '▶️ Смотреть видео: '+playerUrl+
-              '\n\n━━━━━━━━━━━━━━\n📱 Подпишитесь на наш Telegram бот @ELC_RobengBot — там можно смотреть видео уроков и получать новости школы.';
-            sendWA(parentPhone,msg);
-            if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,msg);
+            sendWA(parentPhone,buildMsg(TG_DEFAULT_LINK));
+            if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,buildMsg(TG_DEFAULT_LINK));
           });
         }
       });

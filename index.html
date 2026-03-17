@@ -1588,13 +1588,82 @@ function calcVideoStats(enrollIds, dates){
 }
 
 let dashPeriod=7;
+let dashCustomDates=null; // null = use dashPeriod, array = custom dates
+let dashWeekOffset=0; // 0 = current Thu→Thu, -1 = prev week, etc.
+let dashMode='days'; // 'days' | 'thu'
+
 function setDashPeriod(days){
   dashPeriod=days;
+  dashCustomDates=null;
+  dashMode='days';
+  dashWeekOffset=0;
   [7,30,90].forEach(d=>{
     const b=document.getElementById('dash-p-'+d);
     if(b)b.classList.toggle('active',d===days);
   });
+  const bthu=document.getElementById('dash-p-thu');
+  if(bthu)bthu.classList.remove('active');
   renderDashboard();
+}
+
+function setDashThu(){
+  dashMode='thu';
+  dashWeekOffset=0;
+  dashCustomDates=getThuToThuDashDates(0);
+  [7,30,90].forEach(d=>{const b=document.getElementById('dash-p-'+d);if(b)b.classList.remove('active');});
+  const bthu=document.getElementById('dash-p-thu');if(bthu)bthu.classList.add('active');
+  renderDashboard();
+}
+
+function changeDashWeek(dir){
+  if(dashMode!=='thu')return;
+  dashWeekOffset+=dir;
+  dashCustomDates=getThuToThuDashDates(dashWeekOffset);
+  renderDashboard();
+}
+
+// Возвращает массив дат для периода Чт14→Чт14 с offset неделями назад
+function getThuToThuDashDates(offset){
+  const now=new Date();
+  const todayDow=now.getDay(); // 0=Вс, 4=Чт
+  // Найти "текущий" четверг 14:00 как конец периода
+  let daysToThu=(4-todayDow+7)%7; // дней до следующего Чт
+  // Если сегодня Чт и время >= 14:00 — конец = сегодня, иначе прошлый Чт
+  let endThu=new Date(now);
+  if(todayDow===4&&now.getHours()>=14){
+    // сегодня Чт после 14 — конец сегодня
+    endThu.setHours(14,0,0,0);
+  } else {
+    // ищем прошлый Чт
+    const daysSinceThu=(todayDow-4+7)%7||7;
+    endThu.setDate(now.getDate()-daysSinceThu);
+    endThu.setHours(14,0,0,0);
+  }
+  // Сдвиг: offset=-1 значит неделю назад
+  endThu.setDate(endThu.getDate()+offset*7);
+  const startThu=new Date(endThu);
+  startThu.setDate(endThu.getDate()-7);
+  // Массив дат
+  const dates=[];
+  const cur=new Date(startThu);
+  cur.setHours(0,0,0,0);
+  const endDay=new Date(endThu);
+  endDay.setHours(0,0,0,0);
+  while(cur<=endDay){
+    dates.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+
+function getDashPeriodLabel(){
+  if(dashMode==='thu'&&dashCustomDates&&dashCustomDates.length){
+    const from=fmtDate(dashCustomDates[0]);
+    const to=fmtDate(dashCustomDates[dashCustomDates.length-1]);
+    const isCurrentWeek=dashWeekOffset===0;
+    return`${from} — ${to}${isCurrentWeek?' <span style="font-size:10px;color:var(--gn)">● текущая</span>':''}`;
+  }
+  return`${dashPeriod} дней`;
 }
 
 function renderDashboard(){
@@ -1605,7 +1674,7 @@ function renderDashboard(){
   }
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;
-  const dates=dateRange(dashPeriod);
+  const dates=dashCustomDates||dateRange(dashPeriod);
   const fromDate=dates[0];
 
   // ── Period-dependent stats
@@ -1653,19 +1722,29 @@ function renderDashboard(){
   if(dupEl)dupEl.innerHTML=dupWarn;
 
   // ── Period toggle
+  const periodLbl=getDashPeriodLabel();
   document.getElementById('stats').innerHTML=`
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:12px;color:var(--t3)">Показатели за период</div>
-      <div class="view-toggle">
-        <button class="vt-btn${dashPeriod===7?' active':''}" id="dash-p-7" onclick="setDashPeriod(7)">7 дней</button>
-        <button class="vt-btn${dashPeriod===30?' active':''}" id="dash-p-30" onclick="setDashPeriod(30)">30 дней</button>
-        <button class="vt-btn${dashPeriod===90?' active':''}" id="dash-p-90" onclick="setDashPeriod(90)">90 дней</button>
+      <div style="font-size:12px;color:var(--t3)">Показатели: <span style="color:var(--t2)">${periodLbl}</span></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="view-toggle">
+          <button class="vt-btn${dashMode==='days'&&dashPeriod===7?' active':''}" id="dash-p-7" onclick="setDashPeriod(7)">7 дней</button>
+          <button class="vt-btn${dashMode==='days'&&dashPeriod===30?' active':''}" id="dash-p-30" onclick="setDashPeriod(30)">30 дней</button>
+          <button class="vt-btn${dashMode==='days'&&dashPeriod===90?' active':''}" id="dash-p-90" onclick="setDashPeriod(90)">90 дней</button>
+          <button class="vt-btn${dashMode==='thu'?' active':''}" id="dash-p-thu" onclick="setDashThu()" title="Период Чт 14:00 → Чт 14:00">Чт→Чт</button>
+        </div>
+        ${dashMode==='thu'?`
+        <div style="display:flex;align-items:center;gap:4px">
+          <button class="wbtn" onclick="changeDashWeek(-1)" title="Предыдущая неделя">‹</button>
+          <span style="font-size:12px;color:var(--t2);min-width:80px;text-align:center">${dashWeekOffset===0?'Текущая':dashWeekOffset===-1?'Прошлая':`${Math.abs(dashWeekOffset)} нед. назад`}</span>
+          <button class="wbtn" onclick="changeDashWeek(1)" title="Следующая неделя" ${dashWeekOffset>=0?'disabled style="opacity:.4"':''}>›</button>
+        </div>`:''}
       </div>
     </div>
     <div class="stat"><div class="stat-lbl">Активных учеников</div><div class="stat-val cg">${activeStudentIds.length}</div><div class="stat-sub">Сейчас занимаются</div></div>
-    <div class="stat"><div class="stat-lbl">Новые старты</div><div class="stat-val" style="color:var(--ac2)">${newStarts}</div><div class="stat-sub">За ${dashPeriod} дней</div></div>
+    <div class="stat"><div class="stat-lbl">Новые старты</div><div class="stat-val" style="color:var(--ac2)">${newStarts}</div><div class="stat-sub">За период</div></div>
     <div class="stat"><div class="stat-lbl">Продлений</div><div class="stat-val ca">${extends_}</div><div class="stat-sub">Перестарты</div></div>
-    <div class="stat"><div class="stat-lbl">Деактивировано / не продлили</div><div class="stat-val" style="color:var(--t3)">${deactivated+expired}</div><div class="stat-sub">За ${dashPeriod} дней</div></div>
+    <div class="stat"><div class="stat-lbl">Деактивировано / не продлили</div><div class="stat-val" style="color:var(--t3)">${deactivated+expired}</div><div class="stat-sub">За период</div></div>
     <div class="stat"><div class="stat-lbl">Пропуски (не отработаны)</div><div class="stat-val" style="color:var(--rd)">${totalMisses}</div><div class="stat-sub">Всего открытых</div></div>
     <div class="stat"><div class="stat-lbl">Занятость слотов</div><div class="stat-val cv">${occPct}%</div><div class="stat-sub">${occ} из ${tot} мест</div></div>
     <div class="stat"><div class="stat-lbl">Преподавателей</div><div class="stat-val ct">${S.teachers.filter(t=>t.status==='active').length}</div><div class="stat-sub">Активных</div></div>
@@ -1678,7 +1757,33 @@ function renderDashboard(){
         <div><div style="font-size:10px;color:var(--t3)">Одобрено</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--gn)">${vs.approved}</div></div>
         <div><div style="font-size:10px;color:var(--t3)">Отклонено</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--rd)">${vs.rejected}</div></div>
       </div>
-    </div>`})()}`;
+    </div>`})()}
+    ${(()=>{
+      const adminThuOff=window._adminThuOffset||0;
+      const thuD=getThuToThuDashDates(adminThuOff);
+      const thuFrom2=thuD.length?fmtDate(thuD[0]):'';
+      const thuTo2=thuD.length?fmtDate(thuD[thuD.length-1]):'';
+      let thuHours=0;
+      S.teachers.filter(t=>t.status==='active').forEach(t=>{thuHours+=calcTeacherHours(t.id,thuD);});
+      const vsThu2=calcVideoStats(activeEnrolls.map(e=>e.id),thuD);
+      const newS2=S.enrollments.filter(e=>thuD.includes(e.dateStart)&&!e.inactive).length;
+      return`<div class="stat" style="border-color:rgba(245,200,66,.4);grid-column:span 2">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <div class="stat-lbl" style="margin-bottom:0">📅 Чт→Чт: <span style="color:var(--t2);font-weight:400;font-size:10px">${thuFrom2} — ${thuTo2}</span></div>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="wbtn" onclick="window._adminThuOffset=(window._adminThuOffset||0)-1;renderDashboard()" style="padding:2px 7px;font-size:13px">‹</button>
+            <span style="font-size:10px;color:var(--t3);min-width:50px;text-align:center">${adminThuOff===0?'Текущая':adminThuOff===-1?'Прошлая':`${Math.abs(adminThuOff)} н. назад`}</span>
+            <button class="wbtn" onclick="window._adminThuOffset=(window._adminThuOffset||0)+1;renderDashboard()" style="padding:2px 7px;font-size:13px" ${adminThuOff>=0?'disabled style="opacity:.4"':''}>›</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div><div style="font-size:10px;color:var(--t3)">⏱ Часов всего</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--am)">${thuHours.toFixed(1)}</div><div style="font-size:10px;color:var(--t3)">${thuHours*2|0} уроков</div></div>
+          <div><div style="font-size:10px;color:var(--t3)">🚀 Старты</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--ac2)">${newS2}</div></div>
+          <div><div style="font-size:10px;color:var(--t3)">🎥 Видео нужно</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--t2)">${vsThu2.needed}</div><div style="font-size:10px;color:var(--tl)">отправлено: ${vsThu2.sent}</div></div>
+          <div><div style="font-size:10px;color:var(--t3)">✅ / ❌</div><div style="font-size:14px;font-weight:700"><span style="color:var(--gn)">${vsThu2.approved}</span> / <span style="color:var(--rd)">${vsThu2.rejected}</span></div></div>
+        </div>
+      </div>`;
+    })()}`;
 
   // ── Report stats (single period)
   const rptEl=document.getElementById('dash-rpt-stats');
@@ -1822,6 +1927,14 @@ function renderTeacherDashboard(){
   // Video stats
   const vs=calcVideoStats(myEnrolls.map(e=>e.id),dates7);
 
+  // Чт→Чт hours
+  let teacherThuOffset=window._teacherThuOffset||0;
+  const thuDates=getThuToThuDashDates(teacherThuOffset);
+  const hoursThu=calcTeacherHours(tid,thuDates);
+  const vsThu=calcVideoStats(myEnrolls.map(e=>e.id),thuDates);
+  const thuFrom=thuDates.length?fmtDate(thuDates[0]):'';
+  const thuTo=thuDates.length?fmtDate(thuDates[thuDates.length-1]):'';
+
   document.getElementById('stats').innerHTML=`
     <div style="grid-column:1/-1">
       <div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px">Мой дашборд</div>
@@ -1848,6 +1961,31 @@ function renderTeacherDashboard(){
       <div class="stat-lbl">⏱ Часов за 30 дней</div>
       <div class="stat-val ct">${hours30.toFixed(1)}</div>
       <div class="stat-sub">ч (${hours30*2|0} уроков)</div>
+    </div>
+    <div class="stat" style="border-color:rgba(245,200,66,.4);grid-column:span 2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div class="stat-lbl" style="margin-bottom:0">⏱ Чт→Чт: <span style="color:var(--t2);font-weight:400;font-size:10px">${thuFrom} — ${thuTo}</span></div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="wbtn" onclick="window._teacherThuOffset=(window._teacherThuOffset||0)-1;renderTeacherDashboard()" style="padding:2px 7px;font-size:13px">‹</button>
+          <span style="font-size:10px;color:var(--t3);min-width:50px;text-align:center">${teacherThuOffset===0?'Текущая':teacherThuOffset===-1?'Прошлая':`${Math.abs(teacherThuOffset)} н. назад`}</span>
+          <button class="wbtn" onclick="window._teacherThuOffset=(window._teacherThuOffset||0)+1;renderTeacherDashboard()" style="padding:2px 7px;font-size:13px" ${teacherThuOffset>=0?'disabled style="opacity:.4"':''}>›</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:10px;color:var(--t3)">Часов</div>
+          <div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--am)">${hoursThu.toFixed(1)}</div>
+          <div style="font-size:10px;color:var(--t3)">${hoursThu*2|0} уроков</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--t3)">🎥 Видео</div>
+          <div style="font-size:11px;line-height:1.8;margin-top:2px">
+            <span style="color:var(--t2)">Нужно: <b>${vsThu.needed}</b></span><br>
+            <span style="color:var(--tl)">Отправлено: ${vsThu.sent}</span><br>
+            <span style="color:var(--gn)">✅ ${vsThu.approved}</span> <span style="color:var(--rd)">❌ ${vsThu.rejected}</span>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="stat" style="border-color:var(--acb)">
       <div class="stat-lbl">🎥 Видео (7 дней)</div>

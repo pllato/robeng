@@ -2415,9 +2415,19 @@ function buildSchedTable(tid,wd,today,isCurWeek){
           const mk=dt&&S.makeups&&S.makeups[attKey(e.id,dt)];
           const repSent=dt?getReportSent(e.id,dt):null;
           const vidStatus=dt?getVideoStatus(e.id,dt):null;
-          const dowOfDt=dt?((new Date(dt).getDay()+6)%7):-1; // 1=Вт, 2=Ср
-          const isTuWed=dowOfDt===1||dowOfDt===2; // Вторник или Среда
           const dowOfDt=dt?((new Date(dt).getDay()+6)%7):-1;
+          // slot color based on attendance
+          let slotClass=SBC[ci];
+          if(att==='done')slotClass='slot-booked sb1';
+          else if(att==='miss')slotClass='slot-booked sb4';
+          else if(att==='makeup')slotClass='slot-booked sb2';
+          else if(att==='vacation')slotClass='slot-booked sb-vac';
+          else slotClass=`slot-booked ${SBC[ci]}`;
+          // Compatibility badge
+          const stData=st?S.students.find(s=>s.id===st.id):null;
+          const agGrp=stData&&stData.age?getAgeGroup(stData.age):null;
+          const lvl=stData&&stData.level?stData.level:null;
+          const compatTag=(agGrp||lvl)?`<span style="font-size:8px;color:var(--t3);background:var(--bg4);border-radius:4px;padding:1px 4px;white-space:nowrap">${agGrp?AGE_GROUP_LABELS[agGrp]||'':''}${agGrp&&lvl?' ':''}${lvl?LEVEL_LABELS[lvl]||'':''}</span>`:'';
           html+=`<div class="${slotClass}" style="padding:4px 6px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:3px">
               <div class="sb-name" onclick="showDetail(${e.id})" style="cursor:pointer;flex:1">${att==='vacation'?'🏖 ':''} ${st?st.name.split(' ')[0]:'?'}</div>

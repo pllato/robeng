@@ -4316,24 +4316,7 @@ function reviewVideo(decision){
         }
       });
     });
-    // WhatsApp родителю и ученику при одобрении видео
-    if(decision==='approved'){
-      videoRef.child(_videoReviewId).once('value').then(vSnap2=>{
-        const vd2=vSnap2.val();if(!vd2)return;
-        const enr=S.enrollments.find(e=>String(e.id)===String(vd2.enrollId));
-        const st2=enr?student(enr.studentId):null;
-        if(st2&&vd2.url){
-          const parentPhone=st2.parentPhone||'';
-          const studentPhone=st2.phone||'';
-          const [y,m,d]=(vd2.dateStr||'').split('-');
-          const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-          const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
-          const msg='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n👤 Ученик: '+(vd2.studentName||'—')+'\n📅 Дата: '+dateRu+'\n\nПреподаватель записал небольшой фрагмент практики.\n\n▶️ Смотреть видео: '+vd2.url;
-          if(parentPhone) notifyWhatsApp(parentPhone,msg);
-          if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,msg);
-        }
-      });
-    }
+    // WhatsApp при загрузке видео уже отправляется Worker-ом автоматически
     logAction('other',`Видео урока ${labels[decision]||decision}`,`${adminComment?'Комментарий: '+adminComment:''}`);
     close1('m-video-review');
     renderVideoReviews();

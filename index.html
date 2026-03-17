@@ -741,8 +741,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       </div>
     </div>
     <div class="fr">
-      <label>Комментарий (необязательно)</label>
-      <textarea id="video-comment" placeholder="Например: тема урока, особенности..."></textarea>
+      <label>💬 Комментарий преподавателя <span style="font-size:10px;color:var(--t3);font-weight:400">(тема урока, что прошли, особенности)</span></label>
+      <textarea id="video-comment" placeholder="Например: прошли Present Simple, ученик активно отвечал, сложности с произношением..." style="min-height:70px"></textarea>
     </div>
     <div class="warn-box" id="video-err"></div>
     <div class="ma">
@@ -1453,7 +1453,7 @@ function nav(el){
   document.getElementById('panel-'+p).classList.add('active');
   document.getElementById('ttl').textContent=TITLES[p];
   document.getElementById('act-btn').textContent=ACTS[p]||'+ Новый';
-  document.getElementById('act-btn').style.display=ACTS[p]===''?'none':'';
+  document.getElementById('act-btn').style.display=(ACTS[p]===''||currentRole==='teacher')?'none':'';
   document.getElementById('exp-btn').style.display=p==='schedule'?'':'none';
   renderPanel(p);
 }
@@ -1536,16 +1536,11 @@ function occupiedSlots(){
 
 // ── VIDEO STATS HELPER ────────────────────────────────────────────
 function calcVideoStats(enrollIds, dates){
-  // Which Tue/Wed dates fall in dates range
-  const tuWedDates=dates.filter(dt=>{
-    const dow=(new Date(dt).getDay()+6)%7;
-    return dow===1||dow===2; // Вт=1, Ср=2
-  });
+  // ALL lesson dates (каждый урок нужно видео)
   const vr=S.videoReports||{};
   let needed=0,sent=0,approved=0,rejected=0;
   enrollIds.forEach(eid=>{
-    tuWedDates.forEach(dt=>{
-      // Check if there's a lesson on this date for this enrollment
+    dates.forEach(dt=>{
       const e=S.enrollments.find(x=>String(x.id)===String(eid));
       if(!e)return;
       if(!enrollActive(e,dt))return;
@@ -1737,86 +1732,148 @@ function renderDashboard(){
 
 
 // ── TEACHER DASHBOARD ────────────────────────────────────────────
+function calcTeacherHours(tid, dates){
+  // 30 мин за каждый урок где ученик был (att==='done')
+  const slots=new Set();
+  const myEnrolls=S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&!e.inactive);
+  myEnrolls.forEach(e=>{
+    dates.forEach(dt=>{
+      if(!enrollActive(e,dt))return;
+      const dow=(new Date(dt).getDay()+6)%7;
+      const sl=e.slots.find(s=>s.day===dow);if(!sl)return;
+      const att=(S.attendance||{})[`${e.id}_${dt}`];
+      if(att==='done') slots.add(`${dt}_${sl.ti}`);
+    });
+  });
+  return slots.size * 0.5; // каждый слот = 30 мин
+}
+
 function renderTeacherDashboard(){
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;
   const tid=currentTeacherId;
   const t=teacher(tid);
-  const dates=dateRange(7);
+  const dates7=dateRange(7);
+  const dates30=dateRange(30);
 
   // My enrollments
-  const myEnrolls=S.enrollments.filter(e=>e.teacherId===tid&&enrollActive(e,today)&&!e.inactive);
+  const myEnrolls=S.enrollments.filter(e=>String(e.teacherId)===String(tid)&&enrollActive(e,today)&&!e.inactive);
   const myStudentIds=[...new Set(myEnrolls.map(e=>e.studentId))];
 
-  // My lessons today
-  const lessons=[];
+  // Hours worked
+  const hoursToday=calcTeacherHours(tid,[today]);
+  const hours7=calcTeacherHours(tid,dates7);
+  const hours30=calcTeacherHours(tid,dates30);
+
+  // My lessons today with full info
+  const lessonsToday=[];
   myEnrolls.forEach(e=>{
     const sl=e.slots.find(s=>s.day===todayDay);if(!sl)return;
-    const st=student(e.studentId),sj=subj(t?.subjId);
+    const st=student(e.studentId);
     const ak=`${e.id}_${today}`;
-    const att=S.attendance&&S.attendance[ak];
-    lessons.push({time:TIMES[sl.ti],stName:st?.name||'—',topic:e.topic,sj,att});
+    const att=(S.attendance||{})[ak];
+    const vid=getVideoStatus(e.id,today);
+    lessonsToday.push({e,st,sl,att,vid,time:TIMES[sl.ti]});
   });
-  lessons.sort((a,b)=>a.time.localeCompare(b.time));
+  lessonsToday.sort((a,b)=>a.time.localeCompare(b.time));
 
-  // Unresolved misses for my students
+  // Pending tasks
+  const needAtt=lessonsToday.filter(l=>!l.att).length;
+  const needVid=lessonsToday.filter(l=>!l.vid||l.vid.status==='rejected').length;
+
+  // Misses
   let myMisses=0;
   myEnrolls.forEach(e=>{
-    dates.forEach(dt=>{
+    dates7.forEach(dt=>{
       const k=`${e.id}_${dt}`;
       if((S.attendance||{})[k]==='miss'&&!(S.makeups||{})[k])myMisses++;
     });
   });
 
-  // Reports sent this week
-  let rptSent=0,rptTotal=0;
-  myEnrolls.forEach(e=>{
-    const weeks=new Set(lessonDatesInRange(e,dateRange(30)).map(dt=>weekKey(dt)));
-    rptTotal+=weeks.size;
-    weeks.forEach(wk=>{if((S.reportsSent||{})[`${e.id}_${wk}`])rptSent++;});
-  });
+  // Video stats
+  const vs=calcVideoStats(myEnrolls.map(e=>e.id),dates7);
 
   document.getElementById('stats').innerHTML=`
-    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="font-size:14px;font-weight:600;color:var(--t1)">Мой дашборд</div>
-      <div class="view-toggle">
-        <button class="vt-btn${dashPeriod===7?' active':''}" id="dash-p-7" onclick="setDashPeriod(7)">7 дней</button>
-        <button class="vt-btn${dashPeriod===30?' active':''}" id="dash-p-30" onclick="setDashPeriod(30)">30 дней</button>
-        <button class="vt-btn${dashPeriod===90?' active':''}" id="dash-p-90" onclick="setDashPeriod(90)">90 дней</button>
-      </div>
+    <div style="grid-column:1/-1">
+      <div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px">Мой дашборд</div>
+      ${(needAtt>0||needVid>0)?`
+      <div style="background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);border-radius:var(--rl);padding:12px 16px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--am);margin-bottom:6px">⚡ Сегодня нужно сделать:</div>
+        ${needAtt>0?`<div style="font-size:12px;color:var(--t2);margin-bottom:4px">• Отметить посещаемость: <b style="color:var(--am)">${needAtt} урок(а)</b> не отмечено</div>`:''}
+        ${needVid>0?`<div style="font-size:12px;color:var(--t2)">• Загрузить видео: <b style="color:var(--am)">${needVid} урок(а)</b></div>`:''}
+      </div>`:'<div style="background:var(--gnbg);border:1px solid rgba(63,216,142,.25);border-radius:var(--rl);padding:10px 16px;margin-bottom:14px;font-size:12px;color:var(--gn)">✅ На сегодня всё выполнено!</div>'}
     </div>
     <div class="stat"><div class="stat-lbl">Моих учеников</div><div class="stat-val cg">${myStudentIds.length}</div><div class="stat-sub">Активных</div></div>
-    <div class="stat"><div class="stat-lbl">Пропуски</div><div class="stat-val" style="color:var(--rd)">${myMisses}</div><div class="stat-sub">Не отработаны</div></div>
-    <div class="stat"><div class="stat-lbl">Отчёты</div><div class="stat-val" style="color:var(--tl)">${rptSent} / ${rptTotal}</div><div class="stat-sub">За 30 дней</div></div>
-    ${(()=>{const vs=calcVideoStats(myEnrolls.map(e=>e.id),dateRange(30));return`
+    <div class="stat"><div class="stat-lbl">Пропуски</div><div class="stat-val" style="color:var(--rd)">${myMisses}</div><div class="stat-sub">Не отработаны (7 дн.)</div></div>
+    <div class="stat" style="border-color:rgba(63,200,216,.3)">
+      <div class="stat-lbl">⏱ Часов сегодня</div>
+      <div class="stat-val ct">${hoursToday.toFixed(1)}</div>
+      <div class="stat-sub">ч (${hoursToday*2|0} уроков)</div>
+    </div>
+    <div class="stat" style="border-color:rgba(63,200,216,.3)">
+      <div class="stat-lbl">⏱ Часов за 7 дней</div>
+      <div class="stat-val ct">${hours7.toFixed(1)}</div>
+      <div class="stat-sub">ч (${hours7*2|0} уроков)</div>
+    </div>
+    <div class="stat" style="border-color:rgba(63,200,216,.3)">
+      <div class="stat-lbl">⏱ Часов за 30 дней</div>
+      <div class="stat-val ct">${hours30.toFixed(1)}</div>
+      <div class="stat-sub">ч (${hours30*2|0} уроков)</div>
+    </div>
     <div class="stat" style="border-color:var(--acb)">
-      <div class="stat-lbl">🎥 Мои видео</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
-        <div><div style="font-size:10px;color:var(--t3)">Нужно</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--t2)">${vs.needed}</div></div>
-        <div><div style="font-size:10px;color:var(--t3)">Отправлено</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--tl)">${vs.sent}</div></div>
-        <div><div style="font-size:10px;color:var(--t3)">✅ Одобрено</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--gn)">${vs.approved}</div></div>
-        <div><div style="font-size:10px;color:var(--t3)">❌ Отклонено</div><div style="font-family:var(--fd);font-size:18px;font-weight:700;color:var(--rd)">${vs.rejected}</div></div>
+      <div class="stat-lbl">🎥 Видео (7 дней)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+        <div><div style="font-size:10px;color:var(--t3)">Нужно</div><div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--t2)">${vs.needed}</div></div>
+        <div><div style="font-size:10px;color:var(--t3)">Отправлено</div><div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--tl)">${vs.sent}</div></div>
+        <div><div style="font-size:10px;color:var(--t3)">✅</div><div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--gn)">${vs.approved}</div></div>
+        <div><div style="font-size:10px;color:var(--t3)">❌</div><div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--rd)">${vs.rejected}</div></div>
       </div>
-    </div>`})()}`;
+    </div>`;
 
   const dupEl=document.getElementById('dup-warn-dash');
   if(dupEl)dupEl.innerHTML='';
   const rptEl=document.getElementById('dash-rpt-stats');
   if(rptEl)rptEl.innerHTML='';
 
+  // Today lessons list with action buttons
   const el=document.getElementById('today-list');
-  document.querySelector('.sec-title') && (document.querySelector('.sec-title').textContent='Мои уроки сегодня');
-  if(!lessons.length){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Уроков сегодня нет</div></div>';return;}
-  el.innerHTML=lessons.map(l=>{
-    const attColor=l.att==='done'?'var(--gn)':l.att==='miss'?'var(--rd)':l.att==='makeup'?'var(--am)':'var(--t3)';
-    const attLabel=l.att==='done'?'✓ Проведён':l.att==='miss'?'✗ Пропуск':l.att==='makeup'?'↩ Отработка':'';
-    return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:13px 17px;display:flex;align-items:center;gap:13px;margin-bottom:8px;flex-wrap:wrap">
-      <div style="width:8px;height:8px;border-radius:50%;background:${attColor};box-shadow:0 0 6px ${attColor};flex-shrink:0"></div>
-      <div style="flex:1;min-width:160px">
-        <div style="font-size:14px;font-weight:500">${l.time} — ${l.stName}</div>
-        <div style="font-size:12px;color:var(--t2)">${l.topic}</div>
+  if(!lessonsToday.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Уроков сегодня нет</div></div>';
+    return;
+  }
+
+  const secTitle=document.querySelector('#panel-dashboard .sec-title');
+  if(secTitle) secTitle.textContent='📋 Мои уроки сегодня';
+
+  el.innerHTML=lessonsToday.map(({e,st,sl,att,vid})=>{
+    const attColor=att==='done'?'var(--gn)':att==='miss'?'var(--rd)':att==='makeup'?'var(--am)':'var(--b2)';
+    const attLabel=att==='done'?'✓ Был':att==='miss'?'✗ Не был':att==='makeup'?'↩ Отработка':'';
+    const vidColor=vid?.status==='approved'?'var(--gn)':vid?.status==='rejected'?'var(--rd)':vid?.status==='pending'?'var(--am)':'var(--b2)';
+    const vidLabel=vid?.status==='approved'?'✅ Одобрено':vid?.status==='rejected'?'❌ Отклонено':vid?.status==='pending'?'⏳ На проверке':'';
+    const mk=S.makeups&&S.makeups[`${e.id}_${today}`];
+    return`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 17px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="width:8px;height:8px;border-radius:50%;background:${attColor};box-shadow:0 0 6px ${attColor};flex-shrink:0"></div>
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:14px;font-weight:600">${TIMES[sl.ti]} — ${st?.name||'—'}</div>
+          <div style="font-size:11px;color:var(--t3)">${e.topic||'—'}</div>
+        </div>
+        ${att?`<span style="font-size:11px;color:${attColor};font-weight:600">${attLabel}</span>`:''}
+        ${vidLabel?`<span style="font-size:11px;color:${vidColor};font-weight:600">${vidLabel}</span>`:''}
       </div>
-      ${l.att?`<span style="font-size:11px;color:${attColor};font-weight:600">${attLabel}</span>`:''}
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-sm att-done${att==='done'?' active':''}" onclick="setAtt(${e.id},'${today}','done');renderTeacherDashboard()" style="flex:1;font-size:12px;${att==='done'?'background:var(--gn);color:var(--bg);border-color:var(--gn)':''}">
+          ✓ Был на уроке
+        </button>
+        <button class="btn btn-sm att-miss${att==='miss'?' active':''}" onclick="setAtt(${e.id},'${today}','miss');renderTeacherDashboard()" style="flex:1;font-size:12px;${att==='miss'?'background:var(--rd);color:#fff;border-color:var(--rd)':''}">
+          ✗ Не пришёл
+        </button>
+        ${att==='miss'&&!mk?`<button class="btn btn-sm" onclick="openMakeup(${e.id},'${today}')" style="font-size:12px;background:var(--ambg);border-color:rgba(245,200,66,.3);color:var(--am)">↩ Отработка</button>`:''}
+        <button class="btn btn-sm vid-btn ${vid?'vid-'+vid.status:'vid-none'}" onclick="openVideoUpload(${e.id},'${today}')" style="flex:1;font-size:12px">
+          🎥 ${vid?.status==='approved'?'✅ Видео':vid?.status==='pending'?'⏳ На проверке':vid?.status==='rejected'?'❌ Переотправить':'Загрузить видео'}
+        </button>
+      </div>
+      ${mk?`<div style="font-size:11px;color:var(--am);margin-top:7px">↩ Отработка: ${mk.makeupDate} ${TIMES[mk.makeupTi]||''}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2360,18 +2417,7 @@ function buildSchedTable(tid,wd,today,isCurWeek){
           const vidStatus=dt?getVideoStatus(e.id,dt):null;
           const dowOfDt=dt?((new Date(dt).getDay()+6)%7):-1; // 1=Вт, 2=Ср
           const isTuWed=dowOfDt===1||dowOfDt===2; // Вторник или Среда
-          // slot color based on attendance
-          let slotClass=SBC[ci];
-          if(att==='done')slotClass='slot-booked sb1';
-          else if(att==='miss')slotClass='slot-booked sb4';
-          else if(att==='makeup')slotClass='slot-booked sb2';
-          else if(att==='vacation')slotClass='slot-booked sb-vac';
-          else slotClass=`slot-booked ${SBC[ci]}`;
-          // Compatibility badge
-          const stData=st?S.students.find(s=>s.id===st.id):null;
-          const agGrp=stData&&stData.age?getAgeGroup(stData.age):null;
-          const lvl=stData&&stData.level?stData.level:null;
-          const compatTag=(agGrp||lvl)?`<span style="font-size:8px;color:var(--t3);background:var(--bg4);border-radius:4px;padding:1px 4px;white-space:nowrap">${agGrp?AGE_GROUP_LABELS[agGrp]||'':''}${agGrp&&lvl?' ':''}${lvl?LEVEL_LABELS[lvl]||'':''}</span>`:'';
+          const dowOfDt=dt?((new Date(dt).getDay()+6)%7):-1;
           html+=`<div class="${slotClass}" style="padding:4px 6px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:3px">
               <div class="sb-name" onclick="showDetail(${e.id})" style="cursor:pointer;flex:1">${att==='vacation'?'🏖 ':''} ${st?st.name.split(' ')[0]:'?'}</div>
@@ -2389,11 +2435,11 @@ function buildSchedTable(tid,wd,today,isCurWeek){
                 ?`<button class="att-btn att-makeup" onclick="event.stopPropagation();openMakeup(${e.id},'${dt}')" title="Отработать пропуск">↩</button>`
                 :(mk?`<span style="font-size:10px;color:var(--am);font-weight:600" title="Отработка: ${mk.makeupDate} ${TIMES[mk.makeupTi]||''}">↩${mk.makeupDate.slice(5).replace('-','.')}</span>`:'')
               }
-              ${isTuWed?`<button class="att-btn vid-btn ${vidStatus?'vid-'+vidStatus.status:'vid-none'}"
+              <button class="att-btn vid-btn ${vidStatus?'vid-'+vidStatus.status:'vid-none'}"
                 onclick="event.stopPropagation();${vidStatus&&vidStatus.status==='pending'&&currentRole==='admin'?`openVideoReview('${e.id}_${dt}')`:`openVideoUpload(${e.id},'${dt}')`}"
-                title="${vidStatus?{pending:currentRole==='admin'?'Нажмите для проверки':'На проверке у администратора',approved:'Одобрено — нажмите для изменения',rejected:'Отклонено — нажмите для повторной отправки'}[vidStatus.status]||'':`Загрузить ссылку на видео урока`}">
+                title="${vidStatus?{pending:currentRole==='admin'?'Нажмите для проверки':'На проверке у администратора',approved:'Одобрено',rejected:'Отклонено — нажмите для повторной отправки'}[vidStatus.status]||'':`Загрузить видео урока`}">
                 🎥${vidStatus?{pending:'⏳',approved:'✅',rejected:'❌'}[vidStatus.status]||'':''}
-              </button>`:''}
+              </button>
             </div>`:''}
           </div>`;
         });
@@ -3004,13 +3050,13 @@ function renderStudents(){
         </div>
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex-shrink:0">
           ${rowBadge}
-          <button class="btn btn-xs btn-g" onclick="openExtend(${e.id})" title="Продлить запись">↻ Продлить</button>
-          ${isActive
+          ${currentRole==='admin'?`<button class="btn btn-xs btn-g" onclick="openExtend(${e.id})" title="Продлить запись">↻ Продлить</button>`:''}
+          ${currentRole==='admin'&&isActive
             ?`<button class="btn btn-xs" style="background:var(--ambg);border-color:rgba(245,200,66,.3);color:var(--am)" onclick="deactivateEnroll(${e.id})">⏸ Деактивировать</button>`
-            :(isInactive?`<button class="btn btn-xs" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="reactivateEnroll(${e.id})">▶ Активировать</button>`:'')
+            :(currentRole==='admin'&&isInactive?`<button class="btn btn-xs" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="reactivateEnroll(${e.id})">▶ Активировать</button>`:'')
           }
-          <button class="btn btn-xs" onclick="openStudentModal(${e.id})" title="Изменить запись">✎</button>
-          <button class="btn btn-xs btn-r" onclick="delEnroll(${e.id})" title="Удалить запись">✕</button>
+          ${currentRole==='admin'?`<button class="btn btn-xs" onclick="openStudentModal(${e.id})" title="Изменить запись">✎</button>`:''}
+          ${currentRole==='admin'?`<button class="btn btn-xs btn-r" onclick="delEnroll(${e.id})" title="Удалить запись">✕</button>`:''}
         </div>
       </div>`;
     }).join('');
@@ -3027,8 +3073,8 @@ function renderStudents(){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
           ${topBadge}
-          <button class="btn btn-xs" onclick="editStudentInfo(${st.id})" title="Изменить данные ученика">✎ Данные</button>
-          <button class="btn btn-xs btn-r" onclick="deleteStudent(${st.id})" title="Удалить ученика">✕ Удалить</button>
+          ${currentRole==='admin'?`<button class="btn btn-xs" onclick="editStudentInfo(${st.id})" title="Изменить данные ученика">✎ Данные</button>`:''}
+          ${currentRole==='admin'?`<button class="btn btn-xs btn-r" onclick="deleteStudent(${st.id})" title="Удалить ученика">✕ Удалить</button>`:''}
         </div>
       </div>
       ${allEnrs.length?`<div style="display:flex;flex-direction:column;gap:6px">${enrollRows}</div>`:'<div style="font-size:12px;color:var(--t3);padding:8px 0">Нет записей на занятия</div>'}
@@ -3666,7 +3712,8 @@ function renderReports(){
           <th>% не отраб.</th>
           <th>↻ Продлений</th>
           <th>% продлений</th>
-          <th>⏱ Часов</th>
+          <th>⏱ Сегодня</th>
+          <th>⏱ Часов (период)</th>
           <th>🎥 Видео</th>
         </tr>
       </thead>
@@ -3674,6 +3721,8 @@ function renderReports(){
         ${rows.map(r=>{
           const sj=subj(r.t.subjId);
           const hFmt=r.workHours%1===0?r.workHours.toFixed(0):r.workHours.toFixed(1);
+          const todayStr=new Date().toISOString().slice(0,10);
+          const hToday=calcTeacherHours(r.t.id,[todayStr]);
           // Max possible hours in period = available slots * 0.5h
           const av=getTeacherAvailNow(r.t.id);
           let maxSlots=0;
@@ -3716,6 +3765,11 @@ function renderReports(){
                 </div>
                 <span style="font-size:11px;font-weight:600;color:${r.renewalRate>=75?'var(--gn)':r.renewalRate>=40?'var(--am)':'var(--rd)'};min-width:28px">${r.renewalRate}%</span>
               </div>
+            </td>
+            <td>
+              <span style="font-family:var(--fd);font-size:16px;font-weight:700;color:${hToday>0?'var(--gn)':'var(--t3)'}">${hToday.toFixed(1)}</span>
+              <span style="font-size:10px;color:var(--t3)"> ч</span>
+              <div style="font-size:10px;color:${hToday>0?'var(--gn)':'var(--t3)'}">${hToday>0?`${hToday*2|0} урок(а)`:'нет'}</div>
             </td>
             <td>
               <div style="display:flex;flex-direction:column;gap:3px">
@@ -4925,8 +4979,8 @@ function renderToday(){
     html+=`<div class="divider"></div>`;
   }
 
-  // ── Section 2: Video needed today (Tue/Wed)
-  if(isTuWed&&currentTeacherId){
+  // ── Section 2: Video needed today (ALL lesson days)
+  if(currentTeacherId){
     const videoNeeded=myEnrolls.filter(e=>{
       if(!e.slots.some(sl=>sl.day===todayDay))return false;
       const v=(S.videoReports||{})[videoKey(e.id,today)];
@@ -4941,9 +4995,9 @@ function renderToday(){
           <div style="font-size:18px">🎥</div>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:500">${st?.name||'—'} · ${e.topic||'—'}</div>
-            <div style="font-size:11px;color:${v?.status==='rejected'?'var(--rd)':'var(--t3)'}">${v?.status==='rejected'?'❌ Отклонено — нужно переслать':'Нужно загрузить ссылку на видео'}</div>
+            <div style="font-size:11px;color:${v?.status==='rejected'?'var(--rd)':'var(--t3)'}">${v?.status==='rejected'?'❌ Отклонено — нужно переслать':'Нужно загрузить видео урока'}</div>
           </div>
-          <button class="btn btn-sm" onclick="openVideoUpload(${e.id},'${today}')">Загрузить</button>
+          <button class="btn btn-sm" onclick="openVideoUpload(${e.id},'${today}')">🎥 Загрузить</button>
         </div>`;
       }).join('');
       html+=`<div class="divider"></div>`;

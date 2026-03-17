@@ -4152,88 +4152,41 @@ async function submitVideo(){
   progress.style.display = '';
   bar.style.width = '0%';
   statusEl.textContent = 'Загружаем видео в Telegram...';
-  let pct = 0;
-  const progressInterval = setInterval(()=>{
-    if(pct < 85){ pct += Math.random()*8; bar.style.width = Math.min(pct,85)+'%'; }
-  }, 400);
   try {
-    // Шаг 1 — получаем resumable upload URL от Worker
-    statusEl.textContent = 'Подготовка загрузки...';
-    const urlResp = await fetch(VIDEO_WORKER_URL+'/get-upload-url', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        enrollId: String(_videoEnrollId),
-        date: _videoDateStr,
-        studentName: st?.name||'—',
-        teacherName: t?.name||'—',
-        fileName: _videoSelectedFile.name,
-        fileType: _videoSelectedFile.type||'video/mp4',
-        fileSize: _videoSelectedFile.size
-      })
-    });
-    const urlData = await urlResp.json();
-    if(!urlData.ok){ throw new Error(urlData.error||'Ошибка получения URL'); }
+    const form = new FormData();
+    form.append('file', _videoSelectedFile, _videoSelectedFile.name);
+    form.append('enrollId', String(_videoEnrollId));
+    form.append('date', _videoDateStr);
+    form.append('studentName', st?.name||'—');
+    form.append('teacherName', t?.name||'—');
 
-    // Шаг 2 — загружаем файл напрямую на Google Drive (resumable)
-    statusEl.textContent = 'Загружаем видео...';
     const xhr = new XMLHttpRequest();
-    xhr.open('PUT', urlData.uploadUrl, true);
-    xhr.setRequestHeader('Content-Type', _videoSelectedFile.type||'video/mp4');
+    xhr.open('POST', VIDEO_WORKER_URL+'/upload-video', true);
     xhr.upload.onprogress = (ev) => {
-      if(ev.lengthComputable){
-        pct = Math.round(ev.loaded/ev.total*85);
-        bar.style.width = pct+'%';
-      }
+      if(ev.lengthComputable){ bar.style.width = Math.round(ev.loaded/ev.total*90)+'%'; }
     };
-    const driveResult = await new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
       xhr.onload = () => {
-        if(xhr.status >= 200 && xhr.status < 300){
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch(e){ resolve({}); }
-        } else {
-          reject(new Error('Drive upload failed: '+xhr.status+' '+xhr.responseText));
-        }
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e){ reject(new Error('Ответ сервера: '+xhr.responseText)); }
       };
-      xhr.onerror = () => reject(new Error('Ошибка сети при загрузке'));
-      xhr.send(_videoSelectedFile);
+      xhr.onerror = () => reject(new Error('Ошибка сети'));
+      xhr.send(form);
     });
 
-    const fileId = driveResult.id;
-    if(!fileId){ throw new Error('Drive не вернул fileId'); }
+    if(!result.ok) throw new Error(result.error||'Ошибка загрузки');
 
-    bar.style.width = '95%';
-    statusEl.textContent = 'Сохраняем...';
-
-    // Шаг 3 — завершаем: устанавливаем права и сохраняем в KV
-    const finishResp = await fetch(VIDEO_WORKER_URL+'/finish-upload', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        kvKey: urlData.kvKey,
-        fileId,
-        enrollId: String(_videoEnrollId),
-        date: _videoDateStr,
-        studentName: st?.name||'—',
-        teacherName: t?.name||'—'
-      })
-    });
-    const finishData = await finishResp.json();
-    if(!finishData.ok){ throw new Error(finishData.error||'Ошибка завершения'); }
-
-    clearInterval(progressInterval);
     bar.style.width = '100%';
     statusEl.textContent = '✓ Видео загружено!';
 
-    // Сохраняем запись в Firebase
     const comment = document.getElementById('video-comment').value.trim();
     const user = fbAuth.currentUser?.email||'—';
     const key = videoKey(_videoEnrollId, _videoDateStr);
     const record = {
       id: key, enrollId: String(_videoEnrollId), dateStr: _videoDateStr,
       teacherId: String(e.teacherId), teacherName: t?.name||'—',
-      studentName: st?.name||'—', url: finishData.playerUrl,
-      driveFileId: fileId, uploadType: 'drive',
+      studentName: st?.name||'—', url: result.tgLink,
+      tgLink: result.tgLink, uploadType: 'telegram',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
       submittedBy: user, status: 'pending'
     };
@@ -4243,12 +4196,11 @@ async function submitVideo(){
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
     close1('m-video');
-    toast('✓ Видео загружено и отправлено на проверку');
+    toast('✓ Видео загружено в Telegram и отправлено на проверку');
     updateVideoBadge();
     renderSchedule();
     _videoSelectedFile = null;
   } catch(err) {
-    clearInterval(progressInterval);
     progress.style.display = 'none';
     btn.disabled = false;
     errEl.textContent = 'Ошибка: '+err.message;

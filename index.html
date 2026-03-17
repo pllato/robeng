@@ -4316,7 +4316,44 @@ function reviewVideo(decision){
         }
       });
     });
-    // WhatsApp при загрузке видео уже отправляется Worker-ом автоматически
+    // WhatsApp при одобрении администратором
+    if(decision==='approved'){
+      videoRef.child(_videoReviewId).once('value').then(vSnap2=>{
+        const vd2=vSnap2.val();if(!vd2)return;
+        const enr=S.enrollments.find(e=>String(e.id)===String(vd2.enrollId));
+        const st2=enr?student(enr.studentId):null;
+        if(st2){
+          const parentPhone=st2.parentPhone||'';
+          const studentPhone=st2.phone||'';
+          const [y,m,d]=(vd2.dateStr||'').split('-');
+          const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+          const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
+          const playerUrl=vd2.url||'';
+          const sendWA=(phone,msg)=>{if(phone)notifyWhatsApp(phone,msg);};
+          // Генерируем токен подписки и отправляем
+          fetch('https://flat-pond-6e68.uurraa.workers.dev/get-bot-link',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({phone:parentPhone.replace(/\D/g,''),studentName:vd2.studentName||'—'})
+          }).then(r=>r.json()).then(d=>{
+            const base='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
+              '👤 Ученик: '+(vd2.studentName||'—')+'\n'+
+              '👩\u200d🏫 Преподаватель: '+(vd2.teacherName||'—')+'\n'+
+              '📅 Дата: '+dateRu+'\n\n'+
+              'Преподаватель записал небольшой фрагмент практики.\n\n'+
+              '▶️ Смотреть видео: '+playerUrl;
+            const suffix=d.ok&&d.botLink
+              ?'\n\n━━━━━━━━━━━━━━\nЕсли у вас не получается просмотреть видео — подпишитесь на наш Telegram бот и получайте следующие видео, а также новости школы напрямую там:\n'+d.botLink
+              :'';
+            const msg=base+suffix;
+            sendWA(parentPhone,msg);
+            if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,msg);
+          }).catch(()=>{
+            const msg='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+'▶️ Смотреть видео: '+playerUrl;
+            sendWA(parentPhone,msg);
+          });
+        }
+      });
+    }
     logAction('other',`Видео урока ${labels[decision]||decision}`,`${adminComment?'Комментарий: '+adminComment:''}`);
     close1('m-video-review');
     renderVideoReviews();

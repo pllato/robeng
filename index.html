@@ -1392,12 +1392,16 @@ function daysUntilDate(dateStr,fromDate){
 // Get the avail grid for a teacher on a given date
 // Checks scheduleHistory first (newest entry with fromDate <= dateStr), falls back to S.avail
 function getTeacherAvailForDate(tid,dateStr){
-  const hist=(S.scheduleHistory||{})[tid];
+  const tidStr=String(tid);
+  const tidNum=parseInt(tid);
+  // Check schedule history (try both key types)
+  const hist=(S.scheduleHistory||{})[tidStr]||(S.scheduleHistory||{})[tidNum];
   if(hist&&hist.length){
     const entry=hist.find(h=>h.fromDate<=dateStr);
     if(entry)return entry.avail;
   }
-  return S.avail[tid]||{};
+  // Check base avail (try both key types)
+  return S.avail[tidStr]||S.avail[tidNum]||{};
 }
 
 // Get current avail (today or latest)
@@ -2063,19 +2067,25 @@ function renderAvail(){
   if(currentRole==='teacher'&&currentTeacherId){
     const sel=document.getElementById('avail-sel');
     if(sel){sel.value=currentTeacherId;sel.style.display='none';}
-    const lbl=document.getElementById('sched-t-lbl');
-    if(lbl)lbl.style.display='none';
   } else {
     const sel=document.getElementById('avail-sel');
     if(sel)sel.style.display='';
   }
   const _ar=document.getElementById('avail-sel').value;
-  const tid=isNaN(_ar)?_ar:(parseInt(_ar)||null);if(!tid)return;
-  if(!S.avail[tid])S.avail[tid]={};
+  if(!_ar)return;
+  const tid=isNaN(_ar)?_ar:(parseInt(_ar)||_ar);
+  const tidKey=String(tid);
+
+  // Init avail if missing — check both string and numeric keys
+  const tidNum=parseInt(tid);
+  if(!S.avail[tidKey]&&!S.avail[tidNum]){
+    S.avail[tidKey]={};
+    for(let d=0;d<7;d++){S.avail[tidKey][d]={};for(let ti=0;ti<TIMES.length;ti++)S.avail[tidKey][d][ti]=false;}
+  }
+
   const av=getTeacherAvailNow(tid);
-  // Show label if a future schedule is pending
   const today=new Date().toISOString().slice(0,10);
-  const hist=(S.scheduleHistory||{})[tid]||[];
+  const hist=(S.scheduleHistory||{})[tidKey]||[];
   const future=hist.filter(h=>h.fromDate>today);
   const lbl=document.getElementById('avail-cur-label');
   if(future.length){lbl.style.display='';lbl.textContent=`⚠ Запланировано изменений: ${future.length}. Следующее с ${future[future.length-1].fromDate}.`;}
@@ -2087,35 +2097,46 @@ function renderAvail(){
     for(let d=0;d<7;d++){
       const on=av[d]&&av[d][ti];
       const occ=countAtSlot(tid,d,ti)>0;
-      html+=`<div class="ac ${on?'on':'off'}" style="${occ?'outline:2px solid rgba(245,200,66,.5);':''}" title="${occ?'Занят учеником':''}" onclick="toggleAc(${tid},${d},${ti})"></div>`;
+      html+=`<div class="ac ${on?'on':'off'}" style="${occ?'outline:2px solid rgba(245,200,66,.5);':''}" title="${occ?'Занят учеником':''}" onclick="toggleAc('${tidKey}',${d},${ti})"></div>`;
     }
   });
   html+='</div>';
   document.getElementById('avail-grid').innerHTML=html;
 }
 function toggleAc(tid,d,ti){
-  const av=getTeacherAvailNow(tid);
-  // Edit the active avail object directly (base or history entry)
+  // Normalize: tid may be number (old teachers) or string (Firebase uid)
+  const tidKey=String(tid);
   const today=new Date().toISOString().slice(0,10);
-  const hist=(S.scheduleHistory||{})[tid];
+  const hist=(S.scheduleHistory||{})[tidKey];
   if(hist&&hist.length){
     const entry=hist.find(h=>h.fromDate<=today);
-    if(entry){if(!entry.avail[d])entry.avail[d]={};entry.avail[d][ti]=!entry.avail[d][ti];renderAvail();return;}
+    if(entry){
+      if(!entry.avail[d])entry.avail[d]={};
+      entry.avail[d][ti]=!entry.avail[d][ti];
+      renderAvail();return;
+    }
   }
-  if(!S.avail[tid])S.avail[tid]={};
-  if(!S.avail[tid][d])S.avail[tid][d]={};
-  S.avail[tid][d][ti]=!S.avail[tid][d][ti];
+  // Also check numeric key
+  const tidNum=parseInt(tid);
+  const availKey=S.avail[tidKey]!==undefined?tidKey:(S.avail[tidNum]!==undefined?tidNum:tidKey);
+  if(!S.avail[availKey])S.avail[availKey]={};
+  if(!S.avail[availKey][d])S.avail[availKey][d]={};
+  S.avail[availKey][d][ti]=!S.avail[availKey][d][ti];
   renderAvail();
 }
 function allAvail(v){
-  const tid=parseInt(document.getElementById('avail-sel').value);
+  const _ar=document.getElementById('avail-sel').value;
+  const tid=isNaN(_ar)?_ar:(parseInt(_ar)||null);
+  if(!tid)return;
   const today=new Date().toISOString().slice(0,10);
   const hist=(S.scheduleHistory||{})[tid];
   if(hist&&hist.length){
     const entry=hist.find(h=>h.fromDate<=today);
     if(entry){entry.avail={};for(let d=0;d<7;d++){entry.avail[d]={};for(let ti=0;ti<TIMES.length;ti++)entry.avail[d][ti]=v;}renderAvail();return;}
   }
-  S.avail[tid]={};for(let d=0;d<7;d++){S.avail[tid][d]={};for(let ti=0;ti<TIMES.length;ti++)S.avail[tid][d][ti]=v;}renderAvail();
+  if(!S.avail[tid])S.avail[tid]={};
+  for(let d=0;d<7;d++){S.avail[tid][d]={};for(let ti=0;ti<TIMES.length;ti++)S.avail[tid][d][ti]=v;}
+  renderAvail();
 }
 function saveAvail(){save();toast('Доступность сохранена');}
 
@@ -2901,10 +2922,6 @@ function getTeacherAvailTimes(tid, days){
     if(days.every(d=>av[d]&&av[d][ti]))times.push(ti);
   }
   return times;
-}
-
-function getTeacherAvailNow(tid){
-  return(S.avail||{})[String(tid)]||(S.avail||{})[parseInt(tid)]||{};
 }
 
 function toggleExtraDay(slotIdx, day, btn){

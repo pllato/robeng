@@ -707,38 +707,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   <div class="modal">
     <div class="mt">🎥 Загрузить запись урока</div>
     <div id="m-video-info" style="font-size:12px;color:var(--t2);background:var(--bg3);padding:8px 12px;border-radius:var(--r);margin-bottom:14px"></div>
-    <!-- Вкладки -->
-    <div style="display:flex;gap:6px;margin-bottom:14px">
-      <button class="btn btn-sm" id="vtab-file" onclick="setVideoTab('file')" style="flex:1;font-size:12px;background:var(--acbg);border-color:var(--acb);color:var(--ac2)">📁 Загрузить файл</button>
-      <button class="btn btn-sm" id="vtab-link" onclick="setVideoTab('link')" style="flex:1;font-size:12px">🔗 Вставить ссылку</button>
-    </div>
-    <!-- Вкладка: загрузка файла -->
-    <div id="vtab-file-content">
-      <div class="fr">
-        <label>Файл видео</label>
-        <div id="video-drop-zone" onclick="document.getElementById('video-file-input').click()"
-          style="border:2px dashed var(--b2);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--bg3)">
-          <div style="font-size:28px;margin-bottom:6px">📹</div>
-          <div style="font-size:13px;color:var(--t2);font-weight:500">Нажмите чтобы выбрать видео</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:3px">MP4, MOV, AVI · до 2 ГБ</div>
-          <div id="video-file-name" style="margin-top:8px;font-size:12px;color:var(--ac2);display:none"></div>
-        </div>
-        <input type="file" id="video-file-input" accept="video/*" style="display:none" onchange="onVideoFileSelect(this)"/>
-      </div>
-      <div id="video-upload-progress" style="display:none;margin-bottom:12px">
-        <div style="font-size:12px;color:var(--t2);margin-bottom:6px" id="video-upload-status">Загрузка...</div>
-        <div style="background:var(--bg3);border-radius:20px;height:6px;overflow:hidden">
-          <div id="video-progress-bar" style="height:100%;background:var(--ac);border-radius:20px;width:0%;transition:width .3s"></div>
-        </div>
-      </div>
-    </div>
-    <!-- Вкладка: ссылка -->
-    <div id="vtab-link-content" style="display:none">
-      <div class="fr">
-        <label>Ссылка на видео</label>
-        <input type="url" id="video-url" placeholder="https://youtube.com/... или https://drive.google.com/..."/>
-        <div style="font-size:11px;color:var(--t3);margin-top:4px">YouTube, Google Drive, Loom — любая ссылка</div>
-      </div>
+    <div class="fr">
+      <label>Ссылка на видео</label>
+      <input type="url" id="video-url" placeholder="https://youtube.com/... или https://drive.google.com/..."/>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">YouTube, Google Drive, Loom, Яндекс Диск — любая ссылка</div>
     </div>
     <div class="fr">
       <label>Комментарий (необязательно)</label>
@@ -747,7 +719,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="warn-box" id="video-err"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video')">Отмена</button>
-      <button class="btn btn-a" id="video-submit-btn" onclick="submitVideo()">Отправить на проверку</button>
+      <button class="btn btn-a" onclick="submitVideoLink()">Отправить на проверку</button>
     </div>
   </div>
 </div>
@@ -1189,6 +1161,18 @@ function authLogout(){
 // ── TELEGRAM NOTIFICATIONS ────────────────────────────────────────
 // Замени на URL своего Cloudflare Worker после деплоя
 const WORKER_URL = 'https://robeng-notify.uurraa.workers.dev';
+
+// ── WhatsApp уведомления через Worker ────────────────────────────
+async function notifyWhatsApp(phone, message){
+  if(!phone||!message)return;
+  try{
+    await fetch('https://flat-pond-6e68.uurraa.workers.dev/notify-parent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({parentPhone:phone,message,studentName:'',date:'',playerUrl:message})
+    });
+  }catch(e){console.warn('WhatsApp notify failed:',e);}
+}
 
 async function sendNotification(type, targetUid, targetUids, data){
   if(!WORKER_URL.includes('workers.dev') || WORKER_URL.includes('ТВОЙ'))return; // not configured yet
@@ -2141,13 +2125,36 @@ function setAtt(enrollId,dateStr,val,user){
   if(!S.attendance)S.attendance={};
   const k=attKey(enrollId,dateStr);
   const prev=S.attendance[k];
-  if(prev===val){S.attendance[k]=null;delete S.attendance[k];}// toggle off
+  const isToggleOff=prev===val;
+  if(isToggleOff){S.attendance[k]=null;delete S.attendance[k];}
   else S.attendance[k]=val;
   const e=S.enrollments.find(x=>x.id===enrollId);
   const st=student(e?.studentId),t=teacher(e?.teacherId);
   const labels={done:'Урок проведён',miss:'Пропуск',makeup:'Отработан'};
   logAction('attendance',`${labels[val]||val}: ${st?.name||'—'}`,`${t?.name||'—'} · ${dateStr}`);
   save();renderSchedule();
+  // WhatsApp уведомление родителю и ученику
+  if(!isToggleOff && st){
+    const parentPhone=st.parentPhone||'';
+    const studentPhone=st.phone||'';
+    const [y,m,d]=dateStr.split('-');
+    const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const dateRu=d+' '+months[parseInt(m)-1];
+    const teacherName=t?.name||'—';
+    const studentName=st.name||'—';
+    const vr=(S.videoReports||{})[videoKey(enrollId,dateStr)];
+    const videoLine=vr?.url?('\n\n🎬 Видео урока: '+vr.url):'';
+    let msg='';
+    if(val==='done'){
+      msg='✅ Урок состоялся!\n\n👤 Ученик: '+studentName+'\n👩‍🏫 Преподаватель: '+teacherName+'\n📅 Дата: '+dateRu+videoLine;
+    } else if(val==='miss'){
+      msg='❌ Пропуск урока\n\n👤 Ученик: '+studentName+'\n👩‍🏫 Преподаватель: '+teacherName+'\n📅 Дата: '+dateRu+'\n\nСвяжитесь с нами для переноса урока.';
+    }
+    if(msg){
+      if(parentPhone) notifyWhatsApp(parentPhone,msg);
+      if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,msg);
+    }
+  }
 }
 function weekKey(dateStr){
   // Returns YYYY-WW
@@ -2204,6 +2211,20 @@ function saveMakeup(){
   const e=S.enrollments.find(x=>x.id===_makeupEnrollId);
   const st=student(e?.studentId),t=teacher(e?.teacherId);
   logAction('attendance',`Отработка запланирована: ${st?.name||'—'}`,`${t?.name||'—'} · ${mkDate} ${TIMES[mkTi]}`);
+  // WhatsApp уведомление о переносе
+  if(st){
+    const parentPhone=st.parentPhone||'';
+    const studentPhone=st.phone||'';
+    const [y,m,d]=_makeupDateStr.split('-');
+    const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const dateRu=d+' '+months[parseInt(m)-1];
+    const mkMonths=months;
+    const [my,mm,md]=mkDate.split('-');
+    const mkDateRu=md+' '+mkMonths[parseInt(mm)-1];
+    const msg='🔄 Перенос урока\n\n👤 Ученик: '+st.name+'\n📅 Пропущен: '+dateRu+'\n📅 Отработка: '+mkDateRu+' в '+TIMES[mkTi]+'\n\nЕсли есть вопросы — свяжитесь с нами.';
+    if(parentPhone) notifyWhatsApp(parentPhone,msg);
+    if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,msg);
+  }
   save();close1('m-makeup');renderSchedule();toast('Отработка сохранена');
 }
 
@@ -4030,18 +4051,6 @@ function openVideoUpload(enrollId,dateStr){
     (isAdminForTeacher?`<br><span style="font-size:10px;color:var(--am)">⚡ Вы загружаете от имени преподавателя</span>`:'');
   document.getElementById('video-url').value='';
   document.getElementById('video-comment').value='';
-  // Сброс вкладки и файла
-  _videoSelectedFile = null;
-  _videoTab = 'file';
-  setVideoTab('file');
-  const dz = document.getElementById('video-drop-zone');
-  if(dz) dz.style.borderColor='var(--b2)';
-  const fn = document.getElementById('video-file-name');
-  if(fn){ fn.style.display='none'; fn.textContent=''; }
-  const prog = document.getElementById('video-upload-progress');
-  if(prog) prog.style.display='none';
-  const submitBtn = document.getElementById('video-submit-btn');
-  if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Отправить на проверку'; }
   const errEl=document.getElementById('video-err');
   errEl.style.display='none';errEl.style.background='';errEl.style.borderColor='';errEl.style.color='';
   const existing=getVideoStatus(enrollId,dateStr);
@@ -4056,131 +4065,6 @@ function openVideoUpload(enrollId,dateStr){
   }
   open1('m-video');
 }
-// ── VIDEO UPLOAD (Telegram) ───────────────────────────────────────
-const VIDEO_WORKER_URL = 'https://flat-pond-6e68.uurraa.workers.dev';
-let _videoSelectedFile = null;
-let _videoTab = 'file'; // 'file' | 'link'
-
-function setVideoTab(tab){
-  _videoTab = tab;
-  const isFile = tab === 'file';
-  document.getElementById('vtab-file-content').style.display = isFile ? '' : 'none';
-  document.getElementById('vtab-link-content').style.display = isFile ? 'none' : '';
-  const fBtn = document.getElementById('vtab-file');
-  const lBtn = document.getElementById('vtab-link');
-  if(fBtn){ fBtn.style.background=isFile?'var(--acbg)':''; fBtn.style.borderColor=isFile?'var(--acb)':'var(--b2)'; fBtn.style.color=isFile?'var(--ac2)':'var(--t2)'; }
-  if(lBtn){ lBtn.style.background=isFile?'':'var(--acbg)'; lBtn.style.borderColor=isFile?'var(--b2)':'var(--acb)'; lBtn.style.color=isFile?'var(--t2)':'var(--ac2)'; }
-}
-
-function onVideoFileSelect(input){
-  const file = input.files[0];
-  if(!file) return;
-  _videoSelectedFile = file;
-  const nameEl = document.getElementById('video-file-name');
-  const dz = document.getElementById('video-drop-zone');
-  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-  nameEl.textContent = `✓ ${file.name} · ${sizeMB} МБ`;
-  nameEl.style.display = '';
-  dz.style.borderColor = 'var(--ac)';
-}
-
-async function submitVideo(){
-  const errEl = document.getElementById('video-err');
-  errEl.style.background='var(--rdbg)';errEl.style.borderColor='rgba(240,89,117,.3)';errEl.style.color='var(--rd)';
-  errEl.style.display='none';
-
-  // Если вкладка ссылки — используем старую логику
-  if(_videoTab === 'link'){
-    submitVideoLink();
-    return;
-  }
-
-  // Вкладка файла
-  if(!_videoSelectedFile){ errEl.textContent='Выберите файл видео'; errEl.style.display=''; return; }
-  if(!_videoEnrollId||!_videoDateStr){ errEl.textContent='Ошибка: не выбран урок'; errEl.style.display=''; return; }
-
-  const e = S.enrollments.find(x=>String(x.id)===String(_videoEnrollId));
-  if(!e){ errEl.textContent='Ошибка: запись не найдена'; errEl.style.display=''; return; }
-
-  const st = student(e.studentId);
-  const t = teacher(e.teacherId);
-
-  const btn = document.getElementById('video-submit-btn');
-  const progress = document.getElementById('video-upload-progress');
-  const bar = document.getElementById('video-progress-bar');
-  const statusEl = document.getElementById('video-upload-status');
-
-  btn.disabled = true;
-  progress.style.display = '';
-  bar.style.width = '0%';
-  statusEl.textContent = 'Загружаем видео в Telegram...';
-
-  // Симулируем прогресс пока идёт загрузка (XHR не даёт прогресс для upload через fetch)
-  let pct = 0;
-  const progressInterval = setInterval(()=>{
-    if(pct < 85){ pct += Math.random()*8; bar.style.width = Math.min(pct,85)+'%'; }
-  }, 400);
-
-  try {
-    const fd = new FormData();
-    fd.append('video', _videoSelectedFile, _videoSelectedFile.name);
-    fd.append('enrollId', String(_videoEnrollId));
-    fd.append('date', _videoDateStr);
-    fd.append('studentName', st?.name||'—');
-    fd.append('teacherName', t?.name||'—');
-
-    const resp = await fetch(VIDEO_WORKER_URL+'/upload', { method:'POST', body:fd });
-    const data = await resp.json();
-
-    clearInterval(progressInterval);
-
-    if(!data.ok){ throw new Error(data.error||'Ошибка загрузки'); }
-
-    bar.style.width = '100%';
-    statusEl.textContent = '✓ Видео загружено!';
-
-    // Сохраняем запись в Firebase с playerUrl вместо youtube ссылки
-    const comment = document.getElementById('video-comment').value.trim();
-    const user = fbAuth.currentUser?.email||'—';
-    const key = videoKey(_videoEnrollId, _videoDateStr);
-    const record = {
-      id: key,
-      enrollId: String(_videoEnrollId),
-      dateStr: _videoDateStr,
-      teacherId: String(e.teacherId),
-      teacherName: t?.name||'—',
-      studentName: st?.name||'—',
-      url: data.playerUrl,           // ссылка на плеер
-      telegramFileId: data.fileId,   // file_id в Telegram
-      uploadType: 'telegram',
-      teacherComment: comment||'',
-      submittedAt: new Date().toISOString(),
-      submittedBy: user,
-      status: 'pending'
-    };
-
-    await videoRef.child(key).set(record);
-    logAction('other', `Видео урока загружено: ${st?.name||'—'}`, `${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
-    save();
-
-    const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
-    if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
-
-    close1('m-video');
-    toast('✓ Видео загружено и отправлено на проверку');
-    updateVideoBadge();
-    renderSchedule();
-    _videoSelectedFile = null;
-
-  } catch(err) {
-    clearInterval(progressInterval);
-    progress.style.display = 'none';
-    btn.disabled = false;
-    errEl.textContent = 'Ошибка: '+err.message;
-    errEl.style.display = '';
-  }
-}
-
 function submitVideoLink(){
   const url=document.getElementById('video-url').value.trim();
   const comment=document.getElementById('video-comment').value.trim();
@@ -4287,6 +4171,24 @@ function reviewVideo(decision){
         }
       });
     });
+    // WhatsApp родителю и ученику при одобрении видео
+    if(decision==='approved'){
+      videoRef.child(_videoReviewId).once('value').then(vSnap2=>{
+        const vd2=vSnap2.val();if(!vd2)return;
+        const enr=S.enrollments.find(e=>String(e.id)===String(vd2.enrollId));
+        const st2=enr?student(enr.studentId):null;
+        if(st2&&vd2.url){
+          const parentPhone=st2.parentPhone||'';
+          const studentPhone=st2.phone||'';
+          const [y,m,d]=(vd2.dateStr||'').split('-');
+          const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+          const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
+          const msg='🎬 Видео урока готово!\n\n👤 Ученик: '+(vd2.studentName||'—')+'\n📅 Дата: '+dateRu+'\n\n▶️ Смотреть: '+vd2.url;
+          if(parentPhone) notifyWhatsApp(parentPhone,msg);
+          if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,msg);
+        }
+      });
+    }
     logAction('other',`Видео урока ${labels[decision]||decision}`,`${adminComment?'Комментарий: '+adminComment:''}`);
     close1('m-video-review');
     renderVideoReviews();

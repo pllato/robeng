@@ -4195,6 +4195,17 @@ async function submitVideo(){
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
+    // WhatsApp уведомление родителю и ученику
+    if(st){
+      const parentPhone=st.parentPhone||'';
+      const studentPhone=st.phone||'';
+      const [vy,vm,vd]=(_videoDateStr||'').split('-');
+      const vMonths=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+      const vDateRu=vd&&vm?(vd+' '+vMonths[parseInt(vm)-1]):(_videoDateStr||'');
+      const vMsg='✅ Урок записан на видео!\n\n👤 Ученик: '+(st.name||'—')+'\n👩‍🏫 Преподаватель: '+(t?.name||'—')+'\n📅 Дата: '+vDateRu+(result.tgLink?'\n\n▶️ Видео: '+result.tgLink:'');
+      if(parentPhone) notifyWhatsApp(parentPhone,vMsg);
+      if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,vMsg);
+    }
     close1('m-video');
     toast('✓ Видео загружено в Telegram и отправлено на проверку');
     updateVideoBadge();

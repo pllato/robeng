@@ -2792,9 +2792,13 @@ function renderFreeSlots(){
       // For each standard pattern, check if teacher covers it fully or partially
       const pats=daysF?STANDARD_PATTERNS.filter(p=>p.key===daysF):STANDARD_PATTERNS;
 
+      // Track which days were already covered by a standard pattern group
+      const coveredByPattern=new Set();
+
       pats.forEach(pat=>{
         const coveredDays=pat.days.filter(d=>availDays.includes(d));
         if(!coveredDays.length)return;
+        coveredDays.forEach(d=>coveredByPattern.add(d));
 
         // Count occupancy per day
         const occPerDay={};
@@ -2805,26 +2809,21 @@ function renderFreeSlots(){
 
         // Is this a full pattern or partial?
         const isFullPattern=coveredDays.length===pat.days.length;
-        // Find which days are "extra busy" (occupied but teacher available for other days)
         const freeDays=coveredDays.filter(d=>occPerDay[d]<MAX_PER_SLOT);
 
-        // Determine key and label
         let gKey,label,isNonStandard=false;
         if(isFullPattern){
-          // Standard slot — same occupancy on all days, or some days partially free
           const allSameOcc=coveredDays.every(d=>occPerDay[d]===maxOcc);
           if(allSameOcc){
             gKey=`std::${pat.key}::${ti}`;
             label=pat.label;
           } else {
-            // Mixed: some days more occupied than others — show partial
             const partDays=freeDays;
             gKey=`partial::${pat.key}::${ti}::${partDays.join('-')}`;
             label=partDays.map(d=>DS[d]).join(' · ')+' <span style="font-size:10px;color:var(--am)">⚡ нестандартное</span>';
             isNonStandard=true;
           }
         } else {
-          // Partial pattern: teacher only covers some days of this pattern
           gKey=`partial::${pat.key}::${ti}::${coveredDays.join('-')}`;
           label=coveredDays.map(d=>DS[d]).join(' · ')+' <span style="font-size:10px;color:var(--am)">⚡ нестандартное</span>';
           isNonStandard=true;
@@ -2848,6 +2847,37 @@ function renderFreeSlots(){
         if(!groups[gKey])groups[gKey]={pat,ti,label,isNonStandard,rows:[]};
         groups[gKey].rows.push({t,free,names,slotAgeGroup,slotLevel,existGroups,coveredDays,isNonStandard});
       });
+
+      // Also show single days NOT covered by any standard pattern (e.g. Пт when Вт·Чт·Сб is used)
+      if(!daysF){ // only when no days filter
+        availDays.forEach(d=>{
+          if(coveredByPattern.has(d))return; // already shown in a pattern
+          const occ=countAtSlot(t.id,d,ti);
+          const free=Math.max(0,MAX_PER_SLOT-occ);
+          if(free===0)return;
+
+          const gKey=`single::${d}::${ti}`;
+          const label=DS[d]+' <span style="font-size:10px;color:var(--am)">⚡ нестандартное</span>';
+
+          const slotEnrs=S.enrollments.filter(e=>
+            String(e.teacherId)===String(t.id)&&!e.inactive&&enrollActive(e,today)&&
+            e.slots.some(sl=>sl.day===d&&sl.ti===ti)
+          );
+          const names=[];
+          slotEnrs.forEach(e=>{const s=student(e.studentId);if(s&&!names.includes(s.name))names.push(s.name);});
+          const existGroups=slotEnrs.map(e=>getSlotGroup(e.id)).filter(Boolean);
+          const slotAgeGroup=existGroups.length>0?existGroups[0].ageGroup:null;
+          const slotLevel=existGroups.length>0?existGroups[0].level:null;
+
+          if(ageF&&occ>0&&slotAgeGroup&&slotAgeGroup!==ageF)return;
+          if(levelF&&occ>0&&slotLevel&&slotLevel!==levelF)return;
+
+          // Use a dummy pat for single-day
+          const pat={key:'single',days:[d],label:DS[d],color:'var(--am)'};
+          if(!groups[gKey])groups[gKey]={pat,ti,label,isNonStandard:true,rows:[]};
+          groups[gKey].rows.push({t,free,names,slotAgeGroup,slotLevel,existGroups,coveredDays:[d],isNonStandard:true});
+        });
+      }
     }
   });
 

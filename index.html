@@ -266,7 +266,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 .fr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .day-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .day-btn{padding:6px 11px;font-size:12px;font-weight:500;font-family:var(--fb);border-radius:6px;border:1px solid var(--b2);background:var(--bg3);color:var(--t2);cursor:pointer;transition:all .1s;user-select:none}
-.day-btn.sel{background:var(--acbg);border-color:var(--acb);color:var(--ac2)}
+.day-btn.sel,.day-btn.active{background:var(--acbg);border-color:var(--acb);color:var(--ac2)}
 .preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .pre-btn{padding:4px 9px;font-size:11px;font-family:var(--fb);border-radius:6px;border:1px solid var(--b2);background:var(--bg3);color:var(--t3);cursor:pointer;transition:all .1s}
 .pre-btn:hover{color:var(--t2)}
@@ -3002,10 +3002,16 @@ function openStudentModal(id,preTeacherId,preDays,preTimeIdx){
 
 function toggleDay(btn){btn.classList.toggle('sel');updateTimeOptions();}
 function setDays(days,skipUpdate){
-  document.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('sel',days.includes(parseInt(b.dataset.d))));
+  const picker=document.getElementById('day-picker');
+  if(picker) picker.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('sel',days.includes(parseInt(b.dataset.d))));
   if(!skipUpdate)updateTimeOptions();
 }
-function getDays(){return[...document.querySelectorAll('.day-btn.sel')].map(b=>parseInt(b.dataset.d));}
+function getDays(){
+  // Only get days from main day picker, NOT extra slot pickers
+  const picker=document.getElementById('day-picker');
+  if(picker) return[...picker.querySelectorAll('.day-btn.sel')].map(b=>parseInt(b.dataset.d));
+  return[];
+}
 
 
 // ── EXTRA SLOTS (multiple teachers/days per student) ─────────────
@@ -3104,7 +3110,7 @@ function saveStudent(){
   const subjId=parseInt(document.getElementById('s-subj').value);
 
   // Block if time not available for teacher on all selected days
-  const av=S.avail[tid]||{};
+  const av=getTeacherAvailNow(tid);
   const unavail=days.filter(d=>!av[d]||!av[d][ti]);
   if(unavail.length){
     toast('⚠ На выбранное время нет доступности у преподавателя',true);return;

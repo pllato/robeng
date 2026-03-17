@@ -754,7 +754,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
 
 <!-- Modal: Video review (admin) -->
 <div class="mo" id="m-video-review">
-  <div class="modal">
+  <div class="modal modal-lg">
     <div class="mt">🎥 Проверка записи урока</div>
     <div id="m-vr-info" style="margin-bottom:14px"></div>
     <div class="fr">
@@ -764,14 +764,29 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div style="margin-bottom:14px">
       <a id="m-vr-link" href="#" target="_blank" class="btn btn-a btn-sm" style="display:inline-flex;align-items:center;gap:5px;text-decoration:none">▶ Открыть видео</a>
     </div>
-    <div class="fr">
-      <label>Комментарий администратора</label>
-      <textarea id="m-vr-admin-comment" placeholder="Оставьте комментарий для преподавателя..."></textarea>
+    <div id="m-vr-parent-block" class="fr">
+      <label style="color:var(--gn);font-weight:600">💬 Комментарий для родителей <span style="color:var(--rd)">*</span> <span style="font-size:10px;color:var(--t3);font-weight:400">(обязательно при одобрении)</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        <button class="btn btn-xs" onclick="setVrPhrase(0)" style="font-size:11px">⭐ Отличный урок</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(1)" style="font-size:11px">💪 Старается</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(2)" style="font-size:11px">📈 Прогресс есть</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(3)" style="font-size:11px">🎯 Активно работает</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(4)" style="font-size:11px">🌟 Молодец!</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(5)" style="font-size:11px">📚 Хорошо усвоил</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(6)" style="font-size:11px">🔄 Продолжаем</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(7)" style="font-size:11px;background:var(--acbg);border-color:var(--acb);color:var(--ac2)">✨ Случайный</button>
+      </div>
+      <textarea id="m-vr-parent-comment" placeholder="Напишите комментарий для родителей или выберите быструю фразу выше..." style="min-height:80px"></textarea>
     </div>
+    <div id="m-vr-teacher-block" class="fr" style="display:none">
+      <label style="color:var(--rd);font-weight:600">💬 Причина отклонения для преподавателя <span style="color:var(--rd)">*</span></label>
+      <textarea id="m-vr-teacher-fb" placeholder="Укажите причину отклонения или что нужно исправить..." style="min-height:70px"></textarea>
+    </div>
+    <div id="m-vr-err" style="display:none;color:var(--rd);font-size:12px;margin-bottom:8px;padding:8px 12px;background:var(--rdbg);border:1px solid rgba(240,89,117,.3);border-radius:var(--r)"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video-review')">Закрыть</button>
-      <button class="btn btn-r" onclick="reviewVideo('rejected')">❌ Отклонить</button>
-      <button class="btn btn-g" onclick="reviewVideo('approved')">✅ Одобрить</button>
+      <button class="btn btn-r" onclick="onVrDecisionHover('rejected');reviewVideoDecision('rejected')" onmouseenter="onVrDecisionHover('rejected')">❌ Отклонить</button>
+      <button class="btn btn-g" onclick="onVrDecisionHover('approved');reviewVideoDecision('approved')" onmouseenter="onVrDecisionHover('approved')">✅ Одобрить</button>
     </div>
   </div>
 </div>
@@ -4281,31 +4296,85 @@ function openVideoReview(key){
        <span style="color:var(--t3)">Отправил: ${v.submittedBy} · ${new Date(v.submittedAt).toLocaleString('ru')}</span></div>`;
     document.getElementById('m-vr-teacher-comment').textContent=v.teacherComment||'(без комментария)';
     document.getElementById('m-vr-link').href=v.url||'#';
-    document.getElementById('m-vr-admin-comment').value=v.adminComment||'';
+    const pc=document.getElementById('m-vr-parent-comment');
+    const tf=document.getElementById('m-vr-teacher-fb');
+    const err=document.getElementById('m-vr-err');
+    if(pc)pc.value=v.parentComment||'';
+    if(tf)tf.value=v.teacherFeedback||'';
+    if(err)err.style.display='none';
+    const pb=document.getElementById('m-vr-parent-block');
+    const tb=document.getElementById('m-vr-teacher-block');
+    if(pb)pb.style.display='';
+    if(tb)tb.style.display='none';
     open1('m-video-review');
   });
 }
 
-function reviewVideo(decision){
-  const adminComment=document.getElementById('m-vr-admin-comment').value.trim();
+function onVrDecisionHover(decision){
+  const pb=document.getElementById('m-vr-parent-block');
+  const tb=document.getElementById('m-vr-teacher-block');
+  if(decision==='approved'){if(pb)pb.style.display='';if(tb)tb.style.display='none';}
+  else{if(pb)pb.style.display='none';if(tb)tb.style.display='';}
+}
+
+// ── Быстрые фразы для комментария родителям ─────────────────────
+const VR_PHRASES = [
+  '⭐ Урок прошёл отлично! Ребёнок активно работал и хорошо усвоил материал.',
+  '💪 Ребёнок старается и делает успехи. Продолжаем в том же духе!',
+  '📈 Виден хороший прогресс! Ребёнок развивается и улучшает свои навыки.',
+  '🎯 На уроке активно работали над практикой. Ребёнок молодец!',
+  '🌟 Отличная работа! Ребёнок показал хорошие результаты на занятии.',
+  '📚 Материал урока хорошо усвоен. Рекомендуем закрепить дома.',
+  '🔄 Продолжаем планомерную работу. Прогресс есть, движемся вперёд!',
+  '😊 Ребёнок на занятии был внимателен и активен. Так держать!',
+  '🏆 Сегодня особенно хорошо справился с заданиями. Гордимся!',
+  '✨ Урок прошёл продуктивно. Ребёнок показывает стабильный рост.',
+];
+function setVrPhrase(idx){
+  const el=document.getElementById('m-vr-parent-comment');
+  if(!el)return;
+  if(idx===7){
+    // Случайный
+    const r=VR_PHRASES[Math.floor(Math.random()*VR_PHRASES.length)];
+    el.value=r;
+  } else {
+    el.value=VR_PHRASES[idx]||'';
+  }
+  el.focus();
+}
+function reviewVideoDecision(decision){
+  const errEl=document.getElementById('m-vr-err');
+  errEl.style.display='none';
+  if(decision==='approved'){
+    const comment=document.getElementById('m-vr-parent-comment').value.trim();
+    if(!comment){errEl.textContent='Пожалуйста, добавьте комментарий для родителей перед одобрением.';errEl.style.display='';return;}
+    reviewVideo(decision, comment, '');
+  } else {
+    const fb=document.getElementById('m-vr-teacher-fb').value.trim();
+    if(!fb){errEl.textContent='Пожалуйста, укажите причину отклонения для преподавателя.';errEl.style.display='';return;}
+    reviewVideo(decision, '', fb);
+  }
+}
+function reviewVideo(decision, parentComment, teacherFb){
   const user=fbAuth.currentUser?.email||'—';
+  const adminComment = decision==='approved' ? parentComment : teacherFb;
   videoRef.child(_videoReviewId).update({
     status:decision,
     adminComment,
+    parentComment: parentComment||'',
+    teacherFeedback: teacherFb||'',
     reviewedBy:user,
     reviewedAt:new Date().toISOString()
   }).then(()=>{
-    // Update local S
     if(S.videoReports&&S.videoReports[_videoReviewId]){
       S.videoReports[_videoReviewId].status=decision;
       S.videoReports[_videoReviewId].adminComment=adminComment;
     }
     save();
     const labels={approved:'✅ Одобрено',rejected:'❌ Отклонено'};
-    // Notify teacher
+    // Уведомляем преподавателя
     videoRef.child(_videoReviewId).once('value').then(vSnap=>{
       const vd=vSnap.val();if(!vd)return;
-      // Find teacher UID
       usersRef.once('value').then(us=>{
         const udata=us.val()||{};
         const entry=Object.entries(udata).find(([uid,u])=>u.name===vd.teacherName);
@@ -4316,7 +4385,7 @@ function reviewVideo(decision){
         }
       });
     });
-    // WhatsApp при одобрении администратором
+    // WhatsApp родителям при одобрении
     if(decision==='approved'){
       videoRef.child(_videoReviewId).once('value').then(vSnap2=>{
         const vd2=vSnap2.val();if(!vd2)return;
@@ -4330,31 +4399,28 @@ function reviewVideo(decision){
           const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
           const playerUrl=vd2.url||'';
           const sendWA=(phone,msg)=>{if(phone)notifyWhatsApp(phone,msg);};
-          // Генерируем токен подписки и отправляем
           fetch('https://flat-pond-6e68.uurraa.workers.dev/get-bot-link',{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({phone:parentPhone.replace(/\D/g,''),studentName:vd2.studentName||'—'})
           }).then(r=>r.json()).then(d=>{
-            const base='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
+            const msg=
+              'Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+
               '👤 Ученик: '+(vd2.studentName||'—')+'\n'+
               '👩\u200d🏫 Преподаватель: '+(vd2.teacherName||'—')+'\n'+
               '📅 Дата: '+dateRu+'\n\n'+
-              'Преподаватель записал небольшой фрагмент практики.\n\n'+
-              '▶️ Смотреть видео: '+playerUrl;
-            const suffix=d.ok&&d.botLink
-              ?'\n\n━━━━━━━━━━━━━━\nЕсли у вас не получается просмотреть видео — подпишитесь на наш Telegram бот и получайте следующие видео, а также новости школы напрямую там:\n'+d.botLink
-              :'';
-            const msg=base+suffix;
+              (parentComment?parentComment+'\n\n':'')+
+              '▶️ Смотреть видео: '+playerUrl+
+              (d.ok&&d.botLink?'\n\n━━━━━━━━━━━━━━\nЕсли у вас не получается просмотреть видео — подпишитесь на наш Telegram бот и получайте следующие видео, а также новости школы напрямую там:\n'+d.botLink:'');
             sendWA(parentPhone,msg);
             if(studentPhone&&studentPhone!==parentPhone)sendWA(studentPhone,msg);
           }).catch(()=>{
-            const msg='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+'▶️ Смотреть видео: '+playerUrl;
+            const msg='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n'+(parentComment?parentComment+'\n\n':'')+'▶️ Смотреть видео: '+playerUrl;
             sendWA(parentPhone,msg);
           });
         }
       });
     }
-    logAction('other',`Видео урока ${labels[decision]||decision}`,`${adminComment?'Комментарий: '+adminComment:''}`);
+    logAction('other',`Видео урока ${labels[decision]||decision}`,adminComment?'Комментарий: '+adminComment:'');
     close1('m-video-review');
     renderVideoReviews();
     updateVideoBadge();

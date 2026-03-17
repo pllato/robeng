@@ -4159,6 +4159,8 @@ async function submitVideo(){
     form.append('date', _videoDateStr);
     form.append('studentName', st?.name||'—');
     form.append('teacherName', t?.name||'—');
+    form.append('parentPhone', st?.parentPhone||'');
+    form.append('studentPhone', st?.phone||'');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', VIDEO_WORKER_URL+'/upload-video', true);
@@ -4185,7 +4187,7 @@ async function submitVideo(){
     const record = {
       id: key, enrollId: String(_videoEnrollId), dateStr: _videoDateStr,
       teacherId: String(e.teacherId), teacherName: t?.name||'—',
-      studentName: st?.name||'—', url: result.tgLink,
+      studentName: st?.name||'—', url: `https://flat-pond-6e68.uurraa.workers.dev/player?id=${encodeURIComponent(String(_videoEnrollId)+'_'+_videoDateStr)}`,
       tgLink: result.tgLink, uploadType: 'telegram',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
       submittedBy: user, status: 'pending'
@@ -4195,17 +4197,6 @@ async function submitVideo(){
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
-    // WhatsApp уведомление родителю и ученику
-    if(st){
-      const parentPhone=st.parentPhone||'';
-      const studentPhone=st.phone||'';
-      const [vy,vm,vd]=(_videoDateStr||'').split('-');
-      const vMonths=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-      const vDateRu=vd&&vm?(vd+' '+vMonths[parseInt(vm)-1]):(_videoDateStr||'');
-      const vMsg='✅ Урок записан на видео!\n\n👤 Ученик: '+(st.name||'—')+'\n👩‍🏫 Преподаватель: '+(t?.name||'—')+'\n📅 Дата: '+vDateRu+(result.tgLink?'\n\n▶️ Видео: '+result.tgLink:'');
-      if(parentPhone) notifyWhatsApp(parentPhone,vMsg);
-      if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,vMsg);
-    }
     close1('m-video');
     toast('✓ Видео загружено в Telegram и отправлено на проверку');
     updateVideoBadge();
@@ -4337,7 +4328,7 @@ function reviewVideo(decision){
           const [y,m,d]=(vd2.dateStr||'').split('-');
           const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
           const dateRu=d&&m?(d+' '+months[parseInt(m)-1]):(vd2.dateStr||'');
-          const msg='🎬 Видео урока готово!\n\n👤 Ученик: '+(vd2.studentName||'—')+'\n📅 Дата: '+dateRu+'\n\n▶️ Смотреть: '+vd2.url;
+          const msg='Высылаем вам отчёт по сегодняшнему занятию 📋\n\n👤 Ученик: '+(vd2.studentName||'—')+'\n📅 Дата: '+dateRu+'\n\nПреподаватель записал небольшой фрагмент практики.\n\n▶️ Смотреть видео: '+vd2.url;
           if(parentPhone) notifyWhatsApp(parentPhone,msg);
           if(studentPhone&&studentPhone!==parentPhone) notifyWhatsApp(studentPhone,msg);
         }

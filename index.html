@@ -743,6 +743,16 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     </div>
     <div class="fr">
       <label>💬 Комментарий преподавателя <span style="font-size:10px;color:var(--t3);font-weight:400">(тема урока, что прошли, особенности)</span></label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(0)">⭐ Отличный урок</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(1)">💪 Старается</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(2)">📈 Прогресс есть</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(3)">🎯 Активно работает</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(4)">🌟 Молодец!</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(5)">📚 Хорошо усвоил</button>
+        <button type="button" class="btn btn-xs" onclick="setTeacherPhrase(6)">🔄 Продолжаем</button>
+        <button type="button" class="btn btn-xs" style="background:var(--acbg);border-color:var(--acb);color:var(--ac2)" onclick="setTeacherPhrase(7)">✨ Случайный</button>
+      </div>
       <textarea id="video-comment" placeholder="Например: прошли Present Simple, ученик активно отвечал, сложности с произношением..." style="min-height:70px"></textarea>
     </div>
     <div class="warn-box" id="video-err"></div>
@@ -4690,6 +4700,15 @@ function onVideoFileSelect(input){
   dz.style.borderColor = 'var(--ac)';
 }
 
+// ── Быстрые фразы для комментария ПРЕПОДАВАТЕЛЯ при загрузке ─────
+function setTeacherPhrase(idx){
+  const el=document.getElementById('video-comment');
+  if(!el)return;
+  if(idx===7){el.value=VR_PHRASES[Math.floor(Math.random()*VR_PHRASES.length)];}
+  else{el.value=VR_PHRASES[idx]||'';}
+  el.focus();
+}
+
 // ── Отправить видео родителю сразу при загрузке ──────────────────
 function sendVideoToParent(record){
   const e=S.enrollments.find(x=>String(x.id)===String(record.enrollId));
@@ -4821,17 +4840,17 @@ async function submitVideo(){
       studentName: st?.name||'—', url: `https://flat-pond-6e68.uurraa.workers.dev/player?id=${encodeURIComponent(String(_videoEnrollId)+'_'+_videoDateStr)}`,
       uploadType: 'r2',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
-      submittedBy: user, status: 'approved'
+      submittedBy: user, status: 'pending'
     };
     await videoRef.child(key).set(record);
     logAction('other', 'Видео урока загружено: '+(st?.name||'—'), (t?.name||'—')+' · '+fmtDate(_videoDateStr));
-    // Отправляем родителям сразу
+    // Отправляем родителям сразу при загрузке
     sendVideoToParent(record);
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
     close1('m-video');
-    toast('✓ Видео загружено и отправлено родителям!');
+    toast('✓ Видео отправлено родителям и администратору на проверку 📤');
     updateVideoBadge();
     renderSchedule();
     _videoSelectedFile = null;
@@ -4875,7 +4894,7 @@ function submitVideoLink(){
     teacherComment:comment||'',
     submittedAt:new Date().toISOString(),
     submittedBy:user+(currentRole==='admin'?' (за преподавателя)':''),
-    status:'approved'
+    status:'pending'
   };
 
   const btn=document.querySelector('#m-video .btn-a');
@@ -4887,11 +4906,11 @@ function submitVideoLink(){
       // Отправляем родителям сразу
       sendVideoToParent(record);
       save();
-      if(btn){btn.disabled=false;btn.textContent='Отправить на проверку';}
+      if(btn){btn.disabled=false;btn.textContent='Отправить родителям 📤';}
       close1('m-video');
       renderSchedule();
       updateVideoBadge();
-      toast('🎥 Видео отправлено родителям!');
+      toast('🎥 Видео отправлено родителям и администратору на проверку!');
       // Notify admins
       usersRef.once('value').then(us=>{
         const udata=us.val()||{};
@@ -4901,7 +4920,7 @@ function submitVideoLink(){
     })
     .catch(err=>{
       console.error('Video submit error:',err);
-      if(btn){btn.disabled=false;btn.textContent='Отправить на проверку';}
+      if(btn){btn.disabled=false;btn.textContent='Отправить родителям 📤';}
       errEl.textContent='Ошибка Firebase: '+err.message;
       errEl.style.display='';
     });
@@ -4965,14 +4984,19 @@ function setVrPhrase(idx){
 function reviewVideoDecision(decision){
   const errEl=document.getElementById('m-vr-err');
   errEl.style.display='none';
-  const comment=document.getElementById('m-vr-parent-comment')?.value.trim()||'';
-  const fb=document.getElementById('m-vr-teacher-fb')?.value.trim()||'';
-  if(decision==='rejected'&&!fb){errEl.textContent='Укажите причину отклонения для преподавателя.';errEl.style.display='';return;}
-  reviewVideo(decision, comment, fb);
+  if(decision==='approved'){
+    const comment=document.getElementById('m-vr-parent-comment').value.trim();
+    if(!comment){errEl.textContent='Пожалуйста, добавьте комментарий для родителей перед одобрением.';errEl.style.display='';return;}
+    reviewVideo(decision, comment, '');
+  } else {
+    const fb=document.getElementById('m-vr-teacher-fb').value.trim();
+    if(!fb){errEl.textContent='Пожалуйста, укажите причину отклонения для преподавателя.';errEl.style.display='';return;}
+    reviewVideo(decision, '', fb);
+  }
 }
 function reviewVideo(decision, parentComment, teacherFb){
   const user=fbAuth.currentUser?.email||'—';
-  const adminComment = decision==='approved' ? (parentComment||'✅ Просмотрено') : teacherFb;
+  const adminComment = decision==='approved' ? parentComment : teacherFb;
   videoRef.child(_videoReviewId).update({
     status:decision, adminComment,
     parentComment:parentComment||'', teacherFeedback:teacherFb||'',
@@ -4983,8 +5007,8 @@ function reviewVideo(decision, parentComment, teacherFb){
       S.videoReports[_videoReviewId].adminComment=adminComment;
     }
     save();
-    const labels={approved:'✅ Просмотрено',rejected:'❌ Отклонено'};
-    // Уведомляем преподавателя об отклонении
+    const labels={approved:'✅ Одобрено',rejected:'❌ Отклонено'};
+    // Уведомляем преподавателя
     videoRef.child(_videoReviewId).once('value').then(vSnap=>{
       const vd=vSnap.val();if(!vd)return;
       usersRef.once('value').then(us=>{
@@ -4996,8 +5020,11 @@ function reviewVideo(decision, parentComment, teacherFb){
           });
         }
       });
+      // При одобрении — уведомляем только преподавателя, родителям повторно не отправляем
+      if(decision==='rejected'){
+        // уже обработано выше через sendNotification
+      }
     });
-    // Видео уже отправлено родителям при загрузке — повторно не отправляем
     logAction('other',`Видео урока ${labels[decision]||decision}`,adminComment?'Комментарий: '+adminComment:'');
     close1('m-video-review');
     renderVideoReviews();

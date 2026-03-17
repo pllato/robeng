@@ -4223,7 +4223,7 @@ async function submitVideo(){
       id: key, enrollId: String(_videoEnrollId), dateStr: _videoDateStr,
       teacherId: String(e.teacherId), teacherName: t?.name||'—',
       studentName: st?.name||'—', url: `https://flat-pond-6e68.uurraa.workers.dev/player?id=${encodeURIComponent(String(_videoEnrollId)+'_'+_videoDateStr)}`,
-      tgLink: result.tgLink, uploadType: 'telegram',
+      uploadType: 'r2',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
       submittedBy: user, status: 'pending'
     };

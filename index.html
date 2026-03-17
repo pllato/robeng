@@ -1951,7 +1951,7 @@ function renderTeacherDashboard(){
 
   // Pending tasks
   const needAtt=lessonsToday.filter(l=>!l.att).length;
-  const needVid=lessonsToday.filter(l=>!l.vid||l.vid.status==='rejected').length;
+  const needVid=lessonsToday.filter(l=>!l.vid).length;
 
   // Misses
   let myMisses=0;
@@ -2075,7 +2075,7 @@ function renderTeacherDashboard(){
         </button>
         ${att==='miss'&&!mk?`<button class="btn btn-sm" onclick="openMakeup(${e.id},'${today}')" style="font-size:12px;background:var(--ambg);border-color:rgba(245,200,66,.3);color:var(--am)">↩ Отработка</button>`:''}
         <button class="btn btn-sm vid-btn ${vid?'vid-'+vid.status:'vid-none'}" onclick="openVideoUpload(${e.id},'${today}')" style="flex:1;font-size:12px">
-          🎥 ${vid?.status==='approved'?'✅ Видео':vid?.status==='pending'?'⏳ На проверке':vid?.status==='rejected'?'❌ Переотправить':'Загрузить видео'}
+          🎥 ${vid?.status==='approved'?'✅ Видео':vid?.status==='pending'?'⏳ На проверке':vid?.status==='rejected'?'💬 Получена обратная связь':'Загрузить видео'}
         </button>
       </div>
       ${mk?`<div style="font-size:11px;color:var(--am);margin-top:7px">↩ Отработка: ${mk.makeupDate} ${TIMES[mk.makeupTi]||''}</div>`:''}
@@ -4630,8 +4630,8 @@ function updateVideoBadge(){
     const items=Object.values(data);
     let n=0;
     if(currentRole==='teacher'&&currentTeacherId){
-      // Show rejected count for teacher (needs action)
-      n=items.filter(v=>String(v.teacherId)===String(currentTeacherId)&&v.status==='rejected').length;
+      // Teacher badge: only pending (waiting for review), not rejected
+      n=items.filter(v=>String(v.teacherId)===String(currentTeacherId)&&v.status==='pending').length;
     } else {
       // Show pending count for admin
       n=items.filter(v=>v.status==='pending').length;
@@ -5115,7 +5115,6 @@ function renderVideoReviews(){
           <div style="display:flex;gap:6px;flex-shrink:0">
             <a href="${v.url||'#'}" target="_blank" class="btn btn-sm" style="text-decoration:none">▶ Смотреть</a>
             ${!isTeacher&&v.status==='pending'?`<button class="btn btn-a btn-sm" onclick="openVideoReview('${v.id}')">Проверить</button>`:''}
-            ${isTeacher&&v.status==='rejected'?`<button class="btn btn-sm" style="background:var(--ambg);border-color:rgba(245,200,66,.3);color:var(--am)" onclick="openVideoUpload('${v.enrollId}','${v.dateStr}')">↩ Исправить и переслать</button>`:''}
           </div>
         </div>
         ${v.adminComment?`<div style="margin-top:10px;padding:10px 12px;background:${v.status==='rejected'?'var(--rdbg)':'var(--gnbg)'};border:1px solid ${v.status==='rejected'?'rgba(240,89,117,.3)':'rgba(63,216,142,.25)'};border-radius:8px">
@@ -5126,11 +5125,11 @@ function renderVideoReviews(){
     };
     let html='';
     if(currentRole==='teacher'){
-      // Teacher: show rejected first (needs action), then pending, then approved
+      // Teacher: show feedback received, then pending, then approved
       const rejected=items.filter(x=>x.status==='rejected');
       const pend=items.filter(x=>x.status==='pending');
       const approved=items.filter(x=>x.status==='approved');
-      if(rejected.length){html+=`<div class="sec-title" style="margin-bottom:10px;color:var(--rd)">❌ Отклонено (${rejected.length}) — требует исправления</div>`;html+=rejected.map(renderItem).join('');}
+      if(rejected.length){html+=`<div class="sec-title" style="margin-bottom:10px;color:var(--am)">💬 Получена обратная связь (${rejected.length})</div>`;html+=rejected.map(renderItem).join('');}
       if(pend.length){if(html)html+='<div class="divider"></div>';html+=`<div class="sec-title" style="margin-bottom:10px">⏳ На проверке (${pend.length})</div>`;html+=pend.map(renderItem).join('');}
       if(approved.length){if(html)html+='<div class="divider"></div>';html+=`<div class="sec-title" style="margin-bottom:10px">✅ Одобрено (${approved.length})</div>`;html+=approved.map(renderItem).join('');}
     } else {
@@ -5547,18 +5546,17 @@ function renderToday(){
     const videoNeeded=myEnrolls.filter(e=>{
       if(!e.slots.some(sl=>sl.day===todayDay))return false;
       const v=(S.videoReports||{})[videoKey(e.id,today)];
-      return!v||v.status==='rejected';
+      return!v; // only show if not yet uploaded
     });
     if(videoNeeded.length){
       html+=`<div class="sec-title" style="margin-bottom:10px">🎥 Видео на сегодня</div>`;
       html+=videoNeeded.map(e=>{
         const st=student(e.studentId);
-        const v=(S.videoReports||{})[videoKey(e.id,today)];
         return`<div class="today-item">
           <div style="font-size:18px">🎥</div>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:500">${st?.name||'—'} · ${e.topic||'—'}</div>
-            <div style="font-size:11px;color:${v?.status==='rejected'?'var(--rd)':'var(--t3)'}">${v?.status==='rejected'?'❌ Отклонено — нужно переслать':'Нужно загрузить видео урока'}</div>
+            <div style="font-size:11px;color:var(--t3)">Нужно загрузить видео урока</div>
           </div>
           <button class="btn btn-sm" onclick="openVideoUpload(${e.id},'${today}')">🎥 Загрузить</button>
         </div>`;

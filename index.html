@@ -776,21 +776,28 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <a id="m-vr-link" href="#" target="_blank" class="btn btn-a btn-sm" style="display:inline-flex;align-items:center;gap:5px;text-decoration:none">▶ Открыть видео</a>
     </div>
     <div id="m-vr-parent-block" class="fr">
-      <label style="color:var(--gn);font-weight:600">💬 Комментарий для родителей <span style="color:var(--rd)">*</span> <span style="font-size:10px;color:var(--t3);font-weight:400">(обязательно при одобрении)</span></label>
+      <label style="color:var(--gn);font-weight:600">💬 Комментарий для преподавателя <span style="color:var(--rd)">*</span> <span style="font-size:10px;color:var(--t3);font-weight:400">(обязателен при одобрении)</span></label>
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-        <button class="btn btn-xs" onclick="setVrPhrase(0)" style="font-size:11px">⭐ Отличный урок</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(1)" style="font-size:11px">💪 Старается</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(2)" style="font-size:11px">📈 Прогресс есть</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(3)" style="font-size:11px">🎯 Активно работает</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(4)" style="font-size:11px">🌟 Молодец!</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(5)" style="font-size:11px">📚 Хорошо усвоил</button>
-        <button class="btn btn-xs" onclick="setVrPhrase(6)" style="font-size:11px">🔄 Продолжаем</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(0)" style="font-size:11px">✅ Хороший продукт</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(1)" style="font-size:11px">💬 Больше позитива</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(2)" style="font-size:11px">🎯 Нужен продукт</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(3)" style="font-size:11px">🗣 Больше практики</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(4)" style="font-size:11px">📈 Прогресс виден</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(5)" style="font-size:11px">🔊 Чёткое общение</button>
+        <button class="btn btn-xs" onclick="setVrPhrase(6)" style="font-size:11px">⭐ Отличный урок</button>
         <button class="btn btn-xs" onclick="setVrPhrase(7)" style="font-size:11px;background:var(--acbg);border-color:var(--acb);color:var(--ac2)">✨ Случайный</button>
       </div>
-      <textarea id="m-vr-parent-comment" placeholder="Напишите комментарий для родителей или выберите быструю фразу выше..." style="min-height:80px"></textarea>
+      <textarea id="m-vr-parent-comment" placeholder="Комментарий администратора для преподавателя..." style="min-height:80px"></textarea>
     </div>
     <div id="m-vr-teacher-block" class="fr" style="display:none">
-      <label style="color:var(--rd);font-weight:600">💬 Причина отклонения для преподавателя <span style="color:var(--rd)">*</span></label>
+      <label style="color:var(--rd);font-weight:600">❌ Причина отклонения для преподавателя <span style="color:var(--rd)">*</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        <button class="btn btn-xs" style="font-size:11px;background:var(--rdbg);border-color:rgba(240,89,117,.3);color:var(--rd)" onclick="setVrRejectPhrase(0)">📹 Плохое качество видео</button>
+        <button class="btn btn-xs" style="font-size:11px;background:var(--rdbg);border-color:rgba(240,89,117,.3);color:var(--rd)" onclick="setVrRejectPhrase(1)">🔊 Плохой звук</button>
+        <button class="btn btn-xs" style="font-size:11px;background:var(--rdbg);border-color:rgba(240,89,117,.3);color:var(--rd)" onclick="setVrRejectPhrase(2)">✂️ Неполная запись</button>
+        <button class="btn btn-xs" style="font-size:11px;background:var(--rdbg);border-color:rgba(240,89,117,.3);color:var(--rd)" onclick="setVrRejectPhrase(3)">🎯 Нет продукта урока</button>
+        <button class="btn btn-xs" style="font-size:11px;background:var(--rdbg);border-color:rgba(240,89,117,.3);color:var(--rd)" onclick="setVrRejectPhrase(4)">🔄 Переснять</button>
+      </div>
       <textarea id="m-vr-teacher-fb" placeholder="Укажите причину отклонения или что нужно исправить..." style="min-height:70px"></textarea>
     </div>
     <div id="m-vr-err" style="display:none;color:var(--rd);font-size:12px;margin-bottom:8px;padding:8px 12px;background:var(--rdbg);border:1px solid rgba(240,89,117,.3);border-radius:var(--r)"></div>
@@ -4762,6 +4769,9 @@ async function submitVideo(){
   errEl.style.display='none';
   if(_videoTab === 'link'){ submitVideoLink(); return; }
   if(!_videoSelectedFile){ errEl.textContent='Выберите файл видео'; errEl.style.display=''; return; }
+  // Обязательный комментарий
+  const commentVal=document.getElementById('video-comment').value.trim();
+  if(!commentVal){ errEl.textContent='⚠ Добавьте комментарий о прошедшем уроке (используйте быстрые фразы или напишите своё)'; errEl.style.display=''; document.getElementById('video-comment').focus(); return; }
   if(!_videoEnrollId||!_videoDateStr){ errEl.textContent='Ошибка: не выбран урок'; errEl.style.display=''; return; }
   const e = S.enrollments.find(x=>String(x.id)===String(_videoEnrollId));
   if(!e){ errEl.textContent='Ошибка: запись не найдена'; errEl.style.display=''; return; }
@@ -4872,6 +4882,7 @@ function submitVideoLink(){
 
   if(!url){errEl.textContent='Вставьте ссылку на видео';errEl.style.display='';return;}
   if(!url.startsWith('http')){errEl.textContent='Ссылка должна начинаться с http://';errEl.style.display='';return;}
+  if(!comment){errEl.textContent='⚠ Добавьте комментарий о прошедшем уроке';errEl.style.display='';document.getElementById('video-comment').focus();return;}
   if(!_videoEnrollId||!_videoDateStr){errEl.textContent='Ошибка: не выбран урок';errEl.style.display='';return;}
 
   // Find enrollment — compare as strings to handle both numeric and string ids
@@ -4956,29 +4967,39 @@ function onVrDecisionHover(decision){
   else{if(pb)pb.style.display='none';if(tb)tb.style.display='';}
 }
 
-// ── Быстрые фразы для комментария родителям ─────────────────────
+// ── Быстрые фразы администратора при одобрении ───────────────────
 const VR_PHRASES = [
-  '⭐ Урок прошёл отлично! Ребёнок активно работал и хорошо усвоил материал.',
-  '💪 Ребёнок старается и делает успехи. Продолжаем в том же духе!',
-  '📈 Виден хороший прогресс! Ребёнок развивается и улучшает свои навыки.',
-  '🎯 На уроке активно работали над практикой. Ребёнок молодец!',
-  '🌟 Отличная работа! Ребёнок показал хорошие результаты на занятии.',
-  '📚 Материал урока хорошо усвоен. Рекомендуем закрепить дома.',
-  '🔄 Продолжаем планомерную работу. Прогресс есть, движемся вперёд!',
-  '😊 Ребёнок на занятии был внимателен и активен. Так держать!',
-  '🏆 Сегодня особенно хорошо справился с заданиями. Гордимся!',
-  '✨ Урок прошёл продуктивно. Ребёнок показывает стабильный рост.',
+  '✅ Хороший урок! Ученик демонстрирует навык, продолжайте в том же духе.',
+  '💬 Добавьте больше позитива и чёткого общения с учеником — это мотивирует!',
+  '🎯 Нужно больше продукта: ученик должен активно демонстрировать навык, не только слушать.',
+  '🗣 Больше практики! Давайте ученику больше возможностей говорить и применять язык.',
+  '📈 Виден хороший прогресс! Отмечайте успехи ученика вслух — это повышает мотивацию.',
+  '🔊 Чёткое общение и позитивный тон — ключ к продуктивному уроку. Так держать!',
+  '⭐ Отличный урок! Структура, темп и вовлечённость ученика — всё на высоте.',
+  '🏆 Молодец! Урок проведён профессионально, ученик активно работал.',
+  '📚 Хорошее усвоение материала. Следите чтобы ученик сам формулировал ответы, не только повторял.',
+  '🌟 Продуктивный урок! Продолжайте добиваться самостоятельных ответов от ученика.',
+];
+
+// ── Быстрые фразы отклонения ──────────────────────────────────────
+const VR_REJECT_PHRASES = [
+  '📹 Плохое качество видео — переснимите в лучшем освещении и качестве.',
+  '🔊 Плохой звук — убедитесь что микрофон работает и нет посторонних шумов.',
+  '✂️ Запись неполная — видео должно содержать весь урок от начала до конца.',
+  '🎯 Нет продукта урока — ученик должен демонстрировать навык, а не только слушать. Переснимите с акцентом на практику.',
+  '🔄 Переснимите урок: уделите больше внимания активной практике и позитивному общению.',
 ];
 function setVrPhrase(idx){
   const el=document.getElementById('m-vr-parent-comment');
   if(!el)return;
-  if(idx===7){
-    // Случайный
-    const r=VR_PHRASES[Math.floor(Math.random()*VR_PHRASES.length)];
-    el.value=r;
-  } else {
-    el.value=VR_PHRASES[idx]||'';
-  }
+  if(idx===7){el.value=VR_PHRASES[Math.floor(Math.random()*VR_PHRASES.length)];}
+  else{el.value=VR_PHRASES[idx]||'';}
+  el.focus();
+}
+function setVrRejectPhrase(idx){
+  const el=document.getElementById('m-vr-teacher-fb');
+  if(!el)return;
+  el.value=VR_REJECT_PHRASES[idx]||'';
   el.focus();
 }
 function reviewVideoDecision(decision){

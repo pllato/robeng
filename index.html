@@ -5272,16 +5272,18 @@ function submitVideoLink(){
   const btn=document.querySelector('#m-video .btn-a');
   if(btn){btn.disabled=true;btn.textContent='Отправка...';}
 
-  // Загружаем вложение если есть
+  // Загружаем вложение если есть, затем сохраняем в Firebase
   uploadAttachmentIfNeeded(_videoEnrollId, _videoDateStr)
-    .then(attachInfo=>{ if(attachInfo){ record.attachUrl=attachInfo.url; record.attachName=attachInfo.name; } })
-    .catch(()=>{})
-    .finally(()=>{
-
-  videoRef.child(key).set(record)
+    .then(attachInfo=>{
+      if(attachInfo){ record.attachUrl=attachInfo.url; record.attachName=attachInfo.name; }
+      return videoRef.child(key).set(record);
+    })
+    .catch(()=>{
+      // Если вложение не удалось — всё равно сохраняем запись
+      return videoRef.child(key).set(record);
+    })
     .then(()=>{
       logAction('other',`Видео урока отправлено: ${st?.name||'—'}`,`${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
-      // Отправляем родителям только при ПЕРВОЙ загрузке
       if(!_videoIsReupload) sendVideoToParent(record);
       save();
       if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
@@ -5290,7 +5292,6 @@ function submitVideoLink(){
       renderSchedule();
       updateVideoBadge();
       toast('🎥 Видео отправлено родителям и администратору на проверку!');
-      // Notify admins
       usersRef.once('value').then(us=>{
         const udata=us.val()||{};
         const adminUids=Object.entries(udata).filter(([,ud])=>ud.role==='admin').map(([u])=>u);

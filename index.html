@@ -391,6 +391,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
+      <div id="teacher-pulse-block" class="admin-only"></div>
       <div class="sec-title">Уроки и дела сегодня</div>
       <div id="today-list"></div>
     </div>
@@ -1547,6 +1548,8 @@ fbAuth.onAuthStateChanged(user=>{
         setInterval(createAutoBackup, 24*60*60*1000);
         // WhatsApp reminder 5 min before lesson
         startLessonReminders();
+        // Записываем время последнего входа
+        usersRef.child(user.uid).update({lastSeenAt: new Date().toISOString(), lastSeenDate: new Date().toISOString().slice(0,10)}).catch(()=>{});
         // Проверяем сбои напоминаний сегодня (только для admin)
         if(currentRole==='admin') updateReminderFailureBadge();
       });
@@ -1868,12 +1871,200 @@ function getDashPeriodLabel(){
   return`${dashPeriod} дней`;
 }
 
+
+// ── ПУЛЬС ПРЕПОДАВАТЕЛЕЙ (admin dashboard) ───────────────────────
+function renderTeacherPulse(){
+  const el=document.getElementById('teacher-pulse-block');
+  if(!el||currentRole!=='admin')return;
+
+  const today=new Date().toISOString().slice(0,10);
+  const todayDow=(new Date().getDay()+6)%7;
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+
+  // Получаем данные lastSeen из appUsers
+  usersRef.once('value').then(snap=>{
+    const udata=snap.val()||{};
+
+    // Берём только активных преподавателей
+    const teachers=S.teachers.filter(t=>t.status==='active');
+
+    // Для каждого преподавателя считаем показатели
+    const rows = teachers.map(t=>{
+      // Уроки сегодня у этого преподавателя
+      const todayEnrolls=S.enrollments.filter(e=>
+        String(e.teacherId)===String(t.id) && !e.inactive &&
+        enrollActive(e,today) &&
+        e.slots.some(sl=>sl.day===todayDow)
+      );
+
+      // Посещаемость сегодня
+      let attDone=0, attMiss=0, attEmpty=0;
+      todayEnrolls.forEach(e=>{
+        const att=getAtt(e.id,today);
+        if(att==='done'||att==='makeup') attDone++;
+        else if(att==='miss') attMiss++;
+        else {
+          // Урок уже прошёл если его время + 30 мин < сейчас
+          const sl=e.slots.find(s=>s.day===todayDow);
+          if(sl){const [lh,lm]=TIMES[sl.ti].split(':').map(Number);if((lh*60+lm+30)<nowMin)attEmpty++;}
+        }
+      });
+
+      // Видео сегодня
+      const vr=S.videoReports||{};
+      let videoNeeded=0, videoSent=0;
+      todayEnrolls.forEach(e=>{
+        const sl=e.slots.find(s=>s.day===todayDow);
+        if(!sl)return;
+        const [lh,lm]=TIMES[sl.ti].split(':').map(Number);
+        if((lh*60+lm+30)<nowMin){ // урок закончился
+          videoNeeded++;
+          if(vr[videoKey(e.id,today)]) videoSent++;
+        }
+      });
+
+      // last seen — ищем по uid или имени
+      const uEntry=Object.values(udata).find(u=>u.name===t.name||String(u.teacherId)===String(t.id));
+      const lastSeenDate=uEntry?.lastSeenDate||null;
+      const onlineToday=lastSeenDate===today;
+
+      // Метрики за 30 дней
+      const dates30=dateRange(30);
+      const stats30=calcTeacherStats(t,dates30);
+
+      // Рейтинговый балл (0–100):
+      // 40% — процент ненулевых отчётов (видео отправлено)
+      // 30% — посещаемость (1 - missRate/100)
+      // 30% — процент продлений (renewalRate)
+      const videoRate30=(()=>{
+        let need=0,sent=0;
+        S.enrollments.filter(e=>String(e.teacherId)===String(t.id)&&e.dateEnd>=dates30[0]&&e.dateStart<=today).forEach(e=>{
+          dates30.forEach(dt=>{
+            if(!enrollActive(e,dt))return;
+            const dow2=(new Date(dt).getDay()+6)%7;
+            if(!e.slots.some(sl=>sl.day===dow2))return;
+            const [lh,lm]=TIMES[e.slots.find(sl=>sl.day===dow2).ti].split(':').map(Number);
+            if((new Date(dt+'T'+String(lh).padStart(2,'0')+':'+String(lm).padStart(2,'0')))<now){
+              need++;
+              if(vr[videoKey(e.id,dt)])sent++;
+            }
+          });
+        });
+        return need>0?Math.round(sent/need*100):100;
+      })();
+
+      const attScore=Math.round((1-(stats30.missRate||0)/100)*100);
+      const score=Math.round(videoRate30*0.4 + attScore*0.3 + (stats30.renewalRate||0)*0.3);
+
+      // Алерты сегодня
+      const alerts=[];
+      if(todayEnrolls.length>0){
+        if(!onlineToday) alerts.push({type:'warn', msg:'Не заходил сегодня'});
+        if(attEmpty>0) alerts.push({type:'err', msg:`Не проставлена посещ. (${attEmpty} ур.)`});
+        if(videoNeeded>0&&videoSent<videoNeeded) alerts.push({type:'warn', msg:`Нет видео (${videoSent}/${videoNeeded})`});
+      }
+
+      return {t, todayEnrolls:todayEnrolls.length, attDone, attMiss, attEmpty,
+              videoSent, videoNeeded, onlineToday, score, stats30,
+              videoRate30, attScore, alerts, lastSeenDate};
+    });
+
+    // Сортируем: сначала с алертами-ошибками, потом по score desc
+    rows.sort((a,b)=>{
+      const aErr=a.alerts.filter(x=>x.type==='err').length;
+      const bErr=b.alerts.filter(x=>x.type==='err').length;
+      if(aErr!==bErr)return bErr-aErr;
+      return b.score-a.score;
+    });
+
+    if(!rows.length){el.innerHTML='';return;}
+
+    const scoreColor=s=>s>=80?'var(--gn)':s>=50?'var(--am)':'var(--rd)';
+    const scoreBg=s=>s>=80?'var(--gnbg)':s>=50?'var(--ambg)':'var(--rdbg)';
+    const scoreBorder=s=>s>=80?'rgba(63,216,142,.3)':s>=50?'rgba(245,200,66,.3)':'rgba(240,89,117,.3)';
+
+    el.innerHTML=`
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+        <div style="font-size:13px;font-weight:700;font-family:var(--fd);color:var(--t1)">📡 Пульс преподавателей сегодня</div>
+        <div style="font-size:11px;color:var(--t3)">${fmtDate(today)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${rows.map((r,i)=>{
+          const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          const statusDot=r.onlineToday
+            ?'<span style="width:7px;height:7px;border-radius:50%;background:var(--gn);display:inline-block;box-shadow:0 0 5px var(--gn)" title="Заходил сегодня"></span>'
+            :(r.todayEnrolls>0
+              ?'<span style="width:7px;height:7px;border-radius:50%;background:var(--rd);display:inline-block" title="Не заходил, а уроки есть"></span>'
+              :'<span style="width:7px;height:7px;border-radius:50%;background:var(--t3);display:inline-block" title="Уроков нет сегодня"></span>');
+          const alertsHtml=r.alerts.map(a=>
+            `<span style="font-size:10px;padding:2px 7px;border-radius:5px;white-space:nowrap;background:${a.type==='err'?'var(--rdbg)':'var(--ambg)'};border:1px solid ${a.type==='err'?'rgba(240,89,117,.3)':'rgba(245,200,66,.3)'};color:${a.type==='err'?'var(--rd)':'var(--am)'}">${a.msg}</span>`
+          ).join('');
+          const noAlerts=r.alerts.length===0&&r.todayEnrolls>0
+            ?'<span style="font-size:10px;color:var(--gn)">✓ Всё в порядке</span>':'';
+          const noLessons=r.todayEnrolls===0
+            ?'<span style="font-size:10px;color:var(--t3)">Уроков сегодня нет</span>':'';
+
+          return`<div style="background:var(--bg2);border:1px solid ${r.alerts.some(a=>a.type==='err')?'rgba(240,89,117,.25)':r.alerts.length?'rgba(245,200,66,.2)':'var(--b1)'};border-radius:var(--rl);padding:12px 16px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <!-- Позиция + аватар -->
+              <div style="display:flex;align-items:center;gap:8px;min-width:160px;flex:1">
+                <span style="font-size:16px;width:20px;text-align:center">${medal||('<span style="font-size:11px;color:var(--t3);font-weight:600">'+(i+1)+'</span>')}</span>
+                ${statusDot}
+                <div class="av ${AVC[r.t.ci||0]}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${inits(r.t.name)}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${r.t.name}</div>
+                  <div style="font-size:10px;color:var(--t3)">${r.todayEnrolls>0?`Сегодня: ${r.todayEnrolls} ур.`:'Выходной'}</div>
+                </div>
+              </div>
+              <!-- Метрики сегодня -->
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                ${r.todayEnrolls>0?`
+                  <div style="text-align:center;min-width:44px">
+                    <div style="font-size:16px;font-weight:700;color:${r.attEmpty>0?'var(--am)':'var(--gn)'}">${r.attDone}</div>
+                    <div style="font-size:9px;color:var(--t3)">посещ.</div>
+                  </div>
+                  <div style="text-align:center;min-width:44px">
+                    <div style="font-size:16px;font-weight:700;color:${r.attMiss>0?'var(--rd)':'var(--t3)'}">${r.attMiss}</div>
+                    <div style="font-size:9px;color:var(--t3)">пропуск</div>
+                  </div>
+                  <div style="text-align:center;min-width:44px">
+                    <div style="font-size:16px;font-weight:700;color:${r.videoSent===r.videoNeeded&&r.videoNeeded>0?'var(--gn)':r.videoNeeded>0?'var(--am)':'var(--t3)'}">${r.videoSent}/${r.videoNeeded}</div>
+                    <div style="font-size:9px;color:var(--t3)">видео</div>
+                  </div>
+                `:''}
+              </div>
+              <!-- Рейтинг 30 дней -->
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <div style="font-size:10px;color:var(--t3)">Рейтинг 30д</div>
+                  <div style="background:${scoreBg(r.score)};border:1px solid ${scoreBorder(r.score)};border-radius:6px;padding:2px 9px;font-size:13px;font-weight:700;color:${scoreColor(r.score)}">${r.score}</div>
+                </div>
+                <div style="display:flex;gap:5px;font-size:10px;color:var(--t3)">
+                  <span title="Видео-отчёты">🎥${r.videoRate30}%</span>
+                  <span title="Посещаемость">👥${r.attScore}%</span>
+                  <span title="Продления">↻${r.stats30.renewalRate||0}%</span>
+                </div>
+              </div>
+            </div>
+            ${r.alerts.length||noAlerts||noLessons?`
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)">
+              ${alertsHtml}${noAlerts}${noLessons}
+            </div>`:''}</div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+}
 function renderDashboard(){
   // Teacher sees only their own dashboard
   if(currentRole==='teacher'&&currentTeacherId){
     renderTeacherDashboard();
     return;
   }
+  // Рендерим пульс преподавателей для admin
+  if(currentRole==='admin') renderTeacherPulse();
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;
   const dates=dashCustomDates||dateRange(dashPeriod);

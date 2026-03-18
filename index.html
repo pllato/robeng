@@ -381,6 +381,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       </div>
       <span id="reminder-fail-badge" class="admin-only" onclick="nav(document.querySelector('[data-p=dashboard]'))" title="Ошибки напоминаний — нажмите для перехода" style="display:none;font-size:11px;color:var(--am);background:var(--ambg);border:1px solid rgba(245,200,66,.3);border-radius:8px;padding:3px 9px;cursor:pointer"></span>
       <button class="btn btn-sm" onclick="bindTelegram()" title="Привязать Telegram для уведомлений" style="padding:5px 8px">🔔</button>
+      <button class="btn btn-sm" id="hint-mode-btn" onclick="toggleHintMode()" title="Режим подсказок — наведи на любой элемент" style="padding:5px 9px">💡</button>
+      <button class="btn btn-sm" id="tour-btn" onclick="startTour()" title="Обучение — пошаговый тур по порталу" style="padding:5px 9px">🎓</button>
       <button class="btn btn-sm" onclick="toggleHelp()" title="Справка" style="padding:5px 10px;font-weight:700" id="help-btn">?</button>
     </div>
   </div>
@@ -6514,6 +6516,281 @@ let helpCollapsed = false;
 const HELP_COLLAPSED_WIDTH = '48px';
 const HELP_FULL_WIDTH = '360px';
 
+
+// ═══════════════════════════════════════════════════════
+//  TOUR SYSTEM
+// ═══════════════════════════════════════════════════════
+
+// ── Тур для преподавателя ──────────────────────────────
+const TOUR_TEACHER = [
+  { ico:'👋', title:'Добро пожаловать!',
+    text:'Этот тур покажет всё что нужно знать преподавателю. Займёт 2 минуты. Нажми <b>Далее</b> чтобы начать.',
+    sel: null, panel: null },
+  { ico:'📅', title:'Расписание',
+    text:'Здесь всё твоё расписание. Строки — твои ученики, столбцы — дни недели. <b>Нажми на ячейку</b> с именем ученика чтобы отметить посещаемость или загрузить видео.',
+    sel: '[data-p="schedule"]', panel: 'schedule' },
+  { ico:'✅', title:'Отметка посещаемости',
+    text:'После каждого урока нажми на ячейку → выбери статус: <b>✓ Проведён</b>, <b>✗ Пропуск</b> или <b>↩ Отработка</b>. Это важно — на основе этого считается статистика.',
+    sel: '#panel-schedule', panel: 'schedule' },
+  { ico:'🎥', title:'Загрузка видео',
+    text:'После урока нажми на кнопку <b>🎥</b> в ячейке расписания. Выбери файл видео или вставь ссылку, добавь <b>комментарий</b> о прошедшем уроке — родители его увидят.',
+    sel: '#panel-schedule', panel: 'schedule' },
+  { ico:'📎', title:'Вложение к отчёту',
+    text:'При загрузке видео можно прикрепить <b>дополнительный файл</b> — домашнее задание, материалы урока, PDF. До 100 МБ, любой формат.',
+    sel: '#panel-schedule', panel: 'schedule' },
+  { ico:'🕐', title:'Время работы',
+    text:'Здесь твоё расписание доступности. Если хочешь изменить рабочие дни или часы — перейди на вкладку <b>+ Новое расписание</b> и подай заявку. Администратор одобрит.',
+    sel: '[data-p="availability"]', panel: 'availability' },
+  { ico:'📊', title:'Твои отчёты',
+    text:'В разделе <b>Отчёты</b> видна твоя статистика: сколько уроков провёл, пропуски учеников, видео-отчёты. Используй переключатели периода: 7/30/90 дней или Чт→Чт.',
+    sel: '[data-p="reports"]', panel: 'reports' },
+  { ico:'🎓', title:'Готово!',
+    text:'Теперь ты знаешь всё основное. В любой момент нажми <b>?</b> для справки по текущему разделу или <b>💡</b> для включения подсказок при наведении.',
+    sel: null, panel: null },
+];
+
+// ── Тур для администратора ─────────────────────────────
+const TOUR_ADMIN = [
+  { ico:'👋', title:'Тур для администратора',
+    text:'Покажем все ключевые функции управления. Нажми <b>Далее</b> чтобы начать.',
+    sel: null, panel: null },
+  { ico:'📡', title:'Пульс преподавателей',
+    text:'На главной — блок <b>📡 Пульс</b>. Видишь кто зашёл сегодня, проставил ли посещаемость, загрузил ли видео. Красные алерты требуют внимания. Рейтинг считается за 30 дней.',
+    sel: '#teacher-pulse-block', panel: 'dashboard' },
+  { ico:'👤', title:'Пользователи',
+    text:'Раздел <b>Пользователи</b> — добавление преподавателей. Создай аккаунт → преподаватель получит email для входа. Здесь же можно изменить роль, имя, телефон WhatsApp.',
+    sel: '[data-p="users"]', panel: 'users' },
+  { ico:'🕐', title:'Время работы',
+    text:'Настрой доступность каждого преподавателя по дням и часам. Зелёные ячейки = работает. Вкладка <b>Заявки</b> — здесь преподаватели просят изменить расписание, ты одобряешь.',
+    sel: '[data-p="availability"]', panel: 'availability' },
+  { ico:'✦', title:'Свободные слоты',
+    text:'Пришёл новый ученик? Открой <b>Свободные слоты</b>, выбери фильтры (дни недели, возраст, уровень) — система покажет где есть место. Нажми <b>Записать</b> → откроется форма.',
+    sel: '[data-p="freeSlots"]', panel: 'freeSlots' },
+  { ico:'🎓', title:'Ученики',
+    text:'Все ученики с их записями, статусами и историей. <b>↻ Продлить</b> — продлить курс. <b>⏸ Деактивировать</b> — пауза. В карточке ученика настраиваются уведомления (кому и как часто слать видео и напоминания).',
+    sel: '[data-p="students"]', panel: 'students' },
+  { ico:'🎥', title:'Видео уроков',
+    text:'Все загруженные преподавателями видео. Нажми <b>Проверить</b> → посмотри видео → одобри или отклони с комментарием. При одобрении видео уходит родителям автоматически.',
+    sel: '[data-p="videoreviews"]', panel: 'videoreviews' },
+  { ico:'📊', title:'Отчёты',
+    text:'Статистика по каждому преподавателю: уроков, пропусков, видео, продлений. Переключай период — <b>7/30/90 дней</b> или <b>Чт→Чт</b> (отчётная неделя). Можно скачать в Excel.',
+    sel: '[data-p="reports"]', panel: 'reports' },
+  { ico:'⚙️', title:'Настройки уведомлений',
+    text:'В меню <b>Ещё → Настройки</b> — глобальные настройки. Но для каждого ученика можно настроить индивидуально: кому слать напоминания и видео (ученику, родителю, или обоим).',
+    sel: '[data-p="appsettings"]', panel: 'appsettings' },
+  { ico:'🎓', title:'Готово!',
+    text:'Все основные функции изучены. Нажимай <b>💡</b> для подсказок при наведении на любой элемент, или <b>?</b> для детальной справки по текущему разделу.',
+    sel: null, panel: null },
+];
+
+let _tourSteps = [];
+let _tourIdx = 0;
+let _tourActive = false;
+
+function startTour(){
+  _tourSteps = currentRole === 'teacher' ? TOUR_TEACHER : TOUR_ADMIN;
+  _tourIdx = 0;
+  _tourActive = true;
+  document.getElementById('tour-btn').style.background = 'var(--acbg)';
+  renderTourStep();
+}
+
+function endTour(){
+  _tourActive = false;
+  document.getElementById('tour-spotlight').style.display = 'none';
+  document.getElementById('tour-bubble').style.display = 'none';
+  const btn = document.getElementById('tour-btn');
+  if(btn) btn.style.background = '';
+}
+
+function tourStep(dir){
+  _tourIdx = Math.max(0, Math.min(_tourSteps.length-1, _tourIdx+dir));
+  renderTourStep();
+}
+
+function renderTourStep(){
+  const s = _tourSteps[_tourIdx];
+  const isLast = _tourIdx === _tourSteps.length-1;
+  const isFirst = _tourIdx === 0;
+
+  // Navigate to panel if needed
+  if(s.panel){
+    const ni = document.querySelector(`.ni[data-p="${s.panel}"]`);
+    if(ni) nav(ni);
+  }
+
+  // Update bubble content
+  document.getElementById('tour-ico').textContent = s.ico;
+  document.getElementById('tour-title').textContent = s.title;
+  document.getElementById('tour-text').innerHTML = s.text;
+  document.getElementById('tour-progress').textContent = `${_tourIdx+1} из ${_tourSteps.length}`;
+  document.getElementById('tour-prev').style.display = isFirst ? 'none' : '';
+  document.getElementById('tour-next').textContent = isLast ? '✓ Завершить' : 'Далее →';
+
+  // Dots
+  document.getElementById('tour-dots').innerHTML = _tourSteps.map((_,i)=>
+    `<div style="width:6px;height:6px;border-radius:50%;background:${i===_tourIdx?'var(--ac)':'var(--b2)'};transition:background .2s"></div>`
+  ).join('');
+
+  // Spotlight
+  const spotlight = document.getElementById('tour-spotlight');
+  const bubble = document.getElementById('tour-bubble');
+
+  // Small delay so panel renders first
+  setTimeout(()=>{
+    if(s.sel){
+      const target = document.querySelector(s.sel);
+      if(target){
+        const r = target.getBoundingClientRect();
+        const pad = 8;
+        const hole = document.getElementById('tour-hole');
+        hole.setAttribute('x', r.left - pad);
+        hole.setAttribute('y', r.top - pad);
+        hole.setAttribute('width', r.width + pad*2);
+        hole.setAttribute('height', r.height + pad*2);
+        spotlight.style.display = 'block';
+        // Position bubble near target
+        positionTourBubble(r);
+      } else {
+        spotlight.style.display = 'none';
+        centerTourBubble();
+      }
+    } else {
+      spotlight.style.display = 'none';
+      centerTourBubble();
+    }
+    bubble.style.display = 'block';
+  }, s.panel ? 300 : 0);
+}
+
+function positionTourBubble(targetRect){
+  const bbl = document.getElementById('tour-bubble');
+  const bw = 330, bh = 200;
+  const margin = 16;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left, top;
+  // Try below target first
+  if(targetRect.bottom + bh + margin < vh){
+    top = targetRect.bottom + margin;
+    left = Math.min(Math.max(margin, targetRect.left), vw - bw - margin);
+  } else if(targetRect.top - bh - margin > 0){
+    top = targetRect.top - bh - margin;
+    left = Math.min(Math.max(margin, targetRect.left), vw - bw - margin);
+  } else {
+    // Center
+    top = (vh - bh) / 2;
+    left = (vw - bw) / 2;
+  }
+  bbl.style.left = left + 'px';
+  bbl.style.top = top + 'px';
+  bbl.style.width = bw + 'px';
+}
+
+function centerTourBubble(){
+  const bbl = document.getElementById('tour-bubble');
+  bbl.style.left = '50%';
+  bbl.style.top = '50%';
+  bbl.style.transform = 'translate(-50%,-50%)';
+  bbl.style.width = '320px';
+}
+
+// ═══════════════════════════════════════════════════════
+//  HINT MODE (💡)
+// ═══════════════════════════════════════════════════════
+
+let _hintMode = false;
+
+// Подсказки для всех ключевых элементов
+const HINTS = {
+  // Навигация
+  '[data-p="dashboard"]':   {t:'Главная', h:'Дашборд с пульсом преподавателей, статистикой за период и уроками на сегодня.'},
+  '[data-p="schedule"]':    {t:'Расписание', h:'Сетка всех занятий по неделям. Нажми на ячейку ученика → отметить посещаемость или загрузить видео урока.'},
+  '[data-p="availability"]':{t:'Время работы', h:'Настройка доступности преподавателей. Зелёная ячейка = работает в это время. Вкладка «Заявки» — запросы на изменение расписания.'},
+  '[data-p="freeSlots"]':   {t:'Свободные слоты', h:'Поиск мест для нового ученика. Фильтруй по дням, возрасту и уровню — система покажет где есть совместимое место.'},
+  '[data-p="students"]':    {t:'Ученики', h:'База учеников с записями, статусами, контактами. Можно продлить курс, деактивировать, настроить уведомления для каждого ученика.'},
+  '[data-p="reports"]':     {t:'Отчёты', h:'Статистика по каждому преподавателю за выбранный период: уроки, пропуски, видео, продления. Скачать в Excel — кнопка вверху.'},
+  '[data-p="videoreviews"]':{t:'Видео уроков', h:'Видео загруженные преподавателями на проверку. Нажми «Проверить» → посмотри → одобри или отклони с комментарием.'},
+  '[data-p="users"]':       {t:'Пользователи', h:'Добавление и управление аккаунтами преподавателей. Здесь выдаётся доступ в систему.'},
+  '[data-p="appsettings"]': {t:'Настройки', h:'Глобальные настройки уведомлений: напоминания перед уроком и частота видео-отчётов.'},
+  '[data-p="tasks"]':       {t:'Задачи', h:'Задачи команды с дедлайнами, исполнителями и чатом. Просроченные — красные, сегодняшние — жёлтые.'},
+  '[data-p="teamchat"]':    {t:'Командный чат', h:'Общий чат для всей команды. Сообщения видят все пользователи портала.'},
+  // Топбар
+  '#act-btn':               {t:'Создать', h:'Создать нового ученика или преподавателя в зависимости от текущего раздела.'},
+  '#exp-btn':               {t:'Экспорт Excel', h:'Скачать данные текущего раздела в Excel-файл.'},
+  '#help-btn':              {t:'Справка ?', h:'Открыть боковую панель справки с описанием текущего раздела и советами.'},
+  '#hint-mode-btn':         {t:'Режим подсказок 💡', h:'Ты уже в режиме подсказок! При наведении на любой элемент появляется описание.'},
+  '#tour-btn':              {t:'Обучение 🎓', h:'Пошаговый тур по порталу. Отдельный маршрут для преподавателя и администратора.'},
+  // Дашборд
+  '#teacher-pulse-block':   {t:'Пульс преподавателей', h:'Статус всех преподавателей сегодня: кто зашёл, проставил посещаемость, загрузил видео. Рейтинг за 30 дней.'},
+  '#stats':                 {t:'Статистика', h:'Ключевые показатели за выбранный период: ученики, пропуски, занятость слотов, отчёты. Переключи период кнопками.'},
+  '#today-list':            {t:'Уроки сегодня', h:'Список всех занятий на текущий день с цветными статусами посещаемости.'},
+  // Расписание
+  '#sched-teacher-filter':  {t:'Фильтр преподавателя', h:'Показать расписание только выбранного преподавателя.'},
+  // Видео модал
+  '#video-drop-zone':       {t:'Загрузка видео', h:'Нажми или перетащи файл видео. Максимум 2 ГБ. После загрузки видео уйдёт администратору на проверку.'},
+  '#video-comment':         {t:'Комментарий к уроку', h:'Обязательное поле. Напиши что прошли на уроке — родители это увидят вместе с видео. Используй быстрые фразы выше.'},
+  '#attach-drop-zone':      {t:'Вложение', h:'Необязательно. Прикрепи домашнее задание, материалы, PDF или любой другой файл до 100 МБ.'},
+  // Ученик
+  '#s-notify-remind-student':{t:'Напоминание ученику', h:'Слать ли WhatsApp за 5 минут до урока на телефон ученика.'},
+  '#s-notify-remind-parent': {t:'Напоминание родителю', h:'Слать ли WhatsApp за 5 минут до урока на телефон родителя.'},
+  '#s-notify-video-parent':  {t:'Видео родителю', h:'Отправлять ли видео-отчёт после урока родителю.'},
+  '#s-notify-video-student': {t:'Видео ученику', h:'Отправлять ли видео-отчёт после урока ученику.'},
+};
+
+function toggleHintMode(){
+  _hintMode = !_hintMode;
+  const btn = document.getElementById('hint-mode-btn');
+  if(_hintMode){
+    btn.style.background = 'var(--ambg)';
+    btn.style.borderColor = 'rgba(245,200,66,.4)';
+    btn.title = 'Выключить подсказки';
+    document.body.style.cursor = 'help';
+    document.addEventListener('mousemove', onHintMouseMove);
+    document.addEventListener('mouseleave', hideHintTooltip);
+    toast('💡 Режим подсказок включён — наведи на любой элемент');
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.title = 'Режим подсказок';
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', onHintMouseMove);
+    hideHintTooltip();
+  }
+}
+
+function onHintMouseMove(e){
+  if(!_hintMode) return;
+  const tip = document.getElementById('hint-tooltip');
+  const target = e.target;
+
+  // Find matching hint
+  let match = null;
+  for(const [sel, data] of Object.entries(HINTS)){
+    try {
+      if(target.matches && target.matches(sel)){match=data;break;}
+      const el = document.querySelector(sel);
+      if(el && (el===target || el.contains(target))){match=data;break;}
+    } catch(err){}
+  }
+
+  if(match){
+    document.getElementById('hint-title').textContent = match.t;
+    document.getElementById('hint-text').textContent = match.h;
+    const x = Math.min(e.clientX+14, window.innerWidth-280);
+    const y = Math.min(e.clientY+16, window.innerHeight-120);
+    tip.style.left = x+'px';
+    tip.style.top = y+'px';
+    tip.style.display = 'block';
+  } else {
+    hideHintTooltip();
+  }
+}
+
+function hideHintTooltip(){
+  const tip = document.getElementById('hint-tooltip');
+  if(tip) tip.style.display = 'none';
+}
+
 function toggleHelp(){
   helpOpen = !helpOpen;
   helpCollapsed = false;
@@ -7152,6 +7429,32 @@ function slotCompatLabel(tid,days,ti){
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── TOUR SYSTEM ─────────────────────────────────────────────── -->
+<div id="tour-spotlight" style="display:none;position:fixed;inset:0;z-index:1100;pointer-events:none">
+  <svg id="tour-svg" width="100%" height="100%" style="position:absolute;inset:0"><defs><mask id="tour-mask"><rect width="100%" height="100%" fill="white"/><rect id="tour-hole" rx="8" fill="black"/></mask></defs><rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tour-mask)"/></svg>
+</div>
+<div id="tour-bubble" style="display:none;position:fixed;z-index:1101;max-width:320px;background:var(--bg2);border:1px solid var(--acb);border-radius:14px;padding:18px 20px;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <span id="tour-ico" style="font-size:22px"></span>
+    <div style="flex:1">
+      <div id="tour-title" style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--ac2)"></div>
+      <div id="tour-progress" style="font-size:10px;color:var(--t3);margin-top:1px"></div>
+    </div>
+    <button onclick="endTour()" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px" title="Выйти из тура">✕</button>
+  </div>
+  <div id="tour-text" style="font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:14px"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <button id="tour-prev" class="btn btn-sm" onclick="tourStep(-1)" style="padding:5px 12px">← Назад</button>
+    <div style="display:flex;gap:4px" id="tour-dots"></div>
+    <button id="tour-next" class="btn btn-a btn-sm" onclick="tourStep(1)" style="padding:5px 14px">Далее →</button>
+  </div>
+</div>
+<!-- hint mode tooltip -->
+<div id="hint-tooltip" style="display:none;position:fixed;z-index:1200;max-width:260px;background:var(--bg);border:1px solid var(--am);border-radius:10px;padding:10px 13px;font-size:12px;color:var(--t2);line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,.5);pointer-events:none">
+  <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px"><span style="font-size:14px">💡</span><span id="hint-title" style="font-weight:700;color:var(--am);font-size:11px"></span></div>
+  <div id="hint-text"></div>
 </div>
 
 <!-- Tooltip element -->

@@ -4706,6 +4706,8 @@ function deleteTeacherFromUsers(uid){
   delete S.avail[String(tRec.id)];
   save();fillTSel();toast(`${tRec.name} удалён из преподавателей`);renderUsers();
 }
+
+function editUserProfile(uid, currentName, currentPhone){
   const name=prompt('Имя:', currentName);
   if(name===null)return;
   const phone=prompt('Телефон WhatsApp (формат: +7XXXXXXXXXX):', currentPhone);

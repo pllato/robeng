@@ -796,6 +796,25 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       </div>
       <textarea id="video-comment" placeholder="Например: прошли Present Simple, ученик активно отвечал, сложности с произношением..." style="min-height:70px"></textarea>
     </div>
+    <!-- Прикрепить файл (необязательно) -->
+    <div class="fr">
+      <label>📎 Вложение <span style="font-size:10px;color:var(--t3);font-weight:400">необязательно — PDF, изображение, документ</span></label>
+      <div id="attach-drop-zone" onclick="document.getElementById('attach-file-input').click()"
+        style="border:1px dashed var(--b2);border-radius:var(--r);padding:10px 14px;cursor:pointer;transition:border-color .15s;background:var(--bg3);display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">📎</span>
+        <div>
+          <div style="font-size:12px;color:var(--t2)">Нажмите чтобы выбрать файл</div>
+          <div style="font-size:11px;color:var(--t3)">PDF, Word, PNG, JPG, PPTX — до 50 МБ</div>
+        </div>
+        <span id="attach-file-name" style="display:none;font-size:12px;color:var(--gn);margin-left:auto"></span>
+        <button id="attach-clear-btn" type="button" onclick="clearAttachment(event)" style="display:none;background:var(--rdbg);border:1px solid rgba(240,89,117,.3);color:var(--rd);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;margin-left:auto">✕</button>
+      </div>
+      <input type="file" id="attach-file-input" accept=".pdf,.doc,.docx,.pptx,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.txt,.zip" style="display:none" onchange="onAttachFileSelect(this)"/>
+      <div id="attach-progress" style="display:none;margin-top:6px">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:3px" id="attach-status">Загрузка вложения...</div>
+        <div style="background:var(--bg4);border-radius:10px;height:4px;overflow:hidden"><div id="attach-bar" style="height:100%;background:var(--tl);border-radius:10px;width:0%;transition:width .3s"></div></div>
+      </div>
+    </div>
     <div class="warn-box" id="video-err"></div>
     <div class="ma">
       <button class="btn" onclick="close1('m-video')">Отмена</button>
@@ -4924,6 +4943,81 @@ const TEACHER_PHRASES = [
   '🔄 Продолжаем планомерную работу. Прогресс есть, движемся вперёд!',
   '✨ Случайный',
 ];
+// ── Вложение к видео-отчёту ──────────────────────────────────────
+let _attachSelectedFile = null;
+let _attachUploadedUrl  = null; // ссылка после успешной загрузки
+let _attachFileName     = null;
+
+function onAttachFileSelect(input){
+  const file = input.files[0];
+  if(!file) return;
+  const mb = file.size/1024/1024;
+  if(mb > 50){ toast('Файл слишком большой (максимум 50 МБ)', true); input.value=''; return; }
+  _attachSelectedFile = file;
+  _attachUploadedUrl  = null;
+  _attachFileName     = file.name;
+  document.getElementById('attach-file-name').textContent = '✓ ' + file.name + ' · ' + mb.toFixed(1) + ' МБ';
+  document.getElementById('attach-file-name').style.display = '';
+  document.getElementById('attach-clear-btn').style.display = '';
+  document.getElementById('attach-drop-zone').style.borderColor = 'var(--tl)';
+}
+
+function clearAttachment(e){
+  e.stopPropagation();
+  _attachSelectedFile = null;
+  _attachUploadedUrl  = null;
+  _attachFileName     = null;
+  document.getElementById('attach-file-name').style.display = 'none';
+  document.getElementById('attach-clear-btn').style.display = 'none';
+  document.getElementById('attach-drop-zone').style.borderColor = '';
+  document.getElementById('attach-file-input').value = '';
+  document.getElementById('attach-progress').style.display = 'none';
+}
+
+async function uploadAttachmentIfNeeded(enrollId, dateStr){
+  if(!_attachSelectedFile) return null; // нет вложения — ок
+  const file = _attachSelectedFile;
+  const ap = document.getElementById('attach-progress');
+  const abar = document.getElementById('attach-bar');
+  const astat = document.getElementById('attach-status');
+  ap.style.display = '';
+  abar.style.width = '5%';
+  astat.textContent = 'Загрузка вложения...';
+
+  const params = new URLSearchParams({
+    enrollId: String(enrollId), date: dateStr,
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream'
+  });
+  const resp = await fetch(VIDEO_WORKER_URL + '/upload-attachment?' + params, { method: 'POST', body: '{}' });
+  const data = await resp.json();
+  if(!data.ok) throw new Error('Ошибка загрузки вложения: ' + (data.error||''));
+
+  abar.style.width = '30%';
+  astat.textContent = 'Отправка файла...';
+
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', data.presignedUrl, true);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (ev) => {
+      if(ev.lengthComputable){
+        const pct = 30 + Math.round(ev.loaded / ev.total * 65);
+        abar.style.width = pct + '%';
+      }
+    };
+    xhr.onload = () => { if(xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error('HTTP ' + xhr.status)); };
+    xhr.onerror = () => reject(new Error('Ошибка сети'));
+    xhr.send(file);
+  });
+
+  abar.style.width = '100%';
+  astat.textContent = '✓ Файл прикреплён';
+  _attachUploadedUrl = data.downloadUrl;
+  _attachFileName    = data.fileName;
+  return { url: data.downloadUrl, name: data.fileName };
+}
+
 function setTeacherPhrase(idx){
   const el=document.getElementById('video-comment');
   if(!el)return;
@@ -4986,6 +5080,10 @@ function sendVideoToParent(record){
   const dateRu=d&&m?`${d} ${months[parseInt(m)-1]}`:(record.dateStr||'');
   const comment=record.teacherComment||'';
 
+  const attachLine = record.attachUrl
+    ? `\n📎 Материал урока: ${record.attachUrl}` + (record.attachName ? ` (${record.attachName})` : '')
+    : '';
+
   const buildMsg=(tgLink)=>
     `Высылаем вам отчёт по сегодняшнему занятию 📋\n\n`+
     `👤 Ученик: ${record.studentName||'—'}\n`+
@@ -4993,6 +5091,7 @@ function sendVideoToParent(record){
     `📅 Дата: ${dateRu}\n\n`+
     (comment?comment+'\n\n':'')+
     `▶️ Смотреть видео: ${playerUrl}`+
+    attachLine+
     TG_LINE+(tgLink||TG_DEFAULT);
 
   // Telegram (только если родитель включён)
@@ -5080,6 +5179,10 @@ async function submitVideo(){
       xhr.send(_videoSelectedFile);
     });
 
+    // Шаг 2.5: загружаем вложение если есть
+    let attachInfo = null;
+    try { attachInfo = await uploadAttachmentIfNeeded(_videoEnrollId, _videoDateStr); } catch(ae){ console.warn('Attach upload failed:', ae); }
+
     // Шаг 3: сообщаем Worker что загрузка завершена
     statusEl.textContent = 'Сохраняем...';
     bar.style.width = '95%';
@@ -5103,7 +5206,8 @@ async function submitVideo(){
       studentName: st?.name||'—', url: `https://flat-pond-6e68.uurraa.workers.dev/player?id=${encodeURIComponent(String(_videoEnrollId)+'_'+_videoDateStr)}`,
       uploadType: 'r2',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
-      submittedBy: user, status: 'pending'
+      submittedBy: user, status: 'pending',
+      ...(attachInfo ? { attachUrl: attachInfo.url, attachName: attachInfo.name } : {})
     };
     await videoRef.child(key).set(record);
     logAction('other', 'Видео урока загружено: '+(st?.name||'—'), (t?.name||'—')+' · '+fmtDate(_videoDateStr));
@@ -5114,6 +5218,7 @@ async function submitVideo(){
     save();
     const adminUids = Object.entries(S.appUsers||{}).filter(([,u])=>u.role==='admin').map(([uid])=>uid);
     if(adminUids.length) sendNotification('video_pending', null, adminUids, record);
+    clearAttachment({stopPropagation:()=>{}});
     close1('m-video');
     toast('✓ Видео отправлено родителям и администратору на проверку 📤');
     updateVideoBadge();
@@ -5167,6 +5272,12 @@ function submitVideoLink(){
   const btn=document.querySelector('#m-video .btn-a');
   if(btn){btn.disabled=true;btn.textContent='Отправка...';}
 
+  // Загружаем вложение если есть
+  uploadAttachmentIfNeeded(_videoEnrollId, _videoDateStr)
+    .then(attachInfo=>{ if(attachInfo){ record.attachUrl=attachInfo.url; record.attachName=attachInfo.name; } })
+    .catch(()=>{})
+    .finally(()=>{
+
   videoRef.child(key).set(record)
     .then(()=>{
       logAction('other',`Видео урока отправлено: ${st?.name||'—'}`,`${t?.name||'—'} · ${fmtDate(_videoDateStr)}`);
@@ -5174,6 +5285,7 @@ function submitVideoLink(){
       if(!_videoIsReupload) sendVideoToParent(record);
       save();
       if(btn){btn.disabled=false;btn.textContent='Отправить родителям и на проверку 📤';}
+      clearAttachment({stopPropagation:()=>{}});
       close1('m-video');
       renderSchedule();
       updateVideoBadge();

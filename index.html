@@ -2015,15 +2015,15 @@ async function renderTeacherRatingBlock(){
 
 // ── ТАБЛИЦА ЛИДЕРОВ ──────────────────────────────────────────────
 function buildLeaderboardHTML(sorted, byT, myTid){
-  if(!sorted.length) return '';
   const dates30 = dateRange(30);
-  // Build full rows for all teachers
+  const isTeacher = currentRole==='teacher';
+
+  // Build unified rows for all active teachers
   const rows = S.teachers.filter(t=>t.status==='active').map(t=>{
     const tidStr = String(t.id);
     const tData  = byT[tidStr]||{sum:0,cnt:0};
-    const avgR   = tData.cnt>0?(tData.sum/tData.cnt).toFixed(1):null;
+    const avgR   = tData.cnt>0?(tData.sum/tData.cnt):null;
     const stats  = calcTeacherStats(t, dates30);
-    // Video rate
     const vr=S.videoReports||{};
     let vn=0,vs2=0;
     S.enrollments.filter(e=>String(e.teacherId)===tidStr&&e.dateEnd>=dates30[0]&&e.dateStart<=dates30[dates30.length-1]).forEach(e=>{
@@ -2037,38 +2037,59 @@ function buildLeaderboardHTML(sorted, byT, myTid){
     const vRate = vn>0?Math.round(vs2/vn*100):100;
     const attSc = Math.round((1-(stats.missRate||0)/100)*100);
     const perf  = Math.round(vRate*0.4+attSc*0.3+(stats.renewalRate||0)*0.3);
-    return {t, avgR, perf, vRate, attSc, renewRate:stats.renewalRate||0, cnt:tData.cnt};
-  }).sort((a,b)=>b.perf-a.perf);
+    return {t, avgR, avgRfmt:avgR!==null?avgR.toFixed(1):null, perf, vRate, attSc, renewRate:stats.renewalRate||0, cnt:tData.cnt};
+  });
 
-  const isTeacher = currentRole==='teacher';
+  // Two separate sorted lists
+  const bySurvey  = [...rows].filter(r=>r.avgR!==null).sort((a,b)=>b.avgR-a.avgR);
+  const byPerf    = [...rows].sort((a,b)=>b.perf-a.perf);
 
-  return `<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
-    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Таблица лидеров — все преподаватели</div>
-    <div style="display:flex;flex-direction:column;gap:5px">
-      ${rows.map((r,i)=>{
-        const isMe = String(r.t.id)===String(myTid||'');
-        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-        const perfColor = r.perf>=80?'var(--gn)':r.perf>=50?'var(--am)':'var(--rd)';
-        const ratingColor2 = r.avgR===null?'var(--t3)':parseFloat(r.avgR)>=4.5?'var(--gn)':parseFloat(r.avgR)>=3.5?'var(--am)':'var(--rd)';
-        return `<div style="background:${isMe?'rgba(124,92,252,0.1)':'var(--bg3)'};border:1px solid ${isMe?'var(--acb)':'var(--b1)'};border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:14px;width:22px;text-align:center;flex-shrink:0">${medal||`<span style="font-size:11px;color:var(--t3);font-weight:600">${i+1}</span>`}</span>
-          <div style="flex:1;min-width:100px">
-            <div style="font-size:12px;font-weight:${isMe?'700':'600'};color:${isMe?'var(--ac2)':'var(--t1)'}">
-              ${r.t.name}${isMe?' <span style="font-size:10px;color:var(--ac2)">(вы)</span>':''}
-            </div>
-            <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
-              ${!isTeacher||isMe?`<span style="font-size:10px;color:var(--t3)">🎥 ${r.vRate}%</span>
-              <span style="font-size:10px;color:var(--t3)">✅ ${r.attSc}%</span>
-              <span style="font-size:10px;color:var(--t3)">↻ ${r.renewRate}%</span>`:''}
-            </div>
-          </div>
-          ${r.avgR!==null?`<span style="font-size:13px;font-weight:700;color:${ratingColor2}">⭐${r.avgR}</span>`:'<span style="font-size:11px;color:var(--t3)">нет оценок</span>'}
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:16px;font-weight:700;color:${perfColor};font-family:var(--fd)">${r.perf}</div>
-            <div style="font-size:9px;color:var(--t3)">рейтинг</div>
-          </div>
-        </div>`;
-      }).join('')}
+  const renderRow = (r, i, showPerf) => {
+    const isMe = String(r.t.id)===String(myTid||'');
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const perfColor = r.perf>=80?'var(--gn)':r.perf>=50?'var(--am)':'var(--rd)';
+    const rc = r.avgR===null?'var(--t3)':r.avgR>=4.5?'var(--gn)':r.avgR>=3.5?'var(--am)':'var(--rd)';
+    return `<div style="background:${isMe?'rgba(124,92,252,0.1)':'var(--bg3)'};border:1px solid ${isMe?'var(--acb)':'var(--b1)'};border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px;width:22px;text-align:center;flex-shrink:0">${medal||`<span style="font-size:11px;color:var(--t3);font-weight:600">${i+1}</span>`}</span>
+      <div style="flex:1;min-width:80px;overflow:hidden">
+        <div style="font-size:12px;font-weight:${isMe?'700':'600'};color:${isMe?'var(--ac2)':'var(--t1)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${r.t.name}${isMe?' <span style="font-size:10px;color:var(--ac2)">(вы)</span>':''}
+        </div>
+        ${!isTeacher||isMe?`<div style="font-size:10px;color:var(--t3);margin-top:2px">🎥${r.vRate}% · ✅${r.attSc}% · ↻${r.renewRate}%</div>`:''}
+      </div>
+      ${showPerf
+        ? `<div style="text-align:center;flex-shrink:0">
+            <div style="font-size:17px;font-weight:700;color:${perfColor};font-family:var(--fd)">${r.perf}</div>
+            <div style="font-size:9px;color:var(--t3)">из 100</div>
+           </div>`
+        : `<div style="text-align:center;flex-shrink:0">
+            ${r.avgRfmt!==null
+              ? `<div style="font-size:17px;font-weight:700;color:${rc};font-family:var(--fd)">${r.avgRfmt}</div>
+                 <div style="font-size:9px;color:var(--t3)">⭐ из 5 · ${r.cnt} отз.</div>`
+              : `<span style="font-size:11px;color:var(--t3)">нет оценок</span>`}
+           </div>`
+      }
+    </div>`;
+  };
+
+  return `<div style="border-top:1px solid var(--b1);padding-top:14px;margin-top:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <!-- По оценкам родителей -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--am);margin-bottom:8px;display:flex;align-items:center;gap:5px">⭐ По оценкам родителей</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${bySurvey.length
+            ? bySurvey.map((r,i)=>renderRow(r,i,false)).join('')
+            : `<div style="font-size:11px;color:var(--t3);padding:8px 0">Нет ответов на опросы</div>`}
+        </div>
+      </div>
+      <!-- По общему рейтингу -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:8px;display:flex;align-items:center;gap:5px">📈 По общему рейтингу</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${byPerf.map((r,i)=>renderRow(r,i,true)).join('')}
+        </div>
+      </div>
     </div>
   </div>`;
 }

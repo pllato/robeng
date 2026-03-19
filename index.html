@@ -1938,8 +1938,27 @@ async function renderTeacherRatingBlock(){
     });
   });
   const videoRate=videoNeed>0?Math.round(videoSent/videoNeed*100):100;
-  const attScore =Math.round((1-(stats30.missRate||0)/100)*100);
-  const perfScore=Math.round(videoRate*0.4+attScore*0.3+(stats30.renewalRate||0)*0.3);
+  // Посещаемость = % уроков отмеченных как 'done' из всех состоявшихся
+  const attDoneScore = (()=>{
+    let total=0,done=0;
+    const lbD=getLbDates();
+    S.enrollments.filter(e=>String(e.teacherId)===tid&&e.dateEnd>=lbD[0]&&e.dateStart<=lbD[lbD.length-1]).forEach(e=>{
+      lbD.forEach(dt=>{
+        if(!enrollActive(e,dt))return;
+        const dow=(new Date(dt).getDay()+6)%7;
+        if(!e.slots.some(sl=>sl.day===dow))return;
+        total++;
+        const att=(S.attendance||{})[attKey(e.id,dt)];
+        if(att==='done'||att==='makeup')done++;
+      });
+    });
+    return total>0?Math.round(done/total*100):100;
+  })();
+  // Рейтинг опросов для этого преподавателя за период
+  const surveyScoreRaw = myResults.length>0?Math.round((myResults.reduce((s,r)=>s+r.rating,0)/myResults.length)/5*100):null;
+  // Формула: Перезапись 35% | Опросы 25% | Посещаемость 25% | Видео 15%
+  const surveyW = surveyScoreRaw!==null ? surveyScoreRaw*0.25 : (videoRate*0.15+attDoneScore*0.25+(stats30.renewalRate||0)*0.35)/0.75*0.25; // если нет опросов — компенсируем
+  const perfScore=Math.round((stats30.renewalRate||0)*0.35 + surveyW + attDoneScore*0.25 + videoRate*0.15);
   const perfColor=perfScore>=80?'var(--gn)':perfScore>=50?'var(--am)':'var(--rd)';
 
   // Rating color
@@ -1947,11 +1966,11 @@ async function renderTeacherRatingBlock(){
 
   // Goals/tips based on weakest metric
   const tips=[];
-  if(videoRate<80) tips.push({ico:'🎥',text:`Видео-отчёты: ${videoRate}% — загружайте видео после каждого урока`,color:'var(--am)'});
-  if(attScore<80)  tips.push({ico:'✅',text:`Посещаемость: ${attScore}% — отмечайте статус каждого урока вовремя`,color:'var(--am)'});
-  if(myAvg!==null&&myAvg<4) tips.push({ico:'⭐',text:`Оценка родителей ${myAvg.toFixed(1)} — уточните у администратора как улучшить`,color:'var(--rd)'});
-  if(myRenewPct!==null&&myRenewPct<60) tips.push({ico:'🔄',text:`Продления: ${myRenewPct}% — ученики довольные курсом перезаписываются`,color:'var(--am)'});
-  if(!tips.length) tips.push({ico:'🌟',text:'Отличная работа! Продолжайте в том же духе.',color:'var(--gn)'});
+  if((stats30.renewalRate||0)<60)  tips.push({ico:'↻',text:`Продления ${stats30.renewalRate||0}% — лучший показатель качества: ученики возвращаются`,color:'var(--rd)'});
+  if(surveyScoreRaw!==null&&surveyScoreRaw<80) tips.push({ico:'⭐',text:`Оценка родителей ${myAvg!==null?myAvg.toFixed(1):'—'}/5 — поговорите с администратором как улучшить`,color:'var(--am)'});
+  if(attDoneScore<80) tips.push({ico:'✅',text:`Посещаемость ${attDoneScore}% — отмечайте статус урока сразу после занятия`,color:'var(--am)'});
+  if(videoRate<80)    tips.push({ico:'🎥',text:`Видео ${videoRate}% — загружайте запись после каждого урока`,color:'var(--t2)'});
+  if(!tips.length)    tips.push({ico:'🌟',text:'Отличная работа по всем показателям! Продолжайте в том же духе.',color:'var(--gn)'});
 
   el.innerHTML=`
   <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px;margin-bottom:16px">
@@ -1984,13 +2003,18 @@ async function renderTeacherRatingBlock(){
     <!-- Rating breakdown -->
     <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
       ${[
-        {label:'🎥 Видео-отчёты',val:videoRate,tip:'загружаются после каждого урока'},
-        {label:'✅ Посещаемость',val:attScore,tip:'отсутствие необработанных пропусков'},
-        {label:'↻ Продления',val:stats30.renewalRate||0,tip:'ученики перезаписываются'},
+        {label:'↻ Продления (35%)',val:stats30.renewalRate||0},
+        {label:'⭐ Опросы (25%)',val:surveyScoreRaw!==null?surveyScoreRaw:null,na:'нет опросов'},
+        {label:'✅ Посещаемость (25%)',val:attDoneScore},
+        {label:'🎥 Видео-отчёты (15%)',val:videoRate},
       ].map(m=>{
+        if(m.val===null) return `<div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--t2);min-width:150px">${m.label}</span>
+          <span style="font-size:11px;color:var(--t3)">${m.na||'—'}</span>
+        </div>`;
         const c=m.val>=80?'var(--gn)':m.val>=50?'var(--am)':'var(--rd)';
         return `<div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:11px;color:var(--t2);min-width:130px">${m.label}</span>
+          <span style="font-size:11px;color:var(--t2);min-width:150px">${m.label}</span>
           <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
             <div style="width:${m.val}%;height:100%;background:${c};border-radius:3px;transition:width .5s"></div>
           </div>
@@ -2084,7 +2108,24 @@ function buildLeaderboardHTML(sorted, byT, myTid){
     });
     const vRate = vn>0?Math.round(vs2/vn*100):100;
     const attSc = Math.round((1-(stats.missRate||0)/100)*100);
-    const perf  = Math.round(vRate*0.4+attSc*0.3+(stats.renewalRate||0)*0.3);
+    // Посещаемость = % done уроков
+    let lbTotal=0,lbDone=0;
+    const lbD2=getLbDates();
+    S.enrollments.filter(e=>String(e.teacherId)===tidStr&&e.dateEnd>=lbD2[0]&&e.dateStart<=lbD2[lbD2.length-1]).forEach(e=>{
+      lbD2.forEach(dt=>{
+        if(!enrollActive(e,dt))return;
+        const dow=(new Date(dt).getDay()+6)%7;
+        if(!e.slots.some(sl=>sl.day===dow))return;
+        lbTotal++;
+        const att2=(S.attendance||{})[attKey(e.id,dt)];
+        if(att2==='done'||att2==='makeup')lbDone++;
+      });
+    });
+    const attSc2 = lbTotal>0?Math.round(lbDone/lbTotal*100):100;
+    // Опросы за период
+    const tSurveyRaw = tData.cnt>0?Math.round((tData.sum/tData.cnt)/5*100):null;
+    const tSurveyW = tSurveyRaw!==null?tSurveyRaw*0.25:((vRate*0.15+attSc2*0.25+(stats.renewalRate||0)*0.35)/0.75*0.25);
+    const perf  = Math.round((stats.renewalRate||0)*0.35 + tSurveyW + attSc2*0.25 + vRate*0.15);
     return {t, avgR, avgRfmt:avgR!==null?avgR.toFixed(1):null, perf, vRate, attSc, renewRate:stats.renewalRate||0, cnt:tData.cnt};
   });
 
@@ -2144,11 +2185,12 @@ function buildLeaderboardHTML(sorted, byT, myTid){
       <!-- По общему рейтингу -->
       <div>
         <div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:4px">📈 По общему рейтингу</div>
-        <div style="font-size:10px;color:var(--t3);line-height:1.5;margin-bottom:8px;padding:6px 8px;background:var(--bg3);border-radius:6px">
-          Балл 0–100 из трёх компонентов за выбранный период:<br>
-          <span style="color:var(--tl)">🎥 40%</span> — видео-отчёты (сколько уроков получили видео)<br>
-          <span style="color:var(--tl)">✅ 30%</span> — посещаемость (отсутствие необработанных пропусков)<br>
-          <span style="color:var(--tl)">↻ 30%</span> — продления (ученики перезаписываются на новый период)
+        <div style="font-size:10px;color:var(--t3);line-height:1.6;margin-bottom:8px;padding:6px 8px;background:var(--bg3);border-radius:6px">
+          Балл 0–100 за выбранный период:<br>
+          <span style="color:var(--gn)">↻ 35%</span> — продления (ученики перезаписываются)<br>
+          <span style="color:var(--am)">⭐ 25%</span> — оценки родителей из опросов<br>
+          <span style="color:var(--tl)">✅ 25%</span> — посещаемость (% уроков где ученик пришёл)<br>
+          <span style="color:var(--t2)">🎥 15%</span> — видео-отчёты (% уроков с видео)
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           ${byPerf.map((r,i)=>renderRow(r,i,true)).join('')}
@@ -2405,8 +2447,24 @@ function renderTeacherPulse(){
         return need>0?Math.round(sent/need*100):100;
       })();
 
-      const attScore=Math.round((1-(stats30.missRate||0)/100)*100);
-      const score=Math.round(videoRate30*0.4 + attScore*0.3 + (stats30.renewalRate||0)*0.3);
+      // Посещаемость = % done уроков за 30 дней
+      const dates30p=dateRange(30);
+      let pTotal=0,pDone=0;
+      S.enrollments.filter(e=>String(e.teacherId)===String(t.id)&&e.dateEnd>=dates30p[0]).forEach(e=>{
+        dates30p.forEach(dt=>{
+          if(!enrollActive(e,dt))return;
+          const dow2=(new Date(dt).getDay()+6)%7;
+          if(!e.slots.some(sl=>sl.day===dow2))return;
+          pTotal++;
+          const pAtt=(S.attendance||{})[attKey(e.id,dt)];
+          if(pAtt==='done'||pAtt==='makeup')pDone++;
+        });
+      });
+      const attScorePulse=pTotal>0?Math.round(pDone/pTotal*100):100;
+      const survWPulse=videoRate30*0.15+attScorePulse*0.25+(stats30.renewalRate||0)*0.35;
+      const score=Math.round(survWPulse + videoRate30*0.15*0); // опросов нет в пульсе — перезапись 35%+посещ 25%+видео 15%+остаток 25%
+      // Итог без опросов: перезапись 47% | посещ 33% | видео 20%
+      const scoreF=Math.round((stats30.renewalRate||0)*0.47 + attScorePulse*0.33 + videoRate30*0.20);
 
       // Алерты сегодня
       const alerts=[];
@@ -2417,7 +2475,7 @@ function renderTeacherPulse(){
       }
 
       return {t, todayEnrolls:todayEnrolls.length, attDone, attMiss, attEmpty,
-              videoSent, videoNeeded, onlineToday, score, stats30,
+              videoSent, videoNeeded, onlineToday, score:scoreF, stats30,
               videoRate30, attScore, alerts, lastSeenDate};
     });
 

@@ -6803,12 +6803,13 @@ function checkLessonReminders(){
     // Сессионная проверка — быстрый выход если уже отправляли в этой вкладке
     if(_reminderSentKeys.has(key))return;
 
-    // Кросс-вкладочная проверка через Firebase — предотвращает дубликаты при нескольких вкладках
+    // Атомарная кросс-вкладочная блокировка через Firebase transaction
     const fbKey=`remindersSent/${today}_${String(e.id)}_${lessonTime.replace(':','-')}`;
-    fbDb.ref(fbKey).once('value').then(snap=>{
-      if(snap.val()) return; // уже отправлено из другой вкладки/сессии
-      // Атомарно занимаем слот — set с проверкой
-      fbDb.ref(fbKey).set(Date.now());
+    fbDb.ref(fbKey).transaction(current=>{
+      if(current!==null) return; // уже занято — отменяем транзакцию (undefined = abort)
+      return Date.now();         // занимаем слот атомарно
+    }).then(result=>{
+      if(!result.committed) return; // другая вкладка успела первой
 
       _reminderSentKeys.add(key); // помечаем локально
 
@@ -6865,7 +6866,7 @@ function checkLessonReminders(){
           notifyWhatsApp(tEntry[1].phone, tMsg);
         }
       });
-    });
+    }); // end transaction
   });
 }
 

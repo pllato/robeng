@@ -396,6 +396,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
       <div id="dash-survey-block" class="admin-only"></div>
+      <div id="dash-leaderboard-block" class="admin-only"></div>
       <div id="teacher-pulse-block" class="admin-only"></div>
       <div class="sec-title">Уроки и дела сегодня</div>
       <div id="today-list"></div>
@@ -2006,6 +2007,69 @@ async function renderTeacherRatingBlock(){
     <div style="margin-top:10px;text-align:right">
       <button class="btn btn-xs" onclick="nav(document.querySelector('[data-p=surveys]'))" style="font-size:11px">Все отзывы →</button>
     </div>
+
+    <!-- Full leaderboard -->
+    ${buildLeaderboardHTML(sorted, byT, tid)}
+  </div>`;
+}
+
+// ── ТАБЛИЦА ЛИДЕРОВ ──────────────────────────────────────────────
+function buildLeaderboardHTML(sorted, byT, myTid){
+  if(!sorted.length) return '';
+  const dates30 = dateRange(30);
+  // Build full rows for all teachers
+  const rows = S.teachers.filter(t=>t.status==='active').map(t=>{
+    const tidStr = String(t.id);
+    const tData  = byT[tidStr]||{sum:0,cnt:0};
+    const avgR   = tData.cnt>0?(tData.sum/tData.cnt).toFixed(1):null;
+    const stats  = calcTeacherStats(t, dates30);
+    // Video rate
+    const vr=S.videoReports||{};
+    let vn=0,vs2=0;
+    S.enrollments.filter(e=>String(e.teacherId)===tidStr&&e.dateEnd>=dates30[0]&&e.dateStart<=dates30[dates30.length-1]).forEach(e=>{
+      dates30.forEach(dt=>{
+        if(!enrollActive(e,dt))return;
+        const dow=(new Date(dt).getDay()+6)%7;
+        if(!e.slots.some(sl=>sl.day===dow))return;
+        vn++; if(vr[videoKey(e.id,dt)])vs2++;
+      });
+    });
+    const vRate = vn>0?Math.round(vs2/vn*100):100;
+    const attSc = Math.round((1-(stats.missRate||0)/100)*100);
+    const perf  = Math.round(vRate*0.4+attSc*0.3+(stats.renewalRate||0)*0.3);
+    return {t, avgR, perf, vRate, attSc, renewRate:stats.renewalRate||0, cnt:tData.cnt};
+  }).sort((a,b)=>b.perf-a.perf);
+
+  const isTeacher = currentRole==='teacher';
+
+  return `<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+    <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Таблица лидеров — все преподаватели</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${rows.map((r,i)=>{
+        const isMe = String(r.t.id)===String(myTid||'');
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const perfColor = r.perf>=80?'var(--gn)':r.perf>=50?'var(--am)':'var(--rd)';
+        const ratingColor2 = r.avgR===null?'var(--t3)':parseFloat(r.avgR)>=4.5?'var(--gn)':parseFloat(r.avgR)>=3.5?'var(--am)':'var(--rd)';
+        return `<div style="background:${isMe?'rgba(124,92,252,0.1)':'var(--bg3)'};border:1px solid ${isMe?'var(--acb)':'var(--b1)'};border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:14px;width:22px;text-align:center;flex-shrink:0">${medal||`<span style="font-size:11px;color:var(--t3);font-weight:600">${i+1}</span>`}</span>
+          <div style="flex:1;min-width:100px">
+            <div style="font-size:12px;font-weight:${isMe?'700':'600'};color:${isMe?'var(--ac2)':'var(--t1)'}">
+              ${r.t.name}${isMe?' <span style="font-size:10px;color:var(--ac2)">(вы)</span>':''}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
+              ${!isTeacher||isMe?`<span style="font-size:10px;color:var(--t3)">🎥 ${r.vRate}%</span>
+              <span style="font-size:10px;color:var(--t3)">✅ ${r.attSc}%</span>
+              <span style="font-size:10px;color:var(--t3)">↻ ${r.renewRate}%</span>`:''}
+            </div>
+          </div>
+          ${r.avgR!==null?`<span style="font-size:13px;font-weight:700;color:${ratingColor2}">⭐${r.avgR}</span>`:'<span style="font-size:11px;color:var(--t3)">нет оценок</span>'}
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700;color:${perfColor};font-family:var(--fd)">${r.perf}</div>
+            <div style="font-size:9px;color:var(--t3)">рейтинг</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
   </div>`;
 }
 
@@ -2147,6 +2211,27 @@ function surveyPeriodBtns(){
   const periods = [[7,'7д'],[30,'30д'],[90,'90д']];
   return `<div class="view-toggle" style="display:flex;gap:3px">
     ${periods.map(([d,l])=>`<button class="vt-btn${_dashSurveyPeriod===d?' active':''}" onclick="setDashSurveyPeriod(${d})" style="font-size:11px;padding:3px 9px">${l}</button>`).join('')}
+  </div>`;
+}
+
+
+// ── ТАБЛИЦА ЛИДЕРОВ НА ДАШБОРДЕ ADMIN ────────────────────────────
+async function renderAdminLeaderboard(){
+  const el = document.getElementById('dash-leaderboard-block');
+  if(!el || currentRole!=='admin') return;
+
+  const snap = await surveyResultsRef.once('value');
+  const allResults = Object.values(snap.val()||{});
+  const byT={};
+  allResults.forEach(r=>{ if(!byT[r.teacherId])byT[r.teacherId]={sum:0,cnt:0}; byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++; });
+  const sorted = Object.entries(byT).sort((a,b)=>b[1].sum/b[1].cnt - a[1].sum/a[1].cnt);
+
+  const html = buildLeaderboardHTML(sorted, byT, null);
+  if(!html){ el.innerHTML=''; return; }
+
+  el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;font-family:var(--fd);color:var(--t1);margin-bottom:14px">🏆 Таблица лидеров</div>
+    ${html.replace('<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">','<div>').replace('<div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Таблица лидеров — все преподаватели</div>','')}
   </div>`;
 }
 
@@ -2345,6 +2430,7 @@ function renderDashboard(){
   }
   // Рендерим блоки для admin
   if(currentRole==='admin') renderDashSurveys();
+  if(currentRole==='admin') renderAdminLeaderboard();
   if(currentRole==='admin') renderTeacherPulse();
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;

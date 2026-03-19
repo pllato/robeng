@@ -679,6 +679,22 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           </label>
         </div>
 
+        <!-- Расписание опросов -->
+        <div style="padding:16px 0;border-bottom:1px solid var(--b1)">
+          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:12px">📋 Авто-рассылка опросов родителям</div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Опрос отправляется автоматически если прошло 14+ дней с последнего</div>
+          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">Дни отправки:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            ${['Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="${i}" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">${d}</span></label>`).join('')}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:600;color:var(--t2)">Время:</span>
+            <select id="survey-hour-sel" onchange="saveAppSettings()" style="background:var(--bg3);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:12px;padding:4px 8px">
+              ${[8,9,10,11,12,13,14,15,16,17,18,19,20].map(h=>`<option value="${h}">${h}:00</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:center;gap:10px;margin-top:16px">
           <div id="settings-saved" style="display:none;font-size:12px;color:var(--gn);background:var(--gnbg);border:1px solid rgba(63,216,142,.3);border-radius:6px;padding:5px 12px">✓ Настройки сохранены</div>
         </div>
@@ -1256,7 +1272,7 @@ function defState(){
   const reportsSent={};
   const trash=[];
   const videoReports={};
-  const settings={remindersEnabled:true,videoFrequency:'each'};
+  const settings={remindersEnabled:true,videoFrequency:'each',surveyDays:[3],surveyHour:10}; // 3=четверг (0=пн)
   return{subjects,teachers,avail,students,enrollments,journal:[],scheduleHistory,attendance,makeups,reportsSent,trash,videoReports,settings};
 }
 let S = defState();
@@ -1312,7 +1328,7 @@ function startDbListener(){
       if(!S.reportsSent)S.reportsSent={};
       if(!S.trash)S.trash=[];
       if(!S.videoReports)S.videoReports={};
-      if(!S.settings)S.settings={remindersEnabled:true,videoFrequency:'each'};
+      if(!S.settings)S.settings={remindersEnabled:true,videoFrequency:'each',surveyDays:[3],surveyHour:10};
         if(!Array.isArray(S.enrollments))S.enrollments=[];
         if(!Array.isArray(S.students))S.students=[];
         if(!Array.isArray(S.teachers))S.teachers=[];
@@ -1520,7 +1536,7 @@ fbAuth.onAuthStateChanged(user=>{
           if(!S.makeups)S.makeups={};
           if(!S.reportsSent)S.reportsSent={};
           if(!S.trash)S.trash=[];
-          if(!S.settings)S.settings={remindersEnabled:true,videoFrequency:'each'};
+          if(!S.settings)S.settings={remindersEnabled:true,videoFrequency:'each',surveyDays:[3],surveyHour:10};
           if(!Array.isArray(S.enrollments))S.enrollments=[];
           if(!Array.isArray(S.students))S.students=[];
           if(!Array.isArray(S.teachers))S.teachers=[];
@@ -1557,6 +1573,8 @@ fbAuth.onAuthStateChanged(user=>{
         startLessonReminders();
         // Записываем время последнего входа
         usersRef.child(user.uid).update({lastSeenAt: new Date().toISOString(), lastSeenDate: new Date().toISOString().slice(0,10)}).catch(()=>{});
+        // Авто-рассылка опросов по расписанию
+        if(currentRole==='admin') checkAndAutoSendSurveys();
         // Проверяем сбои напоминаний сегодня (только для admin)
         if(currentRole==='admin') updateReminderFailureBadge();
       });
@@ -6365,6 +6383,29 @@ const surveyResultsRef = fbDb.ref('surveyResults');
 const SURVEY_BASE_URL = 'https://pllato.github.io/robeng/survey.html';
 const SURVEY_INTERVAL_DAYS = 14; // каждые 2 недели
 
+// Проверяем расписание и запускаем авто-рассылку если нужно
+async function checkAndAutoSendSurveys(){
+  if(currentRole!=='admin') return;
+  const now = new Date();
+  const todayDow = (now.getDay()+6)%7; // 0=пн..6=вс
+  const todayHour = now.getHours();
+  const surveyDays = (S.settings||{}).surveyDays||[3]; // [3]=четверг
+  const surveyHour = (S.settings||{}).surveyHour||10;
+
+  if(!surveyDays.includes(todayDow)) return; // не тот день
+  if(todayHour < surveyHour) return; // ещё рано
+
+  // Проверяем что сегодня ещё не запускали
+  const todayStr = now.toISOString().slice(0,10);
+  const lastAutoKey = 'surveyAutoSent_'+todayStr;
+  if(localStorage.getItem(lastAutoKey)) return; // уже запускали сегодня
+
+  localStorage.setItem(lastAutoKey, '1');
+  console.log('[Surveys] Авто-рассылка запущена:', todayStr);
+  await autoSendSurveys();
+  updateSurveysBadge();
+}
+
 function genSurveyToken(){
   return Math.random().toString(36).slice(2,8)+Date.now().toString(36);
 }
@@ -6620,6 +6661,15 @@ function renderAppSettings(){
   if(cb) cb.checked = S.settings.remindersEnabled!==false;
   const freq=S.settings.videoFrequency||"each";
   document.querySelectorAll("input[name=\"video-freq\"]").forEach(r=>{r.checked=r.value===freq;});
+  // Survey days
+  const surveyDays=S.settings.surveyDays||[3];
+  document.querySelectorAll(".survey-day-cb").forEach(cb=>{
+    cb.checked=surveyDays.includes(parseInt(cb.dataset.day));
+    cb.onchange=saveAppSettings;
+  });
+  // Survey hour
+  const hourSel=document.getElementById("survey-hour-sel");
+  if(hourSel) hourSel.value=S.settings.surveyHour||10;
 }
 
 function saveAppSettings(){
@@ -6628,6 +6678,12 @@ function saveAppSettings(){
   if(cb) S.settings.remindersEnabled=cb.checked;
   const freqEl=document.querySelector("input[name=\"video-freq\"]:checked");
   if(freqEl) S.settings.videoFrequency=freqEl.value;
+  // Survey schedule
+  const days=[];
+  document.querySelectorAll(".survey-day-cb:checked").forEach(cb=>days.push(parseInt(cb.dataset.day)));
+  S.settings.surveyDays=days;
+  const hourSel=document.getElementById("survey-hour-sel");
+  if(hourSel) S.settings.surveyHour=parseInt(hourSel.value);
   save();
   const saved=document.getElementById("settings-saved");
   if(saved){saved.style.display="";setTimeout(()=>{saved.style.display="none";},2500);}

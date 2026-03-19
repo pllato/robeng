@@ -1898,7 +1898,10 @@ async function renderTeacherRatingBlock(){
   const t = teacher(currentTeacherId);
 
   const snap = await surveyResultsRef.once('value');
-  const allResults = Object.values(snap.val()||{});
+  const allResultsRaw = Object.values(snap.val()||{});
+  const lbDates = getLbDates();
+  const lbCutoff = lbDates[0];
+  const allResults = allResultsRaw.filter(r=>(r.submittedAt||'').slice(0,10)>=lbCutoff);
   const myResults  = allResults.filter(r=>String(r.teacherId)===tid);
 
   // My stats
@@ -2014,8 +2017,53 @@ async function renderTeacherRatingBlock(){
 }
 
 // ── ТАБЛИЦА ЛИДЕРОВ ──────────────────────────────────────────────
+let _lbPeriod = 30;      // дней, или 'thu' для Чт→Чт
+let _lbThuOffset = 0;    // 0 = текущая, -1 = прошлая и т.д.
+
+function setLbPeriod(p){
+  _lbPeriod = p;
+  if(p !== 'thu') _lbThuOffset = 0;
+  if(currentRole==='admin') renderAdminLeaderboard();
+  else renderTeacherRatingBlock();
+}
+
+function setLbThuOffset(delta){
+  _lbThuOffset = Math.min(0, _lbThuOffset + delta);
+  if(currentRole==='admin') renderAdminLeaderboard();
+  else renderTeacherRatingBlock();
+}
+
+function getLbDates(){
+  if(_lbPeriod==='thu') return getThuToThuDashDates(_lbThuOffset);
+  return dateRange(_lbPeriod);
+}
+
+function getLbPeriodLabel(){
+  if(_lbPeriod==='thu'){
+    const dates = getThuToThuDashDates(_lbThuOffset);
+    const from = dates.length?fmtDate(dates[0]):'';
+    const to   = dates.length?fmtDate(dates[dates.length-1]):'';
+    return `Чт→Чт: ${from} — ${to}`;
+  }
+  return `${_lbPeriod} дней`;
+}
+
+function lbPeriodBtns(){
+  const opts = [{v:7,l:'7д'},{v:30,l:'30д'},{v:90,l:'90д'},{v:'thu',l:'Чт→Чт'}];
+  return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+    <div class="view-toggle" style="display:flex;gap:3px">
+      ${opts.map(o=>`<button class="vt-btn${_lbPeriod===o.v?' active':''}" onclick="setLbPeriod(${JSON.stringify(o.v)})" style="font-size:11px;padding:3px 9px">${o.l}</button>`).join('')}
+    </div>
+    ${_lbPeriod==='thu'?`<div style="display:flex;align-items:center;gap:4px">
+      <button class="wbtn" onclick="setLbThuOffset(-1)" style="padding:2px 7px;font-size:13px">‹</button>
+      <span style="font-size:10px;color:var(--t3);min-width:60px;text-align:center">${_lbThuOffset===0?'Текущая':_lbThuOffset===-1?'Прошлая':Math.abs(_lbThuOffset)+' н. назад'}</span>
+      <button class="wbtn" onclick="setLbThuOffset(1)" style="padding:2px 7px;font-size:13px" ${_lbThuOffset>=0?'disabled style="opacity:.4"':''}>›</button>
+    </div>`:''}
+  </div>`;
+}
+
 function buildLeaderboardHTML(sorted, byT, myTid){
-  const dates30 = dateRange(30);
+  const dates30 = getLbDates();
   const isTeacher = currentRole==='teacher';
 
   // Build unified rows for all active teachers
@@ -2073,10 +2121,20 @@ function buildLeaderboardHTML(sorted, byT, myTid){
   };
 
   return `<div style="border-top:1px solid var(--b1);padding-top:14px;margin-top:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Таблица лидеров</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${lbPeriodBtns()}
+        <span style="font-size:10px;color:var(--t3)">${getLbPeriodLabel()}</span>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <!-- По оценкам родителей -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--am);margin-bottom:8px;display:flex;align-items:center;gap:5px">⭐ По оценкам родителей</div>
+        <div style="font-size:11px;font-weight:700;color:var(--am);margin-bottom:4px">⭐ По оценкам родителей</div>
+        <div style="font-size:10px;color:var(--t3);line-height:1.5;margin-bottom:8px;padding:6px 8px;background:var(--bg3);border-radius:6px">
+          Среднее из ответов родителей на вопрос «Как вы оцениваете качество преподавания?» (1–5 ⭐). Отправляется автоматически с каждым видео-отчётом. Чем выше оценка — тем довольнее родители.
+        </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           ${bySurvey.length
             ? bySurvey.map((r,i)=>renderRow(r,i,false)).join('')
@@ -2085,7 +2143,13 @@ function buildLeaderboardHTML(sorted, byT, myTid){
       </div>
       <!-- По общему рейтингу -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:8px;display:flex;align-items:center;gap:5px">📈 По общему рейтингу</div>
+        <div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:4px">📈 По общему рейтингу</div>
+        <div style="font-size:10px;color:var(--t3);line-height:1.5;margin-bottom:8px;padding:6px 8px;background:var(--bg3);border-radius:6px">
+          Балл 0–100 из трёх компонентов за выбранный период:<br>
+          <span style="color:var(--tl)">🎥 40%</span> — видео-отчёты (сколько уроков получили видео)<br>
+          <span style="color:var(--tl)">✅ 30%</span> — посещаемость (отсутствие необработанных пропусков)<br>
+          <span style="color:var(--tl)">↻ 30%</span> — продления (ученики перезаписываются на новый период)
+        </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           ${byPerf.map((r,i)=>renderRow(r,i,true)).join('')}
         </div>
@@ -2243,8 +2307,11 @@ async function renderAdminLeaderboard(){
 
   const snap = await surveyResultsRef.once('value');
   const allResults = Object.values(snap.val()||{});
+  const dates = getLbDates();
+  const cutoff = dates[0]; // ISO date string
+  const filtered = allResults.filter(r=>(r.submittedAt||'').slice(0,10)>=cutoff);
   const byT={};
-  allResults.forEach(r=>{ if(!byT[r.teacherId])byT[r.teacherId]={sum:0,cnt:0}; byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++; });
+  filtered.forEach(r=>{ if(!byT[r.teacherId])byT[r.teacherId]={sum:0,cnt:0}; byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++; });
   const sorted = Object.entries(byT).sort((a,b)=>b[1].sum/b[1].cnt - a[1].sum/a[1].cnt);
 
   const html = buildLeaderboardHTML(sorted, byT, null);

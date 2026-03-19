@@ -106,7 +106,12 @@ async function init(){
     surveyData = data;
     renderSurvey();
   } catch(e){
-    showError('Ошибка загрузки. Проверьте интернет-соединение.');
+    console.error('Survey load error:', e);
+    if(e && e.message && e.message.includes('permission')){
+      showError('Ошибка доступа. Пожалуйста, сообщите администратору что опрос недоступен (ошибка прав Firebase).');
+    } else {
+      showError('Ошибка загрузки. Проверьте интернет-соединение и попробуйте снова.');
+    }
   }
 }
 
@@ -252,7 +257,7 @@ async function submitSurvey(){
     // Save result
     await db.ref('surveyResults/' + TOKEN).set(result);
     // Mark token as completed
-    await db.ref('surveyTokens/' + TOKEN + '/completedAt').set(now);
+    await db.ref('surveyTokens/' + TOKEN + '/completedAt').set(now).catch(()=>{}); // may fail if write restricted
 
     document.getElementById('content').innerHTML = `
       <div class="state">

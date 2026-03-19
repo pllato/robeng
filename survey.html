@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Robeng — Опрос</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0e12;--bg2:#16161d;--bg3:#1e1e28;--bg4:#252532;
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+  --t1:#f0eefc;--t2:#9896b0;--t3:#5e5c78;
+  --ac:#7c5cfc;--ac2:#a87fff;--acbg:rgba(124,92,252,0.13);--acb:rgba(124,92,252,0.38);
+  --gn:#3fd88e;--gnbg:rgba(63,216,142,0.1);
+  --am:#f5c842;--ambg:rgba(245,200,66,0.1);
+  --rd:#f05975;--rdbg:rgba(240,89,117,0.1);
+  --r:10px;--fd:'Unbounded',sans-serif;--fb:'Manrope',sans-serif;
+}
+body{background:var(--bg);color:var(--t1);font-family:var(--fb);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 60px}
+.card{background:var(--bg2);border:1px solid var(--b2);border-radius:18px;padding:28px 24px;width:100%;max-width:480px;margin-top:16px}
+.logo{font-family:var(--fd);font-size:15px;font-weight:700;color:var(--ac2);margin-bottom:4px}
+.logo-sub{font-size:11px;color:var(--t3);margin-bottom:22px}
+.meta{background:var(--bg3);border:1px solid var(--b1);border-radius:10px;padding:12px 14px;margin-bottom:22px;font-size:13px}
+.meta b{color:var(--t1)}
+.meta span{color:var(--t2)}
+.q-block{margin-bottom:22px}
+.q-label{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px}
+.q-sub{font-size:11px;color:var(--t3);margin-top:2px;margin-bottom:10px}
+/* Star rating */
+.stars{display:flex;gap:6px;flex-wrap:wrap}
+.star{width:44px;height:44px;border-radius:10px;background:var(--bg3);border:2px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s;user-select:none}
+.star:hover,.star.active{background:var(--ambg);border-color:var(--am);transform:scale(1.08)}
+/* Choice buttons */
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choice{padding:9px 16px;border-radius:8px;background:var(--bg3);border:2px solid var(--b1);color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--fb)}
+.choice:hover{border-color:var(--acb);color:var(--ac2)}
+.choice.active{background:var(--acbg);border-color:var(--acb);color:var(--ac2)}
+.choice.active-gn{background:var(--gnbg);border-color:rgba(63,216,142,.4);color:var(--gn)}
+.choice.active-rd{background:var(--rdbg);border-color:rgba(240,89,117,.4);color:var(--rd)}
+.choice.active-am{background:var(--ambg);border-color:rgba(245,200,66,.4);color:var(--am)}
+/* NPS */
+.nps-row{display:flex;gap:4px;flex-wrap:wrap}
+.nps-btn{width:40px;height:40px;border-radius:8px;background:var(--bg3);border:2px solid var(--b1);color:var(--t2);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;font-family:var(--fb);display:flex;align-items:center;justify-content:center}
+.nps-btn:hover{border-color:var(--acb);color:var(--ac2)}
+.nps-btn.active{background:var(--acbg);border-color:var(--acb);color:var(--ac2)}
+.nps-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:5px}
+/* Textarea */
+textarea{width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:13px;padding:10px 13px;resize:vertical;min-height:80px;outline:none;transition:border-color .15s}
+textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(124,92,252,.15)}
+textarea::placeholder{color:var(--t3)}
+/* Submit */
+.submit-btn{width:100%;background:var(--ac);border:none;border-radius:var(--r);color:#fff;font-family:var(--fd);font-size:13px;font-weight:600;padding:14px;cursor:pointer;transition:background .15s;letter-spacing:.03em;margin-top:8px}
+.submit-btn:hover{background:var(--ac2)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+/* States */
+.state{text-align:center;padding:40px 20px}
+.state-ico{font-size:48px;margin-bottom:16px}
+.state-title{font-family:var(--fd);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px}
+.state-text{font-size:13px;color:var(--t2);line-height:1.6}
+.err{background:var(--rdbg);border:1px solid rgba(240,89,117,.25);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--rd);margin-bottom:14px;display:none}
+.progress-bar{height:4px;background:var(--bg3);border-radius:2px;margin-bottom:24px;overflow:hidden}
+.progress-fill{height:100%;background:var(--ac);border-radius:2px;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="card" id="main-card">
+  <div class="logo">RobEng</div>
+  <div class="logo-sub">ELC Roblox English</div>
+  <div id="content">
+    <div class="state"><div class="state-ico">⏳</div><div class="state-title">Загрузка...</div></div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCC61xh7Rdwkrw63BIzgdDqVq5_FOBUlgI",
+  authDomain: "elc-robeng.firebaseapp.com",
+  projectId: "elc-robeng",
+  storageBucket: "elc-robeng.firebasestorage.app",
+  messagingSenderId: "787056352049",
+  appId: "1:787056352049:web:988906f19d87fca3056e10",
+  databaseURL: "https://elc-robeng-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('id');
+
+let surveyData = null;
+let answers = { rating: null, renewal: null, nps: null, likes: '', dislikes: '' };
+
+// ── Load survey token ──────────────────────────────────
+async function init(){
+  if(!TOKEN){ showError('Неверная ссылка на опрос.'); return; }
+
+  try {
+    const snap = await db.ref('surveyTokens/' + TOKEN).once('value');
+    const data = snap.val();
+    if(!data){ showError('Ссылка недействительна или уже использована.'); return; }
+    if(data.completedAt){ showAlreadyDone(); return; }
+
+    surveyData = data;
+    renderSurvey();
+  } catch(e){
+    showError('Ошибка загрузки. Проверьте интернет-соединение.');
+  }
+}
+
+function showError(msg){
+  document.getElementById('content').innerHTML = `
+    <div class="state">
+      <div class="state-ico">❌</div>
+      <div class="state-title">Ошибка</div>
+      <div class="state-text">${msg}</div>
+    </div>`;
+}
+
+function showAlreadyDone(){
+  document.getElementById('content').innerHTML = `
+    <div class="state">
+      <div class="state-ico">✅</div>
+      <div class="state-title">Уже отвечено</div>
+      <div class="state-text">Вы уже прошли этот опрос. Спасибо за ваш отзыв!</div>
+    </div>`;
+}
+
+// ── Render survey ──────────────────────────────────────
+function renderSurvey(){
+  const d = surveyData;
+  document.getElementById('content').innerHTML = `
+    <div class="meta">
+      <b>${d.studentName}</b><br>
+      <span>Преподаватель: ${d.teacherName}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+
+    <div class="err" id="err-box"></div>
+
+    <!-- Q1: Оценка преподавателя -->
+    <div class="q-block">
+      <div class="q-label">⭐ Как вы оцениваете качество преподавания?</div>
+      <div class="q-sub">1 = плохо, 5 = отлично</div>
+      <div class="stars" id="stars-row">
+        ${[1,2,3,4,5].map(n=>`<div class="star" data-n="${n}" onclick="setRating(${n})">${n}⭐</div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Q2: Продление -->
+    <div class="q-block">
+      <div class="q-label">🔄 Планируете ли продолжать обучение?</div>
+      <div class="choices">
+        <button class="choice" onclick="setRenewal('yes')">Да, продлим</button>
+        <button class="choice" onclick="setRenewal('likely')">Скорее да</button>
+        <button class="choice" onclick="setRenewal('unlikely')">Скорее нет</button>
+        <button class="choice" onclick="setRenewal('no')">Нет</button>
+        <button class="choice" onclick="setRenewal('unknown')">Ещё не решили</button>
+      </div>
+    </div>
+
+    <!-- Q3: NPS -->
+    <div class="q-block">
+      <div class="q-label">👥 Порекомендовали бы нас друзьям?</div>
+      <div class="q-sub">0 = точно нет, 10 = однозначно да</div>
+      <div class="nps-row" id="nps-row">
+        ${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="nps-btn" data-n="${n}" onclick="setNps(${n})">${n}</button>`).join('')}
+      </div>
+      <div class="nps-labels"><span>Точно нет</span><span>Однозначно да</span></div>
+    </div>
+
+    <!-- Q4: Что нравится -->
+    <div class="q-block">
+      <div class="q-label">💚 Что больше всего нравится?</div>
+      <div class="q-sub">Необязательно</div>
+      <textarea id="txt-likes" placeholder="Например: преподаватель объясняет понятно, ребёнок с удовольствием ходит..." oninput="answers.likes=this.value;updateProgress()"></textarea>
+    </div>
+
+    <!-- Q5: Что не нравится -->
+    <div class="q-block">
+      <div class="q-label">💛 Что можно улучшить?</div>
+      <div class="q-sub">Необязательно — ваша честность помогает нам стать лучше</div>
+      <textarea id="txt-dislikes" placeholder="Любые пожелания или замечания..." oninput="answers.dislikes=this.value;updateProgress()"></textarea>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitSurvey()">Отправить отзыв →</button>
+  `;
+  updateProgress();
+}
+
+function setRating(n){
+  answers.rating = n;
+  document.querySelectorAll('.star').forEach(s=>{
+    s.classList.toggle('active', parseInt(s.dataset.n) <= n);
+  });
+  updateProgress();
+}
+
+function setRenewal(val){
+  answers.renewal = val;
+  const colorMap = {yes:'active-gn', likely:'active-gn', unlikely:'active-am', no:'active-rd', unknown:'active'};
+  document.querySelectorAll('.choices .choice').forEach(b=>{
+    b.className = 'choice';
+    if(b.onclick.toString().includes(`'${val}'`)) b.classList.add(colorMap[val]||'active');
+  });
+  updateProgress();
+}
+
+function setNps(n){
+  answers.nps = n;
+  document.querySelectorAll('.nps-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.n) === n);
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const filled = [answers.rating, answers.renewal, answers.nps].filter(v=>v!==null).length;
+  document.getElementById('prog').style.width = (filled / 3 * 100) + '%';
+}
+
+async function submitSurvey(){
+  const err = document.getElementById('err-box');
+  err.style.display = 'none';
+  if(answers.rating === null){ err.textContent = 'Пожалуйста, поставьте оценку преподавателю'; err.style.display=''; return; }
+  if(answers.renewal === null){ err.textContent = 'Пожалуйста, ответьте про продление курса'; err.style.display=''; return; }
+  if(answers.nps === null){ err.textContent = 'Пожалуйста, выберите оценку рекомендации'; err.style.display=''; return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Отправка...';
+
+  const now = new Date().toISOString();
+  const result = {
+    token: TOKEN,
+    studentId: surveyData.studentId,
+    studentName: surveyData.studentName,
+    teacherId: surveyData.teacherId,
+    teacherName: surveyData.teacherName,
+    enrollId: surveyData.enrollId,
+    rating: answers.rating,
+    renewal: answers.renewal,
+    nps: answers.nps,
+    likes: answers.likes.trim(),
+    dislikes: answers.dislikes.trim(),
+    submittedAt: now,
+    sentAt: surveyData.sentAt || null,
+  };
+
+  try {
+    // Save result
+    await db.ref('surveyResults/' + TOKEN).set(result);
+    // Mark token as completed
+    await db.ref('surveyTokens/' + TOKEN + '/completedAt').set(now);
+
+    document.getElementById('content').innerHTML = `
+      <div class="state">
+        <div class="state-ico">🎉</div>
+        <div class="state-title">Спасибо за отзыв!</div>
+        <div class="state-text">Ваше мнение очень важно для нас. Мы постоянно работаем над улучшением качества обучения.<br><br>До встречи на занятиях! 👋</div>
+      </div>`;
+  } catch(e){
+    btn.disabled = false; btn.textContent = 'Отправить отзыв →';
+    err.textContent = 'Ошибка отправки. Проверьте интернет и попробуйте ещё раз.';
+    err.style.display = '';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

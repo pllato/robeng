@@ -354,6 +354,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="ni" data-p="videoreviews" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎥</span>Видео уроков <span id="video-badge" style="display:none;background:var(--am);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni admin-only" id="ni-more" onclick="toggleMore(this)"><span style="font-size:14px;width:18px;text-align:center">•••</span>Ещё</div>
     <div id="more-menu" style="display:none">
+      <div class="ni admin-only" data-p="surveys" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Опросы <span id="surveys-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
       <div class="ni admin-only" data-p="subjects" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📚</span>Предметы</div>
       <div class="ni admin-only" data-p="journal" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Журнал</div>
       <div class="ni admin-only" data-p="trash" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
@@ -640,6 +641,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
         <button class="btn btn-a btn-sm" onclick="createBackup()">💾 Создать копию сейчас</button>
       </div>
       <div id="backup-list"></div>
+    </div>
+    <!-- SURVEYS -->
+    <div class="panel" id="panel-surveys">
+      <div id="surveys-body"></div>
     </div>
     <!-- SETTINGS -->
     <div class="panel" id="panel-appsettings">
@@ -1728,6 +1733,7 @@ function renderPanel(p){
   else if(p==='users'){renderUsers();}
   else if(p==='videoreviews'){renderVideoReviews();}
   else if(p==='appsettings'){renderAppSettings();}
+  else if(p==='surveys'){renderSurveys();}
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────────
@@ -3945,6 +3951,7 @@ function renderStudents(){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
           ${topBadge}
+          ${currentRole==='admin'?`<button class="btn btn-xs" onclick="sendSurvey(${st.id})" title="Отправить опрос родителям">📋 Опрос</button>`:''}
           ${currentRole==='admin'?`<button class="btn btn-xs" onclick="editStudentInfo(${st.id})" title="Изменить данные ученика">✎ Данные</button>`:''}
           ${currentRole==='admin'?`<button class="btn btn-xs btn-r" onclick="deleteStudent(${st.id})" title="Удалить ученика">✕ Удалить</button>`:''}
         </div>
@@ -6347,6 +6354,264 @@ function checkLessonReminders(){
   });
 }
 
+
+
+// ═══════════════════════════════════════════════════════
+//  SURVEY SYSTEM
+// ═══════════════════════════════════════════════════════
+
+const surveyTokensRef = fbDb.ref('surveyTokens');
+const surveyResultsRef = fbDb.ref('surveyResults');
+const SURVEY_BASE_URL = 'https://pllato.github.io/robeng/survey.html';
+const SURVEY_INTERVAL_DAYS = 14; // каждые 2 недели
+
+function genSurveyToken(){
+  return Math.random().toString(36).slice(2,8)+Date.now().toString(36);
+}
+
+// Отправить опрос конкретному ученику
+async function sendSurvey(stuId){
+  const st = S.students.find(s=>s.id===stuId);
+  if(!st){ toast('Ученик не найден', true); return; }
+  const enr = S.enrollments.find(e=>e.studentId===stuId&&!e.inactive&&enrollActive(e,new Date().toISOString().slice(0,10)));
+  if(!enr){ toast('Нет активной записи у ученика', true); return; }
+  const t = teacher(enr.teacherId);
+  const parentPhone = (st.parentPhone||'').replace(/\D/g,'');
+  const studentPhone = (st.phone||'').replace(/\D/g,'');
+  if(!parentPhone && !studentPhone){ toast('Нет телефона для отправки', true); return; }
+
+  const token = genSurveyToken();
+  const now = new Date().toISOString();
+  const tokenData = {
+    token, studentId: st.id, studentName: st.name,
+    teacherId: String(enr.teacherId), teacherName: t?.name||'—',
+    enrollId: String(enr.id), sentAt: now,
+    sentBy: fbAuth.currentUser?.email||'—',
+    completedAt: null
+  };
+
+  await surveyTokensRef.child(token).set(tokenData);
+
+  const link = `${SURVEY_BASE_URL}?id=${token}`;
+  const msg = `📋 Опрос о качестве обучения
+
+` +
+    `Здравствуйте! Хотим узнать ваше мнение об уроках ${st.name}.
+
+` +
+    `Займёт 1 минуту — 4 вопроса:
+${link}
+
+` +
+    `Ваш отзыв помогает нам стать лучше 🙏`;
+
+  const phones = [parentPhone, studentPhone].filter((p,i,a)=>p&&a.indexOf(p)===i);
+  for(const p of phones) await notifyWhatsApp('+'+p, msg).catch(()=>{});
+
+  logAction('other', `Опрос отправлен: ${st.name}`, t?.name||'—');
+  updateSurveysBadge();
+  toast(`📋 Опрос отправлен ${st.name}`);
+}
+
+// Авто-отправка каждые 2 недели всем активным ученикам
+async function autoSendSurveys(){
+  if(currentRole!=='admin') return;
+  const today = new Date().toISOString().slice(0,10);
+  const snap = await surveyTokensRef.once('value');
+  const tokens = snap.val()||{};
+
+  // Для каждого активного ученика проверяем когда последний раз отправляли
+  const activeEnrolls = S.enrollments.filter(e=>!e.inactive&&enrollActive(e,today));
+  for(const e of activeEnrolls){
+    const st = student(e.studentId);
+    if(!st) continue;
+    if(!st.parentPhone && !st.phone) continue;
+
+    // Найти последний отправленный опрос для этого ученика
+    const stuTokens = Object.values(tokens).filter(t=>String(t.studentId)===String(st.id));
+    stuTokens.sort((a,b)=>b.sentAt.localeCompare(a.sentAt));
+    const lastSent = stuTokens[0]?.sentAt;
+
+    // Проверяем интервал
+    if(lastSent){
+      const daysSince = (Date.now() - new Date(lastSent).getTime()) / 86400000;
+      if(daysSince < SURVEY_INTERVAL_DAYS) continue;
+    } else {
+      // Никогда не отправляли — проверяем что ученик активен хотя бы SURVEY_INTERVAL_DAYS дней
+      const daysSinceStart = (Date.now() - new Date(e.dateStart).getTime()) / 86400000;
+      if(daysSinceStart < SURVEY_INTERVAL_DAYS) continue;
+    }
+
+    await sendSurvey(st.id);
+    await new Promise(r=>setTimeout(r,1500)); // небольшая пауза между отправками
+  }
+}
+
+// ── Обновить бейдж ──────────────────────────────────────
+async function updateSurveysBadge(){
+  const snap = await surveyResultsRef.once('value');
+  const results = Object.values(snap.val()||{});
+  // Новые ответы за последние 7 дней
+  const cutoff = new Date(Date.now()-7*86400000).toISOString();
+  const fresh = results.filter(r=>r.submittedAt>=cutoff).length;
+  const b = document.getElementById('surveys-badge');
+  if(b){ b.textContent=fresh; b.style.display=fresh>0?'':'none'; }
+}
+
+// ── Главная страница опросов ───────────────────────────
+async function renderSurveys(){
+  const el = document.getElementById('surveys-body');
+  if(!el) return;
+  el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Загрузка...</div></div>';
+
+  const [tokSnap, resSnap] = await Promise.all([
+    surveyTokensRef.once('value'),
+    surveyResultsRef.once('value')
+  ]);
+  const tokens = Object.values(tokSnap.val()||{});
+  const results = Object.values(resSnap.val()||{});
+
+  // ── Aggregate stats ──
+  const completed = results.length;
+  const pending = tokens.filter(t=>!t.completedAt).length;
+  const avgRating = completed>0 ? (results.reduce((s,r)=>s+r.rating,0)/completed).toFixed(1) : '—';
+  const avgNps = completed>0 ? (results.reduce((s,r)=>s+r.nps,0)/completed).toFixed(1) : '—';
+  const renewalYes = results.filter(r=>r.renewal==='yes'||r.renewal==='likely').length;
+  const renewalPct = completed>0 ? Math.round(renewalYes/completed*100) : 0;
+
+  // NPS score = %promoters(9-10) - %detractors(0-6)
+  const promoters = results.filter(r=>r.nps>=9).length;
+  const detractors = results.filter(r=>r.nps<=6).length;
+  const npsScore = completed>0 ? Math.round((promoters-detractors)/completed*100) : null;
+  const npsColor = npsScore===null?'var(--t3)':npsScore>=50?'var(--gn)':npsScore>=0?'var(--am)':'var(--rd)';
+
+  // ── Per-teacher stats ──
+  const byTeacher = {};
+  results.forEach(r=>{
+    if(!byTeacher[r.teacherId]) byTeacher[r.teacherId]={name:r.teacherName,ratings:[],nps:[],renewalYes:0,total:0};
+    byTeacher[r.teacherId].ratings.push(r.rating);
+    byTeacher[r.teacherId].nps.push(r.nps);
+    if(r.renewal==='yes'||r.renewal==='likely') byTeacher[r.teacherId].renewalYes++;
+    byTeacher[r.teacherId].total++;
+  });
+
+  const teacherRows = Object.entries(byTeacher).map(([tid,d])=>{
+    const avg = (d.ratings.reduce((s,v)=>s+v,0)/d.ratings.length).toFixed(1);
+    const rp = Math.round(d.renewalYes/d.total*100);
+    const stars = '⭐'.repeat(Math.round(avg));
+    return `<tr>
+      <td style="font-weight:600">${d.name}</td>
+      <td><span style="color:var(--am);font-weight:700">${avg}</span> ${stars}</td>
+      <td style="color:${rp>=70?'var(--gn)':rp>=40?'var(--am)':'var(--rd)'};font-weight:600">${rp}%</td>
+      <td style="color:var(--t2)">${d.total}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Recent comments ──
+  const comments = results
+    .filter(r=>r.likes||r.dislikes)
+    .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt))
+    .slice(0,10);
+
+  const renewalLabel = {yes:'Да',likely:'Скорее да',unlikely:'Скорее нет',no:'Нет',unknown:'Не знаю'};
+  const renewalColor = {yes:'var(--gn)',likely:'var(--gn)',unlikely:'var(--am)',no:'var(--rd)',unknown:'var(--t3)'};
+
+  el.innerHTML = `
+  <!-- Шапка -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div style="font-size:15px;font-weight:700;font-family:var(--fd);color:var(--t1)">📋 Опросы родителей</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="autoSendSurveys()" title="Отправить опросы всем кто не получал 14+ дней">🔄 Авто-рассылка</button>
+      <button class="btn btn-a btn-sm" onclick="nav(document.querySelector('[data-p=students]'))">→ К ученикам</button>
+    </div>
+  </div>
+
+  <!-- Сводная статистика -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+    <div class="stat"><div class="stat-lbl">Ответов</div><div class="stat-val ct">${completed}</div><div class="stat-sub">Всего получено</div></div>
+    <div class="stat"><div class="stat-lbl">⭐ Средняя оценка</div><div class="stat-val" style="color:var(--am)">${avgRating}</div><div class="stat-sub">из 5</div></div>
+    <div class="stat"><div class="stat-lbl">🔄 Продлят курс</div><div class="stat-val cg">${renewalPct}%</div><div class="stat-sub">Да + скорее да</div></div>
+    <div class="stat"><div class="stat-lbl">NPS балл</div><div class="stat-val" style="color:${npsColor}">${npsScore!==null?npsScore:'—'}</div><div class="stat-sub">−100 до +100</div></div>
+    <div class="stat"><div class="stat-lbl">Ожидают ответа</div><div class="stat-val" style="color:var(--t2)">${pending}</div><div class="stat-sub">Отправлено, нет ответа</div></div>
+  </div>
+
+  ${teacherRows?`
+  <!-- По преподавателям -->
+  <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);overflow:hidden;margin-bottom:20px">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--b1);font-size:12px;font-weight:700;color:var(--t2)">Рейтинг по преподавателям</div>
+    <table class="rpt-tbl">
+      <thead><tr><th>Преподаватель</th><th>Оценка</th><th>Продлят</th><th>Ответов</th></tr></thead>
+      <tbody>${teacherRows}</tbody>
+    </table>
+  </div>`:''}
+
+  <!-- Последние ответы с комментариями -->
+  ${comments.length?`
+  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">💬 Последние отзывы</div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+    ${comments.map(r=>`
+    <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="font-weight:600;font-size:13px">${r.studentName}</div>
+        <div style="font-size:11px;color:var(--t3)">${r.teacherName}</div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--am)">⭐${r.rating}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${(renewalColor[r.renewal]||'var(--t3)')}22;color:${renewalColor[r.renewal]||'var(--t3)'}">${renewalLabel[r.renewal]||r.renewal}</span>
+          <span style="font-size:11px;color:var(--t3)">NPS: ${r.nps}</span>
+          <span style="font-size:11px;color:var(--t3)">${new Date(r.submittedAt).toLocaleDateString('ru',{day:'2-digit',month:'short'})}</span>
+        </div>
+      </div>
+      ${r.likes?`<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><span style="color:var(--gn)">💚</span> ${r.likes}</div>`:''}
+      ${r.dislikes?`<div style="font-size:12px;color:var(--t2)"><span style="color:var(--am)">💛</span> ${r.dislikes}</div>`:''}
+    </div>`).join('')}
+  </div>`:''}
+
+  <!-- Ожидающие ответа -->
+  ${pending>0?`
+  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">⏳ Ожидают ответа (${pending})</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${tokens.filter(t=>!t.completedAt).sort((a,b)=>b.sentAt.localeCompare(a.sentAt)).slice(0,20).map(t=>{
+      const daysSince = Math.round((Date.now()-new Date(t.sentAt).getTime())/86400000);
+      return `<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:12px;font-weight:600">${t.studentName}</div>
+          <div style="font-size:11px;color:var(--t3)">${t.teacherName}</div>
+        </div>
+        <div style="font-size:11px;color:${daysSince>7?'var(--rd)':'var(--t3)'}">Отправлен ${daysSince} дн. назад</div>
+        <button class="btn btn-xs" onclick="resendSurvey('${t.token}')" title="Повторно отправить">↺ Напомнить</button>
+      </div>`;
+    }).join('')}
+  </div>`:''}
+
+  ${!completed&&!pending?'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Опросы ещё не отправлялись.<br>Нажми кнопку 📋 Опрос в карточке ученика.</div></div>':''}
+  `;
+}
+
+// Повторно отправить напоминание
+async function resendSurvey(token){
+  const snap = await surveyTokensRef.child(token).once('value');
+  const data = snap.val();
+  if(!data){ toast('Токен не найден', true); return; }
+  if(data.completedAt){ toast('Ученик уже ответил', true); return; }
+
+  const st = S.students.find(s=>String(s.id)===String(data.studentId));
+  if(!st){ toast('Ученик не найден', true); return; }
+
+  const link = `${SURVEY_BASE_URL}?id=${token}`;
+  const msg = `📋 Напоминание об опросе
+
+Здравствуйте! Мы ждём вашего отзыва об уроках ${st.name}.
+
+Займёт 1 минуту:
+${link}
+
+Спасибо! 🙏`;
+
+  const phones = [(st.parentPhone||'').replace(/\D/g,''), (st.phone||'').replace(/\D/g,'')]
+    .filter((p,i,a)=>p&&a.indexOf(p)===i);
+  for(const p of phones) await notifyWhatsApp('+'+p, msg).catch(()=>{});
+  toast('↺ Напоминание отправлено');
+}
 
 // ── НАСТРОЙКИ УВЕДОМЛЕНИЙ ────────────────────────────────────────
 function renderAppSettings(){

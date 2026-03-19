@@ -352,9 +352,9 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <div class="ni admin-only" data-p="users" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">👤</span>Пользователи</div>
     <div class="ni" data-p="reports" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📊</span>Отчёты</div>
     <div class="ni" data-p="videoreviews" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">🎥</span>Видео уроков <span id="video-badge" style="display:none;background:var(--am);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
+    <div class="ni" data-p="surveys" onclick="nav(this)"><span style="font-size:14px;width:18px;text-align:center">📋</span>Опросы <span id="surveys-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
     <div class="ni admin-only" id="ni-more" onclick="toggleMore(this)"><span style="font-size:14px;width:18px;text-align:center">•••</span>Ещё</div>
     <div id="more-menu" style="display:none">
-      <div class="ni admin-only" data-p="surveys" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Опросы <span id="surveys-badge" style="display:none;background:var(--gn);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
       <div class="ni admin-only" data-p="subjects" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📚</span>Предметы</div>
       <div class="ni admin-only" data-p="journal" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">📋</span>Журнал</div>
       <div class="ni admin-only" data-p="trash" onclick="nav(this)" style="padding-left:30px"><span style="font-size:13px;width:18px;text-align:center">🗑</span>Корзина <span id="trash-badge" style="display:none;background:var(--rd);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:2px"></span></div>
@@ -389,6 +389,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
   <div class="content">
     <!-- DASHBOARD -->
     <div class="panel active" id="panel-dashboard">
+      <div id="teacher-survey-alerts"></div>
       <div id="reminder-fail-block" class="admin-only"></div>
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
@@ -1487,7 +1488,7 @@ function applyRole(role, teacherId){
 
   // Teacher: redirect if on forbidden page
   const cur = curPanel();
-  const teacherAllowed = ['today','dashboard','schedule','availability','students','reports','videoreviews','tasks','teamchat'];
+  const teacherAllowed = ['today','dashboard','schedule','availability','students','reports','videoreviews','tasks','teamchat','surveys'];
   if(role==='teacher' && !teacherAllowed.includes(cur)){
     const schedNi = document.querySelector('.ni[data-p="schedule"]');
     if(schedNi) { nav(schedNi); return; }
@@ -1659,8 +1660,8 @@ function countFree(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Главная',subjects:'Предметы',teachers:'Преподаватели',availability:'Время работы',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков'};
-const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:''};
+const TITLES={today:'Сегодня ☀️',tasks:'Задачи',teamchat:'Общий чат',dashboard:'Главная',subjects:'Предметы',teachers:'Преподаватели',availability:'Время работы',schedule:'Расписание',freeSlots:'Свободные слоты',students:'Ученики',reports:'Отчёты по преподавателям',journal:'Журнал действий',trash:'Корзина',backups:'Резервные копии',users:'Пользователи',videoreviews:'Видео уроков',surveys:'Опросы'};
+const ACTS={today:'',tasks:'',teamchat:'',dashboard:'+',subjects:'',teachers:'+ Преподаватель',availability:'',schedule:'',freeSlots:'',students:'+ Ученик',reports:'',journal:'',trash:'',backups:'',users:'',videoreviews:'',surveys:''};
 function curPanel(){return document.querySelector('.ni.active')?.dataset.p||'dashboard';}
 function nav(el){
   // Close more menu on nav
@@ -2215,6 +2216,7 @@ function renderDashboard(){
   // Teacher sees only their own dashboard
   if(currentRole==='teacher'&&currentTeacherId){
     renderTeacherDashboard();
+    renderTeacherSurveyAlerts();
     return;
   }
   // Рендерим блоки для admin
@@ -6512,8 +6514,87 @@ function checkLessonReminders(){
 
 const surveyTokensRef = fbDb.ref('surveyTokens');
 const surveyResultsRef = fbDb.ref('surveyResults');
+const surveyFeedbackRef = fbDb.ref('surveyFeedback');
 const SURVEY_BASE_URL = 'https://pllato.github.io/robeng/survey.html';
 const SURVEY_INTERVAL_DAYS = 14; // каждые 2 недели
+
+
+// ── Survey admin actions ──────────────────────────────────────────
+async function acceptSurvey(token){
+  await surveyFeedbackRef.child(token).update({
+    status:'accepted', acceptedAt:new Date().toISOString(),
+    acceptedBy:fbAuth.currentUser?.email||'—'
+  });
+  toast('✅ Опрос принят');
+  renderSurveys();
+}
+
+let _sfbToken='', _sfbTeacherId='';
+function openSurveyFeedback(token, teacherName, studentName, teacherId){
+  _sfbToken=token; _sfbTeacherId=teacherId;
+  document.getElementById('sfb-meta').textContent=`${teacherName} · Ученик: ${studentName}`;
+  const existing = document.getElementById('sfb-comment');
+  if(existing) existing.value='';
+  document.getElementById('survey-fb-modal').style.display='flex';
+}
+
+async function sendSurveyFeedback(){
+  const comment = document.getElementById('sfb-comment').value.trim();
+  if(!comment){ toast('Введите комментарий', true); return; }
+
+  // Load token data to get teacher/student info
+  const snap = await surveyTokensRef.child(_sfbToken).once('value');
+  const td = snap.val()||{};
+
+  await surveyFeedbackRef.child(_sfbToken).update({
+    token:_sfbToken, teacherId:_sfbTeacherId,
+    teacherName:td.teacherName||'—', studentName:td.studentName||'—',
+    adminComment:comment, status:'feedback_sent',
+    sentAt:new Date().toISOString(), sentBy:fbAuth.currentUser?.email||'—',
+    teacherConfirmed:false
+  });
+
+  // Notify teacher via WhatsApp if they have a phone
+  usersRef.once('value').then(snap=>{
+    const udata=snap.val()||{};
+    const tEntry=Object.values(udata).find(u=>String(u.teacherId)===String(_sfbTeacherId)||String(u.uid)===String(_sfbTeacherId));
+    if(tEntry&&tEntry.phone){
+      const msg=`📋 Сообщение от администратора по опросу\n\n👤 Ученик: ${td.studentName||'—'}\n\n${comment}\n\nОткройте портал → Опросы → подтвердите получение`;
+      notifyWhatsApp(tEntry.phone.startsWith('+')?tEntry.phone:'+'+tEntry.phone.replace(/\D/g,''), msg).catch(()=>{});
+    }
+  });
+
+  document.getElementById('survey-fb-modal').style.display='none';
+  toast('💬 Сообщение отправлено преподавателю');
+  renderSurveys();
+}
+
+async function confirmSurveyFeedback(token){
+  await surveyFeedbackRef.child(token).update({
+    teacherConfirmed:true, confirmedAt:new Date().toISOString()
+  });
+  toast('✓ Подтверждено');
+  renderSurveys();
+}
+
+// Teacher dashboard: show pending feedback from admin
+async function renderTeacherSurveyAlerts(){
+  const el = document.getElementById('teacher-survey-alerts');
+  if(!el) return;
+  const tid = String(currentTeacherId);
+  const snap = await surveyFeedbackRef.once('value');
+  const all = Object.values(snap.val()||{});
+  const pending = all.filter(f=>String(f.teacherId)===tid&&f.status==='feedback_sent'&&!f.teacherConfirmed);
+  if(!pending.length){ el.innerHTML=''; return; }
+  el.innerHTML = `<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.3);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:600;color:var(--am);margin-bottom:10px">📬 Сообщений от администратора: ${pending.length}</div>
+    ${pending.map(f=>`<div style="background:var(--bg3);border-radius:8px;padding:10px 13px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">Ученик: ${f.studentName||'—'}</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px">${f.adminComment}</div>
+      <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}')">✓ Понял, исправлюсь / Ок</button>
+    </div>`).join('')}
+  </div>`;
+}
 
 // Проверяем расписание и запускаем авто-рассылку если нужно
 async function checkAndAutoSendSurveys(){
@@ -6637,129 +6718,211 @@ async function renderSurveys(){
   if(!el) return;
   el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Загрузка...</div></div>';
 
-  const [tokSnap, resSnap] = await Promise.all([
+  const [tokSnap, resSnap, fbSnap] = await Promise.all([
     surveyTokensRef.once('value'),
-    surveyResultsRef.once('value')
+    surveyResultsRef.once('value'),
+    surveyFeedbackRef.once('value')
   ]);
-  const tokens = Object.values(tokSnap.val()||{});
-  const results = Object.values(resSnap.val()||{});
+  const allTokens = tokSnap.val()||{};
+  const allResults = resSnap.val()||{};
+  const allFeedback = fbSnap.val()||{};
 
-  // ── Aggregate stats ──
+  const renewalLabel = {yes:'Да ✅',likely:'Скорее да',unlikely:'Скорее нет',no:'Нет ❌',unknown:'Не решили'};
+  const renewalColor = {yes:'var(--gn)',likely:'var(--gn)',unlikely:'var(--am)',no:'var(--rd)',unknown:'var(--t3)'};
+
+  // ── Teacher view ─────────────────────────────────────────────────
+  if(currentRole==='teacher'){
+    renderSurveysTeacher(allResults, allFeedback);
+    return;
+  }
+
+  // ── Admin: aggregate stats ────────────────────────────────────────
+  const results = Object.values(allResults);
+  const tokens  = Object.values(allTokens);
   const completed = results.length;
-  const pending = tokens.filter(t=>!t.completedAt).length;
-  const avgRating = completed>0 ? (results.reduce((s,r)=>s+r.rating,0)/completed).toFixed(1) : '—';
-  const avgNps = completed>0 ? (results.reduce((s,r)=>s+r.nps,0)/completed).toFixed(1) : '—';
-  const renewalYes = results.filter(r=>r.renewal==='yes'||r.renewal==='likely').length;
-  const renewalPct = completed>0 ? Math.round(renewalYes/completed*100) : 0;
-
-  // NPS score = %promoters(9-10) - %detractors(0-6)
+  const pending   = tokens.filter(t=>!t.completedAt).length;
+  const avgRating = completed>0?(results.reduce((s,r)=>s+r.rating,0)/completed).toFixed(1):'—';
+  const renewalYes= results.filter(r=>r.renewal==='yes'||r.renewal==='likely').length;
+  const renewalPct= completed>0?Math.round(renewalYes/completed*100):0;
   const promoters = results.filter(r=>r.nps>=9).length;
-  const detractors = results.filter(r=>r.nps<=6).length;
-  const npsScore = completed>0 ? Math.round((promoters-detractors)/completed*100) : null;
-  const npsColor = npsScore===null?'var(--t3)':npsScore>=50?'var(--gn)':npsScore>=0?'var(--am)':'var(--rd)';
+  const detractors= results.filter(r=>r.nps<=6).length;
+  const npsScore  = completed>0?Math.round((promoters-detractors)/completed*100):null;
+  const npsColor  = npsScore===null?'var(--t3)':npsScore>=50?'var(--gn)':npsScore>=0?'var(--am)':'var(--rd)';
 
-  // ── Per-teacher stats ──
-  const byTeacher = {};
+  // Per-teacher
+  const byT={};
   results.forEach(r=>{
-    if(!byTeacher[r.teacherId]) byTeacher[r.teacherId]={name:r.teacherName,ratings:[],nps:[],renewalYes:0,total:0};
-    byTeacher[r.teacherId].ratings.push(r.rating);
-    byTeacher[r.teacherId].nps.push(r.nps);
-    if(r.renewal==='yes'||r.renewal==='likely') byTeacher[r.teacherId].renewalYes++;
-    byTeacher[r.teacherId].total++;
+    if(!byT[r.teacherId])byT[r.teacherId]={name:r.teacherName,sum:0,cnt:0,renewYes:0};
+    byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++;
+    if(r.renewal==='yes'||r.renewal==='likely')byT[r.teacherId].renewYes++;
   });
-
-  const teacherRows = Object.entries(byTeacher).map(([tid,d])=>{
-    const avg = (d.ratings.reduce((s,v)=>s+v,0)/d.ratings.length).toFixed(1);
-    const rp = Math.round(d.renewalYes/d.total*100);
-    const stars = '⭐'.repeat(Math.round(avg));
+  const teacherRows=Object.values(byT).sort((a,b)=>b.sum/b.cnt-a.sum/a.cnt).map((t,i)=>{
+    const avg=(t.sum/t.cnt).toFixed(1);
+    const rp=Math.round(t.renewYes/t.cnt*100);
+    const c=parseFloat(avg)>=4.5?'var(--gn)':parseFloat(avg)>=3.5?'var(--am)':'var(--rd)';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
     return `<tr>
-      <td style="font-weight:600">${d.name}</td>
-      <td><span style="color:var(--am);font-weight:700">${avg}</span> ${stars}</td>
+      <td><span style="margin-right:5px">${medal||''}</span><b>${t.name}</b></td>
+      <td><span style="color:${c};font-weight:700;font-size:15px">${avg}</span><span style="color:var(--t3);font-size:11px"> / 5</span></td>
       <td style="color:${rp>=70?'var(--gn)':rp>=40?'var(--am)':'var(--rd)'};font-weight:600">${rp}%</td>
-      <td style="color:var(--t2)">${d.total}</td>
+      <td style="color:var(--t2)">${t.cnt}</td>
     </tr>`;
   }).join('');
 
-  // ── Recent comments ──
-  const comments = results
-    .filter(r=>r.likes||r.dislikes)
-    .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt))
-    .slice(0,10);
-
-  const renewalLabel = {yes:'Да',likely:'Скорее да',unlikely:'Скорее нет',no:'Нет',unknown:'Не знаю'};
-  const renewalColor = {yes:'var(--gn)',likely:'var(--gn)',unlikely:'var(--am)',no:'var(--rd)',unknown:'var(--t3)'};
+  // Sort individual results newest first
+  const sortedResults = results.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
 
   el.innerHTML = `
-  <!-- Шапка -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div style="font-size:15px;font-weight:700;font-family:var(--fd);color:var(--t1)">📋 Опросы родителей</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="autoSendSurveys()" title="Отправить опросы всем кто не получал 14+ дней">🔄 Авто-рассылка</button>
-      <button class="btn btn-a btn-sm" onclick="nav(document.querySelector('[data-p=students]'))">→ К ученикам</button>
-    </div>
+    <button class="btn btn-sm" onclick="autoSendSurveys().then(()=>renderSurveys())">🔄 Авто-рассылка</button>
   </div>
 
-  <!-- Сводная статистика -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">
-    <div class="stat"><div class="stat-lbl">Ответов</div><div class="stat-val ct">${completed}</div><div class="stat-sub">Всего получено</div></div>
-    <div class="stat"><div class="stat-lbl">⭐ Средняя оценка</div><div class="stat-val" style="color:var(--am)">${avgRating}</div><div class="stat-sub">из 5</div></div>
-    <div class="stat"><div class="stat-lbl">🔄 Продлят курс</div><div class="stat-val cg">${renewalPct}%</div><div class="stat-sub">Да + скорее да</div></div>
-    <div class="stat"><div class="stat-lbl">NPS балл</div><div class="stat-val" style="color:${npsColor}">${npsScore!==null?npsScore:'—'}</div><div class="stat-sub">−100 до +100</div></div>
-    <div class="stat"><div class="stat-lbl">Ожидают ответа</div><div class="stat-val" style="color:var(--t2)">${pending}</div><div class="stat-sub">Отправлено, нет ответа</div></div>
+  <!-- KPI -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">
+    <div class="stat"><div class="stat-lbl">Ответов</div><div class="stat-val ct">${completed}</div></div>
+    <div class="stat"><div class="stat-lbl">⭐ Средняя</div><div class="stat-val" style="color:var(--am)">${avgRating}</div><div class="stat-sub">из 5</div></div>
+    <div class="stat"><div class="stat-lbl">🔄 Продлят</div><div class="stat-val cg">${renewalPct}%</div></div>
+    <div class="stat"><div class="stat-lbl">NPS</div><div class="stat-val" style="color:${npsColor}">${npsScore!==null?(npsScore>0?'+':'')+npsScore:'—'}</div></div>
+    <div class="stat"><div class="stat-lbl">Ожидают</div><div class="stat-val" style="color:var(--t2)">${pending}</div></div>
   </div>
 
-  ${teacherRows?`
-  <!-- По преподавателям -->
-  <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);overflow:hidden;margin-bottom:20px">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--b1);font-size:12px;font-weight:700;color:var(--t2)">Рейтинг по преподавателям</div>
-    <table class="rpt-tbl">
-      <thead><tr><th>Преподаватель</th><th>Оценка</th><th>Продлят</th><th>Ответов</th></tr></thead>
-      <tbody>${teacherRows}</tbody>
-    </table>
+  <!-- Teacher rating table -->
+  ${teacherRows?`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);overflow:hidden;margin-bottom:18px">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--b1);font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">Рейтинг преподавателей</div>
+    <table class="rpt-tbl"><thead><tr><th>Преподаватель</th><th>⭐ Оценка</th><th>🔄 Продлят</th><th>Ответов</th></tr></thead>
+    <tbody>${teacherRows}</tbody></table>
   </div>`:''}
 
-  <!-- Последние ответы с комментариями -->
-  ${comments.length?`
-  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">💬 Последние отзывы</div>
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-    ${comments.map(r=>`
-    <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-        <div style="font-weight:600;font-size:13px">${r.studentName}</div>
-        <div style="font-size:11px;color:var(--t3)">${r.teacherName}</div>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--am)">⭐${r.rating}</span>
-          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${(renewalColor[r.renewal]||'var(--t3)')}22;color:${renewalColor[r.renewal]||'var(--t3)'}">${renewalLabel[r.renewal]||r.renewal}</span>
-          <span style="font-size:11px;color:var(--t3)">NPS: ${r.nps}</span>
-          <span style="font-size:11px;color:var(--t3)">${new Date(r.submittedAt).toLocaleDateString('ru',{day:'2-digit',month:'short'})}</span>
+  <!-- Individual surveys -->
+  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Все опросы (${sortedResults.length})</div>
+  <div id="survey-list" style="display:flex;flex-direction:column;gap:10px">
+    ${sortedResults.map(r=>{
+      const fb = allFeedback[r.token]||{};
+      const statusColor = fb.status==='accepted'?'var(--gn)':fb.status==='feedback_sent'?'var(--am)':fb.teacherConfirmed?'var(--tl)':'var(--b1)';
+      const statusLabel = fb.status==='accepted'?'✅ Принято':fb.status==='feedback_sent'?(fb.teacherConfirmed?'✓ Преподаватель подтвердил':'⏳ Ждём ответа преподавателя'):'Новый';
+      return `<div style="background:var(--bg2);border:1px solid ${statusColor};border-radius:var(--rl);padding:14px 16px" id="srv-${r.token}">
+        <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:13px;font-weight:600;color:var(--t1)">${r.studentName}</div>
+            <div style="font-size:11px;color:var(--t3)">${r.teacherName} · ${new Date(r.submittedAt).toLocaleDateString('ru',{day:'2-digit',month:'short',year:'numeric'})}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--am)">⭐ ${r.rating}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:8px;background:${(renewalColor[r.renewal]||'var(--t3)')}22;color:${renewalColor[r.renewal]||'var(--t3)'}">${renewalLabel[r.renewal]||r.renewal}</span>
+            <span style="font-size:11px;color:var(--t3)">NPS: ${r.nps}</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44">${statusLabel}</span>
+          </div>
         </div>
-      </div>
-      ${r.likes?`<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><span style="color:var(--gn)">💚</span> ${r.likes}</div>`:''}
-      ${r.dislikes?`<div style="font-size:12px;color:var(--t2)"><span style="color:var(--am)">💛</span> ${r.dislikes}</div>`:''}
-    </div>`).join('')}
-  </div>`:''}
+        ${r.likes?`<div style="font-size:12px;color:var(--t2);margin-bottom:5px"><span style="color:var(--gn)">💚 Нравится:</span> ${r.likes}</div>`:''}
+        ${r.dislikes?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px"><span style="color:var(--am)">💛 Улучшить:</span> ${r.dislikes}</div>`:''}
+        ${fb.adminComment?`<div style="font-size:11px;color:var(--tl);background:rgba(63,200,216,.08);border:1px solid rgba(63,200,216,.2);border-radius:6px;padding:6px 10px;margin-bottom:8px">💬 Ваш комментарий преподавателю: ${fb.adminComment}</div>`:''}
+        ${!fb.status||fb.status==='new'?`
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="acceptSurvey('${r.token}')">✅ Принять</button>
+          <button class="btn btn-sm" onclick="openSurveyFeedback('${r.token}','${(r.teacherName||'').replace(/'/g,"\'")}','${(r.studentName||'').replace(/'/g,"\'")}','${r.teacherId||''}')">💬 Написать преподавателю</button>
+          <button class="btn btn-sm" onclick="resendSurvey('${r.token}')">↺ Напомнить</button>
+        </div>`:
+        fb.status==='accepted'?`<div style="font-size:11px;color:var(--gn);margin-top:4px">✅ Принято ${fb.acceptedAt?new Date(fb.acceptedAt).toLocaleDateString('ru',{day:'2-digit',month:'short'}):''}
+          <button class="btn btn-xs" style="margin-left:8px" onclick="openSurveyFeedback('${r.token}','${(r.teacherName||'').replace(/'/g,"\'")}','${(r.studentName||'').replace(/'/g,"\'")}','${r.teacherId||''}')">💬 Написать</button>
+        </div>`:
+        fb.status==='feedback_sent'&&!fb.teacherConfirmed?`<div style="font-size:11px;color:var(--am);margin-top:4px">⏳ Ждём подтверждения от преподавателя
+          <button class="btn btn-xs" style="margin-left:8px" onclick="openSurveyFeedback('${r.token}','${(r.teacherName||'').replace(/'/g,"\'")}','${(r.studentName||'').replace(/'/g,"\'")}','${r.teacherId||''}')">✎ Изменить</button>
+        </div>`:
+        fb.teacherConfirmed?`<div style="font-size:11px;color:var(--tl);margin-top:4px">✓ Преподаватель подтвердил получение обратной связи</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  ${!sortedResults.length?'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Ответов пока нет.<br>Опросы отправляются автоматически с каждым видео-отчётом.</div></div>':''}
 
-  <!-- Ожидающие ответа -->
+  <!-- Pending (no answer yet) -->
   ${pending>0?`
-  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">⏳ Ожидают ответа (${pending})</div>
+  <div style="margin-top:20px;font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">⏳ Ожидают ответа (${pending})</div>
   <div style="display:flex;flex-direction:column;gap:6px">
-    ${tokens.filter(t=>!t.completedAt).sort((a,b)=>b.sentAt.localeCompare(a.sentAt)).slice(0,20).map(t=>{
-      const daysSince = Math.round((Date.now()-new Date(t.sentAt).getTime())/86400000);
+    ${tokens.filter(t=>!t.completedAt).sort((a,b)=>b.sentAt.localeCompare(a.sentAt)).map(t=>{
+      const d=Math.round((Date.now()-new Date(t.sentAt).getTime())/86400000);
       return `<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:12px;font-weight:600">${t.studentName}</div>
-          <div style="font-size:11px;color:var(--t3)">${t.teacherName}</div>
-        </div>
-        <div style="font-size:11px;color:${daysSince>7?'var(--rd)':'var(--t3)'}">Отправлен ${daysSince} дн. назад</div>
-        <button class="btn btn-xs" onclick="resendSurvey('${t.token}')" title="Повторно отправить">↺ Напомнить</button>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${t.studentName}</div><div style="font-size:11px;color:var(--t3)">${t.teacherName}</div></div>
+        <span style="font-size:11px;color:${d>7?'var(--rd)':'var(--t3)'}">${d} дн. назад</span>
+        <button class="btn btn-xs" onclick="resendSurvey('${t.token}')">↺ Напомнить</button>
       </div>`;
     }).join('')}
   </div>`:''}
 
-  ${!completed&&!pending?'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Опросы ещё не отправлялись.<br>Нажми кнопку 📋 Опрос в карточке ученика.</div></div>':''}
+  <!-- Feedback modal -->
+  <div id="survey-fb-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center">
+    <div style="background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:24px;max-width:480px;width:92%;box-shadow:0 16px 60px rgba(0,0,0,.5)">
+      <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">💬 Сообщение преподавателю</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:14px" id="sfb-meta"></div>
+      <textarea id="sfb-comment" placeholder="Напишите что нужно улучшить, на что обратить внимание..." style="width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);font-family:var(--fb);font-size:13px;padding:10px 13px;min-height:90px;resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button class="btn btn-sm" onclick="document.getElementById('survey-fb-modal').style.display='none'">Отмена</button>
+        <button class="btn btn-a btn-sm" onclick="sendSurveyFeedback()">Отправить преподавателю →</button>
+      </div>
+    </div>
+  </div>
   `;
 }
 
+function renderSurveysTeacher(allResults, allFeedback){
+  const el = document.getElementById('surveys-body');
+  if(!el) return;
+
+  // Find teacher record
+  const tid = String(currentTeacherId);
+  const myResults = Object.values(allResults).filter(r=>String(r.teacherId)===tid);
+  const myFeedback = Object.values(allFeedback).filter(f=>String(f.teacherId)===tid);
+  const pendingFb = myFeedback.filter(f=>f.status==='feedback_sent'&&!f.teacherConfirmed);
+
+  const avgRating = myResults.length>0?(myResults.reduce((s,r)=>s+r.rating,0)/myResults.length).toFixed(1):'—';
+  const renewYes  = myResults.filter(r=>r.renewal==='yes'||r.renewal==='likely').length;
+  const renewPct  = myResults.length>0?Math.round(renewYes/myResults.length*100):0;
+  const promoters = myResults.filter(r=>r.nps>=9).length;
+  const detractors= myResults.filter(r=>r.nps<=6).length;
+  const npsScore  = myResults.length>0?Math.round((promoters-detractors)/myResults.length*100):null;
+  const npsColor  = npsScore===null?'var(--t3)':npsScore>=50?'var(--gn)':npsScore>=0?'var(--am)':'var(--rd)';
+  const ratingColor = parseFloat(avgRating)>=4.5?'var(--gn)':parseFloat(avgRating)>=3.5?'var(--am)':'var(--rd)';
+
+  el.innerHTML = `
+  <div style="font-size:15px;font-weight:700;font-family:var(--fd);color:var(--t1);margin-bottom:16px">📋 Мои опросы</div>
+
+  <!-- My KPIs -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:18px">
+    <div class="stat"><div class="stat-lbl">⭐ Мой рейтинг</div><div class="stat-val" style="color:${ratingColor};font-size:28px">${avgRating}</div><div class="stat-sub">из 5 · ${myResults.length} отзывов</div></div>
+    <div class="stat"><div class="stat-lbl">🔄 Продлят курс</div><div class="stat-val cg">${renewPct}%</div></div>
+    <div class="stat"><div class="stat-lbl">👥 NPS</div><div class="stat-val" style="color:${npsColor}">${npsScore!==null?(npsScore>0?'+':'')+npsScore:'—'}</div></div>
+  </div>
+
+  <!-- Admin feedback messages -->
+  ${pendingFb.length?`
+  <div style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:var(--am);margin-bottom:10px">📬 Сообщения от администратора (${pendingFb.length})</div>
+    ${pendingFb.map(f=>`
+    <div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.3);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">Ученик: ${f.studentName}</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:10px">${f.adminComment}</div>
+      <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}')">✓ Понял, исправлюсь / Ок</button>
+    </div>`).join('')}
+  </div>`:''}
+
+  <!-- My survey responses -->
+  <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">Отзывы о моих уроках (${myResults.length})</div>
+  ${myResults.length?`<div style="display:flex;flex-direction:column;gap:8px">
+    ${myResults.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)).map(r=>`
+    <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--t1)">${r.studentName}</span>
+        <span style="font-size:11px;color:var(--t3)">${new Date(r.submittedAt).toLocaleDateString('ru',{day:'2-digit',month:'short'})}</span>
+        <span style="font-size:13px;color:var(--am);margin-left:auto">⭐ ${r.rating}</span>
+        <span style="font-size:11px;color:${r.renewal==='yes'||r.renewal==='likely'?'var(--gn)':'var(--t3)'}">${{yes:'Продлят ✅',likely:'Скорее продлят',unlikely:'Скорее нет',no:'Не продлят',unknown:'Не решили'}[r.renewal]||r.renewal}</span>
+      </div>
+      ${r.likes?`<div style="font-size:12px;color:var(--t2);margin-bottom:3px"><span style="color:var(--gn)">💚</span> ${r.likes}</div>`:''}
+      ${r.dislikes?`<div style="font-size:12px;color:var(--t2)"><span style="color:var(--am)">💛</span> ${r.dislikes}</div>`:''}
+    </div>`).join('')}
+  </div>`:'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Пока нет отзывов о ваших уроках</div></div>'}
+  `;
+}
 // Повторно отправить напоминание
 async function resendSurvey(token){
   const snap = await surveyTokensRef.child(token).once('value');

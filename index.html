@@ -390,6 +390,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
     <!-- DASHBOARD -->
     <div class="panel active" id="panel-dashboard">
       <div id="teacher-survey-alerts"></div>
+      <div id="teacher-rating-block"></div>
       <div id="reminder-fail-block" class="admin-only"></div>
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
@@ -1886,6 +1887,128 @@ function getDashPeriodLabel(){
 
 
 
+
+// ── Блок рейтинга преподавателя на главной ───────────────────────
+async function renderTeacherRatingBlock(){
+  const el = document.getElementById('teacher-rating-block');
+  if(!el || currentRole!=='teacher') return;
+
+  const tid = String(currentTeacherId);
+  const t = teacher(currentTeacherId);
+
+  const snap = await surveyResultsRef.once('value');
+  const allResults = Object.values(snap.val()||{});
+  const myResults  = allResults.filter(r=>String(r.teacherId)===tid);
+
+  // My stats
+  const myCount    = myResults.length;
+  const myAvg      = myCount>0?(myResults.reduce((s,r)=>s+r.rating,0)/myCount):null;
+  const myRenewPct = myCount>0?Math.round(myResults.filter(r=>r.renewal==='yes'||r.renewal==='likely').length/myCount*100):null;
+  const myPromoters= myResults.filter(r=>r.nps>=9).length;
+  const myDetract  = myResults.filter(r=>r.nps<=6).length;
+  const myNps      = myCount>0?Math.round((myPromoters-myDetract)/myCount*100):null;
+
+  // Global stats (all teachers)
+  const allCount   = allResults.length;
+  const globalAvg  = allCount>0?(allResults.reduce((s,r)=>s+r.rating,0)/allCount).toFixed(1):'—';
+  const globalRenew= allCount>0?Math.round(allResults.filter(r=>r.renewal==='yes'||r.renewal==='likely').length/allCount*100):null;
+
+  // Rank among teachers
+  const byT={};
+  allResults.forEach(r=>{ if(!byT[r.teacherId])byT[r.teacherId]={sum:0,cnt:0}; byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++; });
+  const sorted=Object.entries(byT).sort((a,b)=>b[1].sum/b[1].cnt - a[1].sum/a[1].cnt);
+  const myRank = sorted.findIndex(([id])=>id===tid)+1;
+  const totalTeachers = sorted.length;
+
+  // Performance score (same formula as pulse)
+  const dates30 = dateRange(30);
+  const stats30 = calcTeacherStats(t||{id:currentTeacherId,name:''},dates30);
+  const vr=S.videoReports||{};
+  let videoNeed=0,videoSent=0;
+  S.enrollments.filter(e=>String(e.teacherId)===tid&&e.dateEnd>=dates30[0]&&e.dateStart<=dates30[dates30.length-1]).forEach(e=>{
+    dates30.forEach(dt=>{
+      if(!enrollActive(e,dt))return;
+      const dow=(new Date(dt).getDay()+6)%7;
+      if(!e.slots.some(sl=>sl.day===dow))return;
+      videoNeed++; if(vr[videoKey(e.id,dt)])videoSent++;
+    });
+  });
+  const videoRate=videoNeed>0?Math.round(videoSent/videoNeed*100):100;
+  const attScore =Math.round((1-(stats30.missRate||0)/100)*100);
+  const perfScore=Math.round(videoRate*0.4+attScore*0.3+(stats30.renewalRate||0)*0.3);
+  const perfColor=perfScore>=80?'var(--gn)':perfScore>=50?'var(--am)':'var(--rd)';
+
+  // Rating color
+  const ratingColor = myAvg===null?'var(--t3)':myAvg>=4.5?'var(--gn)':myAvg>=3.5?'var(--am)':'var(--rd)';
+
+  // Goals/tips based on weakest metric
+  const tips=[];
+  if(videoRate<80) tips.push({ico:'🎥',text:`Видео-отчёты: ${videoRate}% — загружайте видео после каждого урока`,color:'var(--am)'});
+  if(attScore<80)  tips.push({ico:'✅',text:`Посещаемость: ${attScore}% — отмечайте статус каждого урока вовремя`,color:'var(--am)'});
+  if(myAvg!==null&&myAvg<4) tips.push({ico:'⭐',text:`Оценка родителей ${myAvg.toFixed(1)} — уточните у администратора как улучшить`,color:'var(--rd)'});
+  if(myRenewPct!==null&&myRenewPct<60) tips.push({ico:'🔄',text:`Продления: ${myRenewPct}% — ученики довольные курсом перезаписываются`,color:'var(--am)'});
+  if(!tips.length) tips.push({ico:'🌟',text:'Отличная работа! Продолжайте в том же духе.',color:'var(--gn)'});
+
+  el.innerHTML=`
+  <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;font-family:var(--fd);color:var(--t1);margin-bottom:14px">📊 Мой рейтинг</div>
+
+    <!-- My metrics -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:${ratingColor};font-family:var(--fd)">${myAvg!==null?myAvg.toFixed(1):'—'}</div>
+        <div style="font-size:10px;color:var(--t3)">⭐ Оценка родителей</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:1px">ср. по школе: ${globalAvg}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:${perfColor};font-family:var(--fd)">${perfScore}</div>
+        <div style="font-size:10px;color:var(--t3)">📈 Рейтинг работы</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:1px">из 100 за 30 дней</div>
+      </div>
+      ${myRank>0?`<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:${myRank===1?'var(--am)':myRank<=3?'var(--t2)':'var(--t3)'};font-family:var(--fd)">${myRank===1?'🥇':myRank===2?'🥈':myRank===3?'🥉':'#'+myRank}</div>
+        <div style="font-size:10px;color:var(--t3)">Место среди</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:1px">${totalTeachers} преподавателей</div>
+      </div>`:''}
+      ${myRenewPct!==null?`<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:${myRenewPct>=70?'var(--gn)':myRenewPct>=40?'var(--am)':'var(--rd)'};font-family:var(--fd)">${myRenewPct}%</div>
+        <div style="font-size:10px;color:var(--t3)">🔄 Продления</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:1px">ср. ${globalRenew!==null?globalRenew+'%':'—'}</div>
+      </div>`:''}
+    </div>
+
+    <!-- Rating breakdown -->
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+      ${[
+        {label:'🎥 Видео-отчёты',val:videoRate,tip:'загружаются после каждого урока'},
+        {label:'✅ Посещаемость',val:attScore,tip:'отсутствие необработанных пропусков'},
+        {label:'↻ Продления',val:stats30.renewalRate||0,tip:'ученики перезаписываются'},
+      ].map(m=>{
+        const c=m.val>=80?'var(--gn)':m.val>=50?'var(--am)':'var(--rd)';
+        return `<div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--t2);min-width:130px">${m.label}</span>
+          <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+            <div style="width:${m.val}%;height:100%;background:${c};border-radius:3px;transition:width .5s"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${c};min-width:32px;text-align:right">${m.val}%</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Tips -->
+    <div style="border-top:1px solid var(--b1);padding-top:10px">
+      ${tips.map(tip=>`<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:5px">
+        <span style="font-size:13px;flex-shrink:0">${tip.ico}</span>
+        <span style="font-size:11px;color:${tip.color};line-height:1.5">${tip.text}</span>
+      </div>`).join('')}
+    </div>
+
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-xs" onclick="nav(document.querySelector('[data-p=surveys]'))" style="font-size:11px">Все отзывы →</button>
+    </div>
+  </div>`;
+}
+
 // ── ОПРОСЫ НА ДАШБОРДЕ ──────────────────────────────────────────
 let _dashSurveyPeriod = 30; // дней
 
@@ -2217,6 +2340,7 @@ function renderDashboard(){
   if(currentRole==='teacher'&&currentTeacherId){
     renderTeacherDashboard();
     renderTeacherSurveyAlerts();
+    renderTeacherRatingBlock();
     return;
   }
   // Рендерим блоки для admin
@@ -6569,12 +6693,15 @@ async function sendSurveyFeedback(){
   renderSurveys();
 }
 
-async function confirmSurveyFeedback(token){
+async function confirmSurveyFeedback(token, type){
   await surveyFeedbackRef.child(token).update({
-    teacherConfirmed:true, confirmedAt:new Date().toISOString()
+    teacherConfirmed:true,
+    teacherResponse: type==='fix'?'Понял, исправлю':'Ок',
+    confirmedAt:new Date().toISOString()
   });
-  toast('✓ Подтверждено');
+  toast(type==='fix'?'✓ Принято — исправлю':'👍 Принято');
   renderSurveys();
+  renderTeacherSurveyAlerts();
 }
 
 // Teacher dashboard: show pending feedback from admin
@@ -6591,7 +6718,10 @@ async function renderTeacherSurveyAlerts(){
     ${pending.map(f=>`<div style="background:var(--bg3);border-radius:8px;padding:10px 13px;margin-bottom:8px">
       <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">Ученик: ${f.studentName||'—'}</div>
       <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px">${f.adminComment}</div>
-      <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}')">✓ Понял, исправлюсь / Ок</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}','fix')">✓ Понял, исправлю</button>
+        <button class="btn btn-sm" style="background:var(--acbg);border-color:var(--acb);color:var(--ac2)" onclick="confirmSurveyFeedback('${f.token}','ok')">👍 Ок</button>
+      </div>
     </div>`).join('')}
   </div>`;
 }
@@ -6776,7 +6906,7 @@ async function renderSurveys(){
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div style="font-size:15px;font-weight:700;font-family:var(--fd);color:var(--t1)">📋 Опросы родителей</div>
-    <button class="btn btn-sm" onclick="autoSendSurveys().then(()=>renderSurveys())">🔄 Авто-рассылка</button>
+
   </div>
 
   <!-- KPI -->
@@ -6785,7 +6915,7 @@ async function renderSurveys(){
     <div class="stat"><div class="stat-lbl">⭐ Средняя</div><div class="stat-val" style="color:var(--am)">${avgRating}</div><div class="stat-sub">из 5</div></div>
     <div class="stat"><div class="stat-lbl">🔄 Продлят</div><div class="stat-val cg">${renewalPct}%</div></div>
     <div class="stat"><div class="stat-lbl">NPS</div><div class="stat-val" style="color:${npsColor}">${npsScore!==null?(npsScore>0?'+':'')+npsScore:'—'}</div></div>
-    <div class="stat"><div class="stat-lbl">Ожидают</div><div class="stat-val" style="color:var(--t2)">${pending}</div></div>
+
   </div>
 
   <!-- Teacher rating table -->
@@ -6822,7 +6952,7 @@ async function renderSurveys(){
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
           <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="acceptSurvey('${r.token}')">✅ Принять</button>
           <button class="btn btn-sm" onclick="openSurveyFeedback('${r.token}','${(r.teacherName||'').replace(/'/g,"\'")}','${(r.studentName||'').replace(/'/g,"\'")}','${r.teacherId||''}')">💬 Написать преподавателю</button>
-          <button class="btn btn-sm" onclick="resendSurvey('${r.token}')">↺ Напомнить</button>
+  
         </div>`:
         fb.status==='accepted'?`<div style="font-size:11px;color:var(--gn);margin-top:4px">✅ Принято ${fb.acceptedAt?new Date(fb.acceptedAt).toLocaleDateString('ru',{day:'2-digit',month:'short'}):''}
           <button class="btn btn-xs" style="margin-left:8px" onclick="openSurveyFeedback('${r.token}','${(r.teacherName||'').replace(/'/g,"\'")}','${(r.studentName||'').replace(/'/g,"\'")}','${r.teacherId||''}')">💬 Написать</button>
@@ -6836,19 +6966,7 @@ async function renderSurveys(){
   </div>
   ${!sortedResults.length?'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Ответов пока нет.<br>Опросы отправляются автоматически с каждым видео-отчётом.</div></div>':''}
 
-  <!-- Pending (no answer yet) -->
-  ${pending>0?`
-  <div style="margin-top:20px;font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">⏳ Ожидают ответа (${pending})</div>
-  <div style="display:flex;flex-direction:column;gap:6px">
-    ${tokens.filter(t=>!t.completedAt).sort((a,b)=>b.sentAt.localeCompare(a.sentAt)).map(t=>{
-      const d=Math.round((Date.now()-new Date(t.sentAt).getTime())/86400000);
-      return `<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1"><div style="font-size:12px;font-weight:600">${t.studentName}</div><div style="font-size:11px;color:var(--t3)">${t.teacherName}</div></div>
-        <span style="font-size:11px;color:${d>7?'var(--rd)':'var(--t3)'}">${d} дн. назад</span>
-        <button class="btn btn-xs" onclick="resendSurvey('${t.token}')">↺ Напомнить</button>
-      </div>`;
-    }).join('')}
-  </div>`:''}
+
 
   <!-- Feedback modal -->
   <div id="survey-fb-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center">
@@ -6902,7 +7020,10 @@ function renderSurveysTeacher(allResults, allFeedback){
     <div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.3);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px">
       <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">Ученик: ${f.studentName}</div>
       <div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:10px">${f.adminComment}</div>
-      <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}')">✓ Понял, исправлюсь / Ок</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:var(--gnbg);border-color:rgba(63,216,142,.3);color:var(--gn)" onclick="confirmSurveyFeedback('${f.token}','fix')">✓ Понял, исправлю</button>
+        <button class="btn btn-sm" style="background:var(--acbg);border-color:var(--acb);color:var(--ac2)" onclick="confirmSurveyFeedback('${f.token}','ok')">👍 Ок</button>
+      </div>
     </div>`).join('')}
   </div>`:''}
 

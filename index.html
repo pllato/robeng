@@ -5788,10 +5788,14 @@ function sendVideoToParent(record){
     if(alreadySentThisWeek) return; // уже отправляли на этой неделе
   }
 
-  // Помечаем видеозапись как отправленную
-  if(record.key && S.videoReports && S.videoReports[record.key]){
-    S.videoReports[record.key].sentToParent = true;
-    fbDb.ref('videoReports/'+record.key+'/sentToParent').set(true);
+  // Помечаем видеозапись как отправленную — пишем напрямую в Firebase,
+  // не зависим от того обновился ли уже локальный кэш S.videoReports
+  if(record.key){
+    fbDb.ref('videoReports/'+record.key+'/sentToParent').set(true).catch(()=>{});
+    if(S.videoReports){
+      if(!S.videoReports[record.key]) S.videoReports[record.key]={};
+      S.videoReports[record.key].sentToParent=true;
+    }
   }
   const parentPhone=(st.parentPhone||'').replace(/\D/g,'');
   const studentPhone=(st.phone||'').replace(/\D/g,'');
@@ -5943,6 +5947,7 @@ async function submitVideo(){
       studentName: st?.name||'—', url: `https://flat-pond-6e68.uurraa.workers.dev/player?id=${encodeURIComponent(String(_videoEnrollId)+'_'+_videoDateStr)}`,
       uploadType: 'r2',
       teacherComment: comment||'', submittedAt: new Date().toISOString(),
+      ts: Date.now(),
       submittedBy: user, status: 'pending',
       ...(attachInfo ? { attachUrl: attachInfo.url, attachName: attachInfo.name } : {})
     };
@@ -6002,6 +6007,7 @@ function submitVideoLink(){
     url,
     teacherComment:comment||'',
     submittedAt:new Date().toISOString(),
+    ts:Date.now(),
     submittedBy:user+(currentRole==='admin'?' (за преподавателя)':''),
     status:'pending'
   };
@@ -6833,24 +6839,24 @@ function checkLessonReminders(){
       const studentPhone=(st.phone||'').replace(/\D/g,'');
       const parentPhone=(st.parentPhone||'').replace(/\D/g,'');
 
-      // Отправляем ученику
+      // Отправляем ученику — и запоминаем номер чтобы не дублировать родителю
+      const _sentPhones = new Set();
       if(remindStudent){
         if(studentPhone){
           notifyWhatsApp('+'+studentPhone, msg).then(res=>{
             if(!res||!res.ok) logReminderFailure(e.id, st.name, studentPhone, 'student', res?.error||'unknown');
           });
+          _sentPhones.add(studentPhone);
         } else {
           logReminderFailure(e.id, st.name, '', 'student', 'нет телефона ученика');
         }
       }
 
-      // Отправляем родителю
+      // Отправляем родителю — только если номер ещё не был использован
       if(remindParent){
-        const pPhone=parentPhone&&parentPhone!==studentPhone?parentPhone:
-                     (parentPhone===studentPhone?'':parentPhone);
-        if(pPhone){
-          notifyWhatsApp('+'+pPhone, msg).then(res=>{
-            if(!res||!res.ok) logReminderFailure(e.id, st.name, pPhone, 'parent', res?.error||'unknown');
+        if(parentPhone && !_sentPhones.has(parentPhone)){
+          notifyWhatsApp('+'+parentPhone, msg).then(res=>{
+            if(!res||!res.ok) logReminderFailure(e.id, st.name, parentPhone, 'parent', res?.error||'unknown');
           });
         } else if(!parentPhone){
           logReminderFailure(e.id, st.name, '', 'parent', 'нет телефона родителя');

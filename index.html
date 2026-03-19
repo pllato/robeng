@@ -685,12 +685,21 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Опрос отправляется автоматически если прошло 14+ дней с последнего</div>
           <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">Дни отправки:</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            ${['Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="${i}" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">${d}</span></label>`).join('')}
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="0" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Пн</span></label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="1" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Вт</span></label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="2" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Ср</span></label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="3" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Чт</span></label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="4" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Пт</span></label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="5" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Сб</span></label>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font-size:11px;font-weight:600;color:var(--t2)">Время:</span>
             <select id="survey-hour-sel" onchange="saveAppSettings()" style="background:var(--bg3);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:12px;padding:4px 8px">
-              ${[8,9,10,11,12,13,14,15,16,17,18,19,20].map(h=>`<option value="${h}">${h}:00</option>`).join('')}
+              <option value="8">8:00</option><option value="9">9:00</option><option value="10">10:00</option>
+              <option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option>
+              <option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option>
+              <option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option>
+              <option value="20">20:00</option>
             </select>
           </div>
         </div>

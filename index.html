@@ -393,6 +393,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
+      <div id="dash-survey-block" class="admin-only"></div>
       <div id="teacher-pulse-block" class="admin-only"></div>
       <div class="sec-title">Уроки и дела сегодня</div>
       <div id="today-list"></div>
@@ -1907,6 +1908,148 @@ function getDashPeriodLabel(){
 }
 
 
+
+// ── ОПРОСЫ НА ДАШБОРДЕ ──────────────────────────────────────────
+let _dashSurveyPeriod = 30; // дней
+
+function setDashSurveyPeriod(days){
+  _dashSurveyPeriod = days;
+  renderDashSurveys();
+}
+
+async function renderDashSurveys(){
+  const el = document.getElementById('dash-survey-block');
+  if(!el || currentRole!=='admin') return;
+
+  try {
+    const snap = await surveyResultsRef.once('value');
+    const all = Object.values(snap.val()||{});
+    if(!all.length){ el.innerHTML=''; return; }
+
+    // Filter by period
+    const cutoff = new Date(Date.now() - _dashSurveyPeriod*86400000).toISOString();
+    const results = all.filter(r=>r.submittedAt>=cutoff);
+
+    if(!results.length){
+      el.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--t1)">📋 Опросы родителей</div>
+        ${surveyPeriodBtns()}
+        <span style="font-size:12px;color:var(--t3)">Нет ответов за выбранный период</span>
+      </div>`;
+      return;
+    }
+
+    const total = results.length;
+    const avgRating = (results.reduce((s,r)=>s+r.rating,0)/total).toFixed(1);
+    const renewYes = results.filter(r=>r.renewal==='yes'||r.renewal==='likely').length;
+    const renewPct = Math.round(renewYes/total*100);
+    const promoters = results.filter(r=>r.nps>=9).length;
+    const detractors = results.filter(r=>r.nps<=6).length;
+    const nps = Math.round((promoters-detractors)/total*100);
+    const npsColor = nps>=50?'var(--gn)':nps>=0?'var(--am)':'var(--rd)';
+
+    // Per-teacher rating
+    const byT = {};
+    results.forEach(r=>{
+      if(!byT[r.teacherId]) byT[r.teacherId]={name:r.teacherName,sum:0,cnt:0};
+      byT[r.teacherId].sum+=r.rating; byT[r.teacherId].cnt++;
+    });
+    const teacherRatings = Object.values(byT)
+      .map(t=>({name:t.name, avg:(t.sum/t.cnt).toFixed(1), cnt:t.cnt}))
+      .sort((a,b)=>b.avg-a.avg);
+
+    const starBar = (val) => {
+      const pct = (val/5)*100;
+      const color = val>=4.5?'var(--gn)':val>=3.5?'var(--am)':'var(--rd)';
+      return `<div style="display:flex;align-items:center;gap:6px">
+        <div style="width:80px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${color}">${val}</span>
+      </div>`;
+    };
+
+    // Recent comments (last 3)
+    const withComments = results.filter(r=>r.likes||r.dislikes)
+      .sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt)).slice(0,3);
+
+    el.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px;font-weight:700;font-family:var(--fd);color:var(--t1)">📋 Опросы родителей</span>
+          <span style="font-size:11px;color:var(--t3);background:var(--bg3);border:1px solid var(--b1);border-radius:6px;padding:2px 8px">${total} ответов</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          ${surveyPeriodBtns()}
+          <button class="btn btn-xs" onclick="nav(document.querySelector('[data-p=surveys]'))" style="font-size:11px">Все →</button>
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">
+        <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--am);font-family:var(--fd)">${avgRating}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">⭐ Средняя оценка</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:${renewPct>=70?'var(--gn)':renewPct>=40?'var(--am)':'var(--rd)'};font-family:var(--fd)">${renewPct}%</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">🔄 Продлят курс</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:10px;padding:10px 12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:${npsColor};font-family:var(--fd)">${nps>0?'+':''}${nps}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">👥 NPS</div>
+        </div>
+      </div>
+
+      <!-- Teacher ratings -->
+      <div style="margin-bottom:${withComments.length?'14px':'0'}">
+        <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Рейтинг преподавателей</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${teacherRatings.map((t,i)=>{
+            const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+            return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:13px;width:20px;text-align:center">${medal||`<span style="font-size:11px;color:var(--t3)">${i+1}</span>`}</span>
+              <span style="font-size:12px;font-weight:600;color:var(--t1);flex:1;min-width:80px">${t.name}</span>
+              ${starBar(parseFloat(t.avg))}
+              <span style="font-size:10px;color:var(--t3)">${t.cnt} отз.</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Recent comments -->
+      ${withComments.length?`
+      <div style="border-top:1px solid var(--b1);padding-top:12px">
+        <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Последние отзывы</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${withComments.map(r=>`
+          <div style="background:var(--bg3);border-radius:8px;padding:9px 12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:600;color:var(--t1)">${r.studentName}</span>
+              <span style="font-size:11px;color:var(--t3)">${r.teacherName}</span>
+              <span style="font-size:11px;color:var(--am);margin-left:auto">⭐${r.rating}</span>
+            </div>
+            ${r.likes?`<div style="font-size:11px;color:var(--t2)"><span style="color:var(--gn)">💚</span> ${r.likes.slice(0,80)}${r.likes.length>80?'…':''}</div>`:''}
+            ${r.dislikes?`<div style="font-size:11px;color:var(--t2);margin-top:2px"><span style="color:var(--am)">💛</span> ${r.dislikes.slice(0,80)}${r.dislikes.length>80?'…':''}</div>`:''}
+          </div>`).join('')}
+        </div>
+      </div>`:''}
+    </div>`;
+  } catch(e){
+    console.warn('Survey dash error:', e);
+    el.innerHTML='';
+  }
+}
+
+function surveyPeriodBtns(){
+  const periods = [[7,'7д'],[30,'30д'],[90,'90д']];
+  return `<div class="view-toggle" style="display:flex;gap:3px">
+    ${periods.map(([d,l])=>`<button class="vt-btn${_dashSurveyPeriod===d?' active':''}" onclick="setDashSurveyPeriod(${d})" style="font-size:11px;padding:3px 9px">${l}</button>`).join('')}
+  </div>`;
+}
+
 // ── ПУЛЬС ПРЕПОДАВАТЕЛЕЙ (admin dashboard) ───────────────────────
 function renderTeacherPulse(){
   const el=document.getElementById('teacher-pulse-block');
@@ -2098,7 +2241,8 @@ function renderDashboard(){
     renderTeacherDashboard();
     return;
   }
-  // Рендерим пульс преподавателей для admin
+  // Рендерим блоки для admin
+  if(currentRole==='admin') renderDashSurveys();
   if(currentRole==='admin') renderTeacherPulse();
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;

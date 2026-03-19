@@ -680,30 +680,6 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
           </label>
         </div>
 
-        <!-- Расписание опросов -->
-        <div style="padding:16px 0;border-bottom:1px solid var(--b1)">
-          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:12px">📋 Авто-рассылка опросов родителям</div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Опрос отправляется автоматически если прошло 14+ дней с последнего</div>
-          <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px">Дни отправки:</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="0" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Пн</span></label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="1" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Вт</span></label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="2" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Ср</span></label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="3" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Чт</span></label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="4" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Пт</span></label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" class="survey-day-cb" data-day="5" style="accent-color:var(--ac)"> <span style="font-size:12px;color:var(--t1)">Сб</span></label>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:11px;font-weight:600;color:var(--t2)">Время:</span>
-            <select id="survey-hour-sel" onchange="saveAppSettings()" style="background:var(--bg3);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:12px;padding:4px 8px">
-              <option value="8">8:00</option><option value="9">9:00</option><option value="10">10:00</option>
-              <option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option>
-              <option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option>
-              <option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option>
-              <option value="20">20:00</option>
-            </select>
-          </div>
-        </div>
 
         <div style="display:flex;align-items:center;gap:10px;margin-top:16px">
           <div id="settings-saved" style="display:none;font-size:12px;color:var(--gn);background:var(--gnbg);border:1px solid rgba(63,216,142,.3);border-radius:6px;padding:5px 12px">✓ Настройки сохранены</div>
@@ -5465,8 +5441,6 @@ function sendVideoToParent(record){
   if(sendToStudent && studentPhone && studentPhone!==parentPhone) phones.push(studentPhone);
   if(!phones.length) return; // некому слать
 
-  const TG_DEFAULT='https://t.me/ELC_RobengBot';
-  const TG_LINE='\n\n━━━━━━━━━━━━━━\n📱 Если у вас не открывается видео, вы можете подписаться на наш Telegram бот @ELC_RobengBot — там можно смотреть видео уроков.\n';
   const playerUrl=record.url;
   const [,m,d]=(record.dateStr||'').split('-');
   const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
@@ -5477,34 +5451,39 @@ function sendVideoToParent(record){
     ? `\n📎 Материал урока: ${record.attachUrl}` + (record.attachName ? ` (${record.attachName})` : '')
     : '';
 
-  const buildMsg=(tgLink)=>
-    `Высылаем вам отчёт по сегодняшнему занятию 📋\n\n`+
-    `👤 Ученик: ${record.studentName||'—'}\n`+
-    `👩‍🏫 Преподаватель: ${record.teacherName||'—'}\n`+
-    `📅 Дата: ${dateRu}\n\n`+
-    (comment?comment+'\n\n':'')+
-    `▶️ Смотреть видео: ${playerUrl}`+
-    attachLine+
-    TG_LINE+(tgLink||TG_DEFAULT);
+  // Генерируем ссылку на опрос и вставляем в сообщение
+  const buildMsg = async () => {
+    let surveyLine = '';
+    try {
+      const token = genSurveyToken();
+      const tokenData = {
+        token,
+        studentId: String(e.studentId),
+        studentName: record.studentName||'—',
+        teacherId: String(e.teacherId),
+        teacherName: record.teacherName||'—',
+        enrollId: String(e.id),
+        sentAt: new Date().toISOString(),
+        sentBy: 'auto-video',
+        completedAt: null
+      };
+      await surveyTokensRef.child(token).set(tokenData);
+      surveyLine = `\n\n━━━━━━━━━━━━━━\n📋 Оцените урок — 1 минута:\nhttps://pllato.github.io/robeng/survey.html?id=${token}`;
+    } catch(err){ console.warn('Survey token create failed:', err); }
 
-  // Telegram (только если родитель включён)
-  if(sendToParent && parentPhone){
-    fetch('https://flat-pond-6e68.uurraa.workers.dev/send-tg-parent',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({enrollId:record.enrollId,date:record.dateStr,studentName:record.studentName,teacherName:record.teacherName,parentPhone:st.parentPhone,studentPhone:sendToStudent?st.phone:null,playerUrl,comment})
-    }).catch(()=>{});
-  }
+    return `Высылаем вам отчёт по сегодняшнему занятию 📋\n\n`+
+      `👤 Ученик: ${record.studentName||'—'}\n`+
+      `👩‍🏫 Преподаватель: ${record.teacherName||'—'}\n`+
+      `📅 Дата: ${dateRu}\n\n`+
+      (comment?comment+'\n\n':'')+
+      `▶️ Смотреть видео: ${playerUrl}`+
+      attachLine+
+      surveyLine;
+  };
 
-  // WhatsApp
-  fetch('https://flat-pond-6e68.uurraa.workers.dev/get-bot-link',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:parentPhone||studentPhone,studentName:record.studentName})
-  }).then(r=>r.json()).then(dd=>{
-    const tgLink=dd.ok&&dd.botLink?dd.botLink:TG_DEFAULT;
-    const msg=buildMsg(tgLink);
+  // WhatsApp — ждём генерации сообщения с опросом
+  buildMsg().then(msg=>{
     phones.forEach(p=>notifyWhatsApp('+'+p,msg));
-  }).catch(()=>{
-    phones.forEach(p=>notifyWhatsApp('+'+p,buildMsg(TG_DEFAULT)));
   });
 }
 
@@ -6814,15 +6793,7 @@ function renderAppSettings(){
   if(cb) cb.checked = S.settings.remindersEnabled!==false;
   const freq=S.settings.videoFrequency||"each";
   document.querySelectorAll("input[name=\"video-freq\"]").forEach(r=>{r.checked=r.value===freq;});
-  // Survey days
-  const surveyDays=S.settings.surveyDays||[3];
-  document.querySelectorAll(".survey-day-cb").forEach(cb=>{
-    cb.checked=surveyDays.includes(parseInt(cb.dataset.day));
-    cb.onchange=saveAppSettings;
-  });
-  // Survey hour
-  const hourSel=document.getElementById("survey-hour-sel");
-  if(hourSel) hourSel.value=S.settings.surveyHour||10;
+
 }
 
 function saveAppSettings(){
@@ -6831,12 +6802,7 @@ function saveAppSettings(){
   if(cb) S.settings.remindersEnabled=cb.checked;
   const freqEl=document.querySelector("input[name=\"video-freq\"]:checked");
   if(freqEl) S.settings.videoFrequency=freqEl.value;
-  // Survey schedule
-  const days=[];
-  document.querySelectorAll(".survey-day-cb:checked").forEach(cb=>days.push(parseInt(cb.dataset.day)));
-  S.settings.surveyDays=days;
-  const hourSel=document.getElementById("survey-hour-sel");
-  if(hourSel) S.settings.surveyHour=parseInt(hourSel.value);
+
   save();
   const saved=document.getElementById("settings-saved");
   if(saved){saved.style.display="";setTimeout(()=>{saved.style.display="none";},2500);}

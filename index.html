@@ -2619,15 +2619,15 @@ function getChartPeriods(mode,n=7){
       periods.push({from:ds,to:ds,label:lbl,sub:dow});
     }
   } else {
-    // Последние n недель, заканчивающихся на _chartWeekEnd
-    for(let i=n-1;i>=0;i--){
-      const off=_chartWeekEnd-(n-1-i); // смещение от 0: ..., -6,-5,-4,-3,-2,-1,0
+    // Последние n недель: старые слева (i=0), свежие справа (i=n-1)
+    for(let i=0;i<n;i++){
+      const off=_chartWeekEnd-(n-1-i); // i=0 → самая старая, i=n-1 → самая свежая
       const dates=getThuToThuDashDates(off);
       const from=dates[0],to=dates[dates.length-1];
       const f=new Date(from),t2=new Date(to);
       const fmt=d=>`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
-      const isLast=(off===0);
-      periods.push({from,to,label:fmt(f),sub:fmt(t2),isCurrent:isLast,offset:off});
+      const isCurrent=(off===_chartWeekEnd); // подсвечиваем крайнюю правую
+      periods.push({from,to,label:fmt(f),sub:fmt(t2),isCurrent,offset:off});
     }
   }
   return periods;
@@ -2635,11 +2635,17 @@ function getChartPeriods(mode,n=7){
 
 function getMetricForPeriod(metric,from,to){
   if(metric==='active'){
+    // Студент считается активным в периоде если у него хотя бы один день занятий
+    // попадает в [from, to] И запись действует в этот день (dateStart <= d <= dateEnd)
     const dates=getDatesInRange(from,to);
     const ids=new Set();
     S.enrollments.forEach(e=>{
-      if(e.inactive)return;
-      dates.forEach(d=>{if(enrollActive(e,d))ids.add(e.studentId);});
+      if(e.inactive||ids.has(e.studentId))return;
+      for(const d of dates){
+        if(d<e.dateStart||d>e.dateEnd)continue; // запись не действует в этот день
+        const dow=(new Date(d).getDay()+6)%7;
+        if(e.slots.some(sl=>sl.day===dow)){ids.add(e.studentId);break;}
+      }
     });
     return ids.size;
   } else if(metric==='starts'){
@@ -2651,8 +2657,8 @@ function getMetricForPeriod(metric,from,to){
 }
 
 function buildLineChartSVG(data,max,colorHex){
-  const W=420,H=200;
-  const padL=34,padR=10,padT=24,padB=46;
+  const W=420,H=420;
+  const padL=36,padR=12,padT=26,padB=52;
   const cW=W-padL-padR,cH=H-padT-padB;
   const n=data.length;
   const safeMax=max||1;

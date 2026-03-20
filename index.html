@@ -2598,6 +2598,15 @@ function getDatesInRange(from,to){
   return dates;
 }
 
+// _chartWeekEnd: смещение относительно текущей недели (0=последняя, -1=предпоследняя…)
+// Всегда показываем 7 периодов, заканчивающихся на _chartWeekEnd неделе
+let _chartWeekEnd=0;
+
+function chChartWeek(dir){
+  _chartWeekEnd=Math.min(0,_chartWeekEnd+dir);
+  renderDashboardCharts();
+}
+
 function getChartPeriods(mode,n=7){
   const periods=[];
   const today=new Date();today.setHours(0,0,0,0);
@@ -2610,13 +2619,15 @@ function getChartPeriods(mode,n=7){
       periods.push({from:ds,to:ds,label:lbl,sub:dow});
     }
   } else {
-    // Неделя Чт 14:00 → Чт 14:00; показываем последние n недель
+    // Последние n недель, заканчивающихся на _chartWeekEnd
     for(let i=n-1;i>=0;i--){
-      const dates=getThuToThuDashDates(-i);
+      const off=_chartWeekEnd-(n-1-i); // смещение от 0: ..., -6,-5,-4,-3,-2,-1,0
+      const dates=getThuToThuDashDates(off);
       const from=dates[0],to=dates[dates.length-1];
       const f=new Date(from),t2=new Date(to);
       const fmt=d=>`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
-      periods.push({from,to,label:fmt(f),sub:fmt(t2)});
+      const isLast=(off===0);
+      periods.push({from,to,label:fmt(f),sub:fmt(t2),isCurrent:isLast,offset:off});
     }
   }
   return periods;
@@ -2639,54 +2650,90 @@ function getMetricForPeriod(metric,from,to){
   return 0;
 }
 
-function buildBarChartSVG(data,max,colorHex){
-  const W=400,H=120;
-  const padL=28,padR=6,padT=18,padB=32;
+function buildLineChartSVG(data,max,colorHex){
+  const W=420,H=200;
+  const padL=34,padR=10,padT=24,padB=46;
   const cW=W-padL-padR,cH=H-padT-padB;
   const n=data.length;
-  const step=cW/n;
-  const barW=Math.max(6,Math.floor(step*0.52));
   const safeMax=max||1;
-  // dim colour for background bars
-  const dimHex=colorHex+'28'; // 16% opacity hex
+  const step=cW/(n-1||1);
 
-  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;overflow:visible">`;
+  // point x,y
+  const pts=data.map((d,i)=>{
+    const clamped=Math.min(d.value,safeMax);
+    return{
+      x:padL+i*step,
+      y:padT+cH*(1-clamped/safeMax),
+      value:d.value,
+      exceed:d.value>safeMax
+    };
+  });
 
-  // Grid lines + Y labels (0, 25%, 50%, 75%, 100% of max)
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">`;
+
+  // ── Gradient fill under line
+  const gradId='grad_'+colorHex.replace('#','');
+  svg+=`<defs>
+    <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${colorHex}" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="${colorHex}" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>`;
+
+  // ── Grid lines + Y labels (5 ticks: 0,25,50,75,100% of max)
   for(let g=0;g<=4;g++){
     const frac=g/4;
     const yp=padT+cH*(1-frac);
     const val=Math.round(safeMax*frac);
-    svg+=`<line x1="${padL}" y1="${yp}" x2="${W-padR}" y2="${yp}" stroke="rgba(255,255,255,0.07)" stroke-width="${g===4?1.5:1}"/>`;
-    svg+=`<text x="${padL-3}" y="${yp+3.5}" text-anchor="end" font-size="8" fill="#5e5c78" font-family="Manrope,sans-serif">${val}</text>`;
+    svg+=`<line x1="${padL}" y1="${yp}" x2="${W-padR}" y2="${yp}" stroke="rgba(255,255,255,${g===4?'0.13':'0.06'})" stroke-width="1" stroke-dasharray="${g===4?'none':'3,3'}"/>`;
+    svg+=`<text x="${padL-4}" y="${yp+3.5}" text-anchor="end" font-size="8.5" fill="#5e5c78" font-family="Manrope,sans-serif">${val}</text>`;
   }
 
-  // Axis line bottom
-  svg+=`<line x1="${padL}" y1="${padT+cH}" x2="${W-padR}" y2="${padT+cH}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+  // ── Filled area under line (polygon)
+  if(pts.length>1){
+    const areaPoints=[
+      `${pts[0].x},${padT+cH}`,
+      ...pts.map(p=>`${p.x},${p.y}`),
+      `${pts[pts.length-1].x},${padT+cH}`
+    ].join(' ');
+    svg+=`<polygon points="${areaPoints}" fill="url(#${gradId})"/>`;
+  }
 
-  // Bars + labels
-  data.forEach((d,i)=>{
-    const bx=padL+i*step+(step-barW)/2;
-    const clamped=Math.min(d.value,safeMax);
-    const bh=Math.max(clamped>0?3:0,(clamped/safeMax)*cH);
-    const by=padT+cH-bh;
-    const exceed=d.value>safeMax;
-    const fillColor=exceed?'#f05975':colorHex;
+  // ── Connecting line segments
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i],b=pts[i+1];
+    const col=(a.exceed||b.exceed)?'#f05975':colorHex;
+    svg+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>`;
+  }
 
-    // Background bar (full height, very dim)
-    svg+=`<rect x="${bx}" y="${padT}" width="${barW}" height="${cH}" rx="3" fill="${dimHex}"/>`;
+  // ── Dots, value labels, X labels
+  pts.forEach((p,i)=>{
+    const d=data[i];
+    const col=p.exceed?'#f05975':colorHex;
+    const isLast=i===pts.length-1;
 
-    // Actual bar
-    if(bh>0)svg+=`<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="3" fill="${fillColor}" opacity="${exceed?1:0.88}"/>`;
+    // Vertical dashed tick line
+    svg+=`<line x1="${p.x}" y1="${padT+cH}" x2="${p.x}" y2="${padT+cH+4}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`;
 
-    // Value label
-    const lblY=Math.max(padT+10,by-3);
-    svg+=`<text x="${bx+barW/2}" y="${lblY}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${exceed?'#f05975':colorHex}" font-family="Manrope,sans-serif">${d.value}</text>`;
+    // Dot — bigger for last point
+    const r=isLast?5:3.5;
+    svg+=`<circle cx="${p.x}" cy="${p.y}" r="${r+1.5}" fill="${col}" opacity="0.18"/>`;
+    svg+=`<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${col}"/>`;
+    if(isLast)svg+=`<circle cx="${p.x}" cy="${p.y}" r="2" fill="#fff"/>`;
 
-    // X label main
-    svg+=`<text x="${bx+barW/2}" y="${H-padB+13}" text-anchor="middle" font-size="8.5" fill="#9896b0" font-family="Manrope,sans-serif">${d.label}</text>`;
-    // X label sub (day of week / end date)
-    if(d.sub)svg+=`<text x="${bx+barW/2}" y="${H-padB+23}" text-anchor="middle" font-size="7.5" fill="#5e5c78" font-family="Manrope,sans-serif">${d.sub}</text>`;
+    // Value above dot
+    const lblY=Math.max(padT+10,p.y-8);
+    svg+=`<text x="${p.x}" y="${lblY}" text-anchor="middle" font-size="10" font-weight="700" fill="${col}" font-family="Manrope,sans-serif">${d.value}</text>`;
+
+    // X label main (date start)
+    svg+=`<text x="${p.x}" y="${H-padB+14}" text-anchor="middle" font-size="9" fill="${isLast?'#f0eefc':'#9896b0'}" font-weight="${isLast?'700':'400'}" font-family="Manrope,sans-serif">${d.label}</text>`;
+    // X label sub (end date / day of week)
+    if(d.sub)svg+=`<text x="${p.x}" y="${H-padB+26}" text-anchor="middle" font-size="7.5" fill="${isLast?'#9896b0':'#5e5c78'}" font-family="Manrope,sans-serif">${d.sub}</text>`;
+
+    // Highlight current week column
+    if(d.isCurrent){
+      svg+=`<rect x="${p.x-step/2}" y="${padT}" width="${step}" height="${cH}" fill="${colorHex}" opacity="0.04" rx="3"/>`;
+    }
   });
 
   svg+='</svg>';
@@ -2700,28 +2747,46 @@ function renderDashboardCharts(){
   const periods=getChartPeriods(_chartMode,7);
 
   const defs=[
-    {key:'active', label:'Активных учеников', color:'var(--gn)', hex:'#3fd88e', icon:'🎓'},
-    {key:'starts', label:'Старты',            color:'var(--ac2)',hex:'#a87fff', icon:'🚀'},
-    {key:'restarts',label:'Перестарты',       color:'var(--am)', hex:'#f5c842', icon:'🔄'},
+    {key:'active',  label:'Активных учеников', color:'var(--gn)',  hex:'#3fd88e', icon:'🎓'},
+    {key:'starts',  label:'Старты',             color:'var(--ac2)', hex:'#a87fff', icon:'🚀'},
+    {key:'restarts',label:'Перестарты',          color:'var(--am)',  hex:'#f5c842', icon:'🔄'},
   ];
 
-  const mBtn=(m,lbl)=>`<button class="btn btn-sm" style="font-size:11px;padding:3px 10px;border-radius:6px;${_chartMode===m?'background:var(--ac);border-color:var(--ac);color:#fff':'background:var(--bg3);color:var(--t2)'}" onclick="setChartMode('${m}')">${lbl}</button>`;
+  const mBtn=(m,lbl)=>`<button style="font-size:11px;padding:4px 11px;border-radius:6px;border:1px solid;cursor:pointer;font-family:var(--fb);${_chartMode===m?'background:var(--ac);border-color:var(--ac);color:#fff':'background:var(--bg3);border-color:var(--b2);color:var(--t2)'}" onclick="setChartMode('${m}')">${lbl}</button>`;
+
+  // Week label for header
+  let weekLabel='';
+  if(_chartMode==='week'){
+    const lastP=periods[periods.length-1];
+    weekLabel=`<span style="font-size:11px;color:var(--t3)">· показана неделя ${lastP.label}–${lastP.sub}</span>`;
+  }
+
+  // Week navigator (only in week mode)
+  const weekNav=_chartMode==='week'?`
+    <div style="display:flex;align-items:center;gap:4px">
+      <button onclick="chChartWeek(-1)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;padding:3px 8px;font-size:14px">‹</button>
+      <span style="font-size:11px;color:var(--t3);min-width:56px;text-align:center">${_chartWeekEnd===0?'Текущая':_chartWeekEnd===-1?'Прошлая':`${Math.abs(_chartWeekEnd)} нед. назад`}</span>
+      <button onclick="chChartWeek(1)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;padding:3px 8px;font-size:14px;${_chartWeekEnd>=0?'opacity:.4':''}" ${_chartWeekEnd>=0?'disabled':''}>›</button>
+    </div>`:'';
 
   let html=`
   <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px;margin-bottom:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:12px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px">
-        <span style="font-size:16px">📈</span> Динамика
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--t1)">📈 Динамика</span>
+        ${weekLabel}
       </div>
-      <div style="display:flex;gap:4px">${mBtn('day','По дням')}${mBtn('week','По неделям (Чт→Чт)')}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        ${weekNav}
+        <div style="display:flex;gap:4px">${mBtn('day','По дням')}${mBtn('week','По неделям (Чт→Чт)')}</div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">`;
 
   defs.forEach(({key,label,color,hex,icon})=>{
     const max=_chartMax[key];
-    const data=periods.map(p=>({label:p.label,sub:p.sub,value:getMetricForPeriod(key,p.from,p.to)}));
+    const data=periods.map(p=>({label:p.label,sub:p.sub,value:getMetricForPeriod(key,p.from,p.to),isCurrent:!!p.isCurrent}));
     const lastVal=data[data.length-1]?.value??0;
-    const maxActual=Math.max(...data.map(d=>d.value));
     const pct=Math.round(lastVal/max*100);
     const trend=data.length>=2?data[data.length-1].value-data[data.length-2].value:0;
     const trendHtml=trend>0?`<span style="color:var(--gn);font-size:10px">▲${trend}</span>`:
@@ -2729,25 +2794,25 @@ function renderDashboardCharts(){
                     `<span style="color:var(--t3);font-size:10px">—</span>`;
 
     html+=`
-    <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:12px;padding:12px 12px 8px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px">
+    <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:12px;padding:12px 12px 6px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px">
         <div>
-          <div style="font-size:11px;font-weight:600;color:${color};display:flex;align-items:center;gap:4px">${icon} ${label}</div>
+          <div style="font-size:11px;font-weight:600;color:${color}">${icon} ${label}</div>
           <div style="display:flex;align-items:baseline;gap:5px;margin-top:3px">
-            <span style="font-family:var(--fd);font-size:22px;font-weight:700;color:${color}">${lastVal}</span>
+            <span style="font-family:var(--fd);font-size:24px;font-weight:700;color:${color}">${lastVal}</span>
             <span style="font-size:11px;color:var(--t3)">/ ${max}</span>
             ${trendHtml}
           </div>
-          <div style="height:3px;width:${Math.min(100,pct)}%;background:${hex};border-radius:2px;margin-top:4px;transition:width .3s;max-width:90px;opacity:.7"></div>
+          <div style="height:2px;width:${Math.min(100,pct)}%;background:${hex};border-radius:2px;margin-top:4px;max-width:80px;opacity:.6"></div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-          <span style="font-size:9px;color:var(--t3);white-space:nowrap">max:</span>
+          <span style="font-size:9px;color:var(--t3)">max:</span>
           <input type="number" min="1" value="${max}"
             onchange="setChartMax('${key}',this.value)"
-            style="width:48px;background:var(--bg4);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:3px 5px;text-align:center;font-family:var(--fb)"/>
+            style="width:50px;background:var(--bg4);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:3px 6px;text-align:center;font-family:var(--fb)"/>
         </div>
       </div>
-      ${buildBarChartSVG(data,max,hex)}
+      ${buildLineChartSVG(data,max,hex)}
     </div>`;
   });
 

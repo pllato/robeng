@@ -395,6 +395,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh
       <div id="dup-warn-dash"></div>
       <div class="stats-row" id="stats"></div>
       <div id="dash-rpt-stats"></div>
+      <div id="dash-charts-block" class="admin-only"></div>
       <div id="dash-survey-block" class="admin-only"></div>
       <div id="dash-leaderboard-block" class="admin-only"></div>
       <div id="teacher-pulse-block" class="admin-only"></div>
@@ -1814,6 +1815,10 @@ let dashCustomDates=null; // null = use dashPeriod, array = custom dates
 let dashWeekOffset=0; // 0 = current Thu→Thu, -1 = prev week, etc.
 let dashMode='days'; // 'days' | 'thu'
 
+// ── CHART STATE ───────────────────────────────────────────────────
+let _chartMode='week'; // 'day' | 'week'
+let _chartMax={active:100,starts:20,restarts:20};
+
 function setDashPeriod(days){
   dashPeriod=days;
   dashCustomDates=null;
@@ -2573,6 +2578,183 @@ function renderTeacherPulse(){
     </div>`;
   });
 }
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD CHARTS — Динамика по дням / неделям
+// ═══════════════════════════════════════════════════════
+
+function setChartMode(mode){
+  _chartMode=mode;
+  renderDashboardCharts();
+}
+
+function setChartMax(metric,val){
+  const n=parseInt(val);
+  if(n>0){_chartMax[metric]=n;renderDashboardCharts();}
+}
+
+function getDatesInRange(from,to){
+  const dates=[];const cur=new Date(from);const end=new Date(to);
+  while(cur<=end){dates.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+  return dates;
+}
+
+function getChartPeriods(mode,n=7){
+  const periods=[];
+  const today=new Date();today.setHours(0,0,0,0);
+  if(mode==='day'){
+    for(let i=n-1;i>=0;i--){
+      const d=new Date(today);d.setDate(d.getDate()-i);
+      const ds=d.toISOString().slice(0,10);
+      const lbl=`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+      const dow=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()];
+      periods.push({from:ds,to:ds,label:lbl,sub:dow});
+    }
+  } else {
+    // Неделя Чт 14:00 → Чт 14:00; показываем последние n недель
+    for(let i=n-1;i>=0;i--){
+      const dates=getThuToThuDashDates(-i);
+      const from=dates[0],to=dates[dates.length-1];
+      const f=new Date(from),t2=new Date(to);
+      const fmt=d=>`${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+      periods.push({from,to,label:fmt(f),sub:fmt(t2)});
+    }
+  }
+  return periods;
+}
+
+function getMetricForPeriod(metric,from,to){
+  if(metric==='active'){
+    const dates=getDatesInRange(from,to);
+    const ids=new Set();
+    S.enrollments.forEach(e=>{
+      if(e.inactive)return;
+      dates.forEach(d=>{if(enrollActive(e,d))ids.add(e.studentId);});
+    });
+    return ids.size;
+  } else if(metric==='starts'){
+    return S.enrollments.filter(e=>e.dateStart>=from&&e.dateStart<=to&&!e.inactive).length;
+  } else if(metric==='restarts'){
+    return (S.journal||[]).filter(j=>j.type==='extend'&&j.isoDate&&j.isoDate>=from&&j.isoDate<=to).length;
+  }
+  return 0;
+}
+
+function buildBarChartSVG(data,max,colorHex){
+  const W=400,H=120;
+  const padL=28,padR=6,padT=18,padB=32;
+  const cW=W-padL-padR,cH=H-padT-padB;
+  const n=data.length;
+  const step=cW/n;
+  const barW=Math.max(6,Math.floor(step*0.52));
+  const safeMax=max||1;
+  // dim colour for background bars
+  const dimHex=colorHex+'28'; // 16% opacity hex
+
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;overflow:visible">`;
+
+  // Grid lines + Y labels (0, 25%, 50%, 75%, 100% of max)
+  for(let g=0;g<=4;g++){
+    const frac=g/4;
+    const yp=padT+cH*(1-frac);
+    const val=Math.round(safeMax*frac);
+    svg+=`<line x1="${padL}" y1="${yp}" x2="${W-padR}" y2="${yp}" stroke="rgba(255,255,255,0.07)" stroke-width="${g===4?1.5:1}"/>`;
+    svg+=`<text x="${padL-3}" y="${yp+3.5}" text-anchor="end" font-size="8" fill="#5e5c78" font-family="Manrope,sans-serif">${val}</text>`;
+  }
+
+  // Axis line bottom
+  svg+=`<line x1="${padL}" y1="${padT+cH}" x2="${W-padR}" y2="${padT+cH}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+
+  // Bars + labels
+  data.forEach((d,i)=>{
+    const bx=padL+i*step+(step-barW)/2;
+    const clamped=Math.min(d.value,safeMax);
+    const bh=Math.max(clamped>0?3:0,(clamped/safeMax)*cH);
+    const by=padT+cH-bh;
+    const exceed=d.value>safeMax;
+    const fillColor=exceed?'#f05975':colorHex;
+
+    // Background bar (full height, very dim)
+    svg+=`<rect x="${bx}" y="${padT}" width="${barW}" height="${cH}" rx="3" fill="${dimHex}"/>`;
+
+    // Actual bar
+    if(bh>0)svg+=`<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="3" fill="${fillColor}" opacity="${exceed?1:0.88}"/>`;
+
+    // Value label
+    const lblY=Math.max(padT+10,by-3);
+    svg+=`<text x="${bx+barW/2}" y="${lblY}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${exceed?'#f05975':colorHex}" font-family="Manrope,sans-serif">${d.value}</text>`;
+
+    // X label main
+    svg+=`<text x="${bx+barW/2}" y="${H-padB+13}" text-anchor="middle" font-size="8.5" fill="#9896b0" font-family="Manrope,sans-serif">${d.label}</text>`;
+    // X label sub (day of week / end date)
+    if(d.sub)svg+=`<text x="${bx+barW/2}" y="${H-padB+23}" text-anchor="middle" font-size="7.5" fill="#5e5c78" font-family="Manrope,sans-serif">${d.sub}</text>`;
+  });
+
+  svg+='</svg>';
+  return svg;
+}
+
+function renderDashboardCharts(){
+  const el=document.getElementById('dash-charts-block');
+  if(!el||currentRole!=='admin'){if(el)el.innerHTML='';return;}
+
+  const periods=getChartPeriods(_chartMode,7);
+
+  const defs=[
+    {key:'active', label:'Активных учеников', color:'var(--gn)', hex:'#3fd88e', icon:'🎓'},
+    {key:'starts', label:'Старты',            color:'var(--ac2)',hex:'#a87fff', icon:'🚀'},
+    {key:'restarts',label:'Перестарты',       color:'var(--am)', hex:'#f5c842', icon:'🔄'},
+  ];
+
+  const mBtn=(m,lbl)=>`<button class="btn btn-sm" style="font-size:11px;padding:3px 10px;border-radius:6px;${_chartMode===m?'background:var(--ac);border-color:var(--ac);color:#fff':'background:var(--bg3);color:var(--t2)'}" onclick="setChartMode('${m}')">${lbl}</button>`;
+
+  let html=`
+  <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:var(--rl);padding:14px 16px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px">📈</span> Динамика
+      </div>
+      <div style="display:flex;gap:4px">${mBtn('day','По дням')}${mBtn('week','По неделям (Чт→Чт)')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">`;
+
+  defs.forEach(({key,label,color,hex,icon})=>{
+    const max=_chartMax[key];
+    const data=periods.map(p=>({label:p.label,sub:p.sub,value:getMetricForPeriod(key,p.from,p.to)}));
+    const lastVal=data[data.length-1]?.value??0;
+    const maxActual=Math.max(...data.map(d=>d.value));
+    const pct=Math.round(lastVal/max*100);
+    const trend=data.length>=2?data[data.length-1].value-data[data.length-2].value:0;
+    const trendHtml=trend>0?`<span style="color:var(--gn);font-size:10px">▲${trend}</span>`:
+                    trend<0?`<span style="color:var(--rd);font-size:10px">▼${Math.abs(trend)}</span>`:
+                    `<span style="color:var(--t3);font-size:10px">—</span>`;
+
+    html+=`
+    <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:12px;padding:12px 12px 8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:${color};display:flex;align-items:center;gap:4px">${icon} ${label}</div>
+          <div style="display:flex;align-items:baseline;gap:5px;margin-top:3px">
+            <span style="font-family:var(--fd);font-size:22px;font-weight:700;color:${color}">${lastVal}</span>
+            <span style="font-size:11px;color:var(--t3)">/ ${max}</span>
+            ${trendHtml}
+          </div>
+          <div style="height:3px;width:${Math.min(100,pct)}%;background:${hex};border-radius:2px;margin-top:4px;transition:width .3s;max-width:90px;opacity:.7"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <span style="font-size:9px;color:var(--t3);white-space:nowrap">max:</span>
+          <input type="number" min="1" value="${max}"
+            onchange="setChartMax('${key}',this.value)"
+            style="width:48px;background:var(--bg4);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:3px 5px;text-align:center;font-family:var(--fb)"/>
+        </div>
+      </div>
+      ${buildBarChartSVG(data,max,hex)}
+    </div>`;
+  });
+
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
 function renderDashboard(){
   // Teacher sees only their own dashboard
   if(currentRole==='teacher'&&currentTeacherId){
@@ -2585,6 +2767,7 @@ function renderDashboard(){
   if(currentRole==='admin') renderDashSurveys();
   if(currentRole==='admin') renderAdminLeaderboard();
   if(currentRole==='admin') renderTeacherPulse();
+  if(currentRole==='admin') renderDashboardCharts();
   const today=new Date().toISOString().slice(0,10);
   const todayDay=(new Date().getDay()+6)%7;
   const dates=dashCustomDates||dateRange(dashPeriod);

@@ -1,0 +1,97 @@
+{
+ "id": "b1-17",
+ "num": 92,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 17. School (Школа)",
+ "vocabulary": [
+  {
+   "word": "pencil",
+   "emoji": "✏️",
+   "ru": "карандаш"
+  },
+  {
+   "word": "bag",
+   "emoji": "🎒",
+   "ru": "рюкзак"
+  },
+  {
+   "word": "ruler",
+   "emoji": "📏",
+   "ru": "линейка"
+  },
+  {
+   "word": "scissors",
+   "emoji": "✂️",
+   "ru": "ножницы"
+  },
+  {
+   "word": "clock",
+   "emoji": "🕐",
+   "ru": "часы"
+  },
+  {
+   "word": "globe",
+   "emoji": "🌍",
+   "ru": "глобус"
+  },
+  {
+   "word": "book",
+   "emoji": "📕",
+   "ru": "книга"
+  },
+  {
+   "word": "pen",
+   "emoji": "🖊️",
+   "ru": "ручка"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "pencil",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the pencil?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

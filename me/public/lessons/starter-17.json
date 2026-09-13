@@ -1,0 +1,87 @@
+{
+ "id": "starter-17",
+ "num": 17,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 17. School (Школа)",
+ "vocabulary": [
+  {
+   "word": "pencil",
+   "emoji": "✏️",
+   "ru": "карандаш"
+  },
+  {
+   "word": "bag",
+   "emoji": "🎒",
+   "ru": "рюкзак"
+  },
+  {
+   "word": "ruler",
+   "emoji": "📏",
+   "ru": "линейка"
+  },
+  {
+   "word": "scissors",
+   "emoji": "✂️",
+   "ru": "ножницы"
+  },
+  {
+   "word": "clock",
+   "emoji": "🕐",
+   "ru": "часы"
+  },
+  {
+   "word": "globe",
+   "emoji": "🌍",
+   "ru": "глобус"
+  },
+  {
+   "word": "book",
+   "emoji": "📕",
+   "ru": "книга"
+  },
+  {
+   "word": "pen",
+   "emoji": "🖊️",
+   "ru": "ручка"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "pencil"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the pencil.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

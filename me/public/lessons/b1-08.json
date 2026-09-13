@@ -1,0 +1,97 @@
+{
+ "id": "b1-08",
+ "num": 83,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 8. Weather (Погода)",
+ "vocabulary": [
+  {
+   "word": "sun",
+   "emoji": "☀️",
+   "ru": "солнце"
+  },
+  {
+   "word": "rain",
+   "emoji": "🌧️",
+   "ru": "дождь"
+  },
+  {
+   "word": "snow",
+   "emoji": "❄️",
+   "ru": "снег"
+  },
+  {
+   "word": "wind",
+   "emoji": "🌬️",
+   "ru": "ветер"
+  },
+  {
+   "word": "cloud",
+   "emoji": "☁️",
+   "ru": "облако"
+  },
+  {
+   "word": "rainbow",
+   "emoji": "🌈",
+   "ru": "радуга"
+  },
+  {
+   "word": "storm",
+   "emoji": "⛈️",
+   "ru": "гроза"
+  },
+  {
+   "word": "moon",
+   "emoji": "🌙",
+   "ru": "луна"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "sun",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the sun?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

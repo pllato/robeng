@@ -1,0 +1,87 @@
+{
+ "id": "starter-13",
+ "num": 13,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 13. Fruits (Фрукты)",
+ "vocabulary": [
+  {
+   "word": "orange",
+   "emoji": "🍊",
+   "ru": "апельсин"
+  },
+  {
+   "word": "pear",
+   "emoji": "🍐",
+   "ru": "груша"
+  },
+  {
+   "word": "grapes",
+   "emoji": "🍇",
+   "ru": "виноград"
+  },
+  {
+   "word": "lemon",
+   "emoji": "🍋",
+   "ru": "лимон"
+  },
+  {
+   "word": "watermelon",
+   "emoji": "🍉",
+   "ru": "арбуз"
+  },
+  {
+   "word": "strawberry",
+   "emoji": "🍓",
+   "ru": "клубника"
+  },
+  {
+   "word": "apple",
+   "emoji": "🍎",
+   "ru": "яблоко"
+  },
+  {
+   "word": "banana",
+   "emoji": "🍌",
+   "ru": "банан"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "orange"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the orange.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

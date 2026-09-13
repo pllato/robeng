@@ -1,0 +1,25 @@
+import { chromium } from 'playwright';
+import { execSync } from 'child_process';
+const acc = JSON.parse(execSync('node setup.mjs').toString().trim().split('\n').pop());
+const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const p = await b.newPage({ viewport:{width:1000,height:620} });
+await p.addInitScript(t=>localStorage.setItem('me_token',t), acc.studentToken);
+await p.goto('http://localhost:8642',{waitUntil:'load'}); await p.waitForTimeout(1300);
+await p.evaluate(()=>{const g=document.getElementById('spGo'); if(g&&g.offsetParent) g.click();});
+await p.waitForFunction(()=>window.game&&window.game.ready(),null,{timeout:25000});
+await p.evaluate(()=>{window.game.setPaused(false);});
+await p.evaluate(()=>eval("sendWS({t:'switch',code:'GARDEN'})"));
+await p.waitForFunction(()=>window.game.code()==='GARDEN',null,{timeout:20000});
+await p.waitForTimeout(2400);
+const seed=Object.keys(await p.evaluate(()=>eval('myGarden.seeds')))[0];
+await p.evaluate(id=>eval(`sendWS({t:'garden',act:'plant',bed:0,lesson:'${id}'})`), seed);
+await p.waitForTimeout(9500);
+await p.evaluate(()=>eval("sendWS({t:'garden',act:'get'})")); await p.waitForTimeout(800);
+const w=await p.evaluate(()=>ripeWords(bedAt(0))[0]);
+console.log('слово:',w,'· результат checkWord:', await p.evaluate(x=>window.game.checkWord(x), w));
+await p.waitForTimeout(1200);
+console.log('корзина:', JSON.stringify(await p.evaluate(()=>eval('myGarden.basket'))));
+console.log('basketTotal:', await p.evaluate(()=>Object.values(myGarden.basket||{}).reduce((a,b)=>a+(b|0),0)));
+console.log('onb:', JSON.stringify(await p.evaluate(()=>window.game.onb())));
+await b.close();

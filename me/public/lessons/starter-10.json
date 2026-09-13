@@ -1,0 +1,87 @@
+{
+ "id": "starter-10",
+ "num": 10,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 10. Transport (Транспорт)",
+ "vocabulary": [
+  {
+   "word": "car",
+   "emoji": "🚗",
+   "ru": "машина"
+  },
+  {
+   "word": "bus",
+   "emoji": "🚌",
+   "ru": "автобус"
+  },
+  {
+   "word": "bike",
+   "emoji": "🚲",
+   "ru": "велосипед"
+  },
+  {
+   "word": "plane",
+   "emoji": "✈️",
+   "ru": "самолёт"
+  },
+  {
+   "word": "train",
+   "emoji": "🚂",
+   "ru": "поезд"
+  },
+  {
+   "word": "ship",
+   "emoji": "🚢",
+   "ru": "корабль"
+  },
+  {
+   "word": "taxi",
+   "emoji": "🚕",
+   "ru": "такси"
+  },
+  {
+   "word": "rocket",
+   "emoji": "🚀",
+   "ru": "ракета"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "car"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the car.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

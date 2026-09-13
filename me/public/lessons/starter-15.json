@@ -1,0 +1,87 @@
+{
+ "id": "starter-15",
+ "num": 15,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 15. Animals (Животные)",
+ "vocabulary": [
+  {
+   "word": "fish",
+   "emoji": "🐟",
+   "ru": "рыба"
+  },
+  {
+   "word": "bird",
+   "emoji": "🐦",
+   "ru": "птица"
+  },
+  {
+   "word": "horse",
+   "emoji": "🐴",
+   "ru": "лошадь"
+  },
+  {
+   "word": "cow",
+   "emoji": "🐮",
+   "ru": "корова"
+  },
+  {
+   "word": "sheep",
+   "emoji": "🐑",
+   "ru": "овца"
+  },
+  {
+   "word": "rabbit",
+   "emoji": "🐰",
+   "ru": "кролик"
+  },
+  {
+   "word": "dog",
+   "emoji": "🐶",
+   "ru": "собака"
+  },
+  {
+   "word": "cat",
+   "emoji": "🐱",
+   "ru": "кошка"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "fish"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the fish.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

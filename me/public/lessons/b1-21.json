@@ -1,0 +1,97 @@
+{
+ "id": "b1-21",
+ "num": 96,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 21. House (Дом)",
+ "vocabulary": [
+  {
+   "word": "bed",
+   "emoji": "🛏️",
+   "ru": "кровать"
+  },
+  {
+   "word": "chair",
+   "emoji": "🪑",
+   "ru": "стул"
+  },
+  {
+   "word": "lamp",
+   "emoji": "💡",
+   "ru": "лампа"
+  },
+  {
+   "word": "key",
+   "emoji": "🔑",
+   "ru": "ключ"
+  },
+  {
+   "word": "bath",
+   "emoji": "🛁",
+   "ru": "ванна"
+  },
+  {
+   "word": "tv",
+   "emoji": "📺",
+   "ru": "телевизор"
+  },
+  {
+   "word": "door",
+   "emoji": "🚪",
+   "ru": "дверь"
+  },
+  {
+   "word": "window",
+   "emoji": "🪟",
+   "ru": "окно"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "bed",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the bed?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,97 @@
+{
+ "id": "a2-07",
+ "num": 57,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 7. Clothes (Одежда)",
+ "vocabulary": [
+  {
+   "word": "shirt",
+   "emoji": "👕",
+   "ru": "рубашка"
+  },
+  {
+   "word": "dress",
+   "emoji": "👗",
+   "ru": "платье"
+  },
+  {
+   "word": "hat",
+   "emoji": "🧢",
+   "ru": "кепка"
+  },
+  {
+   "word": "socks",
+   "emoji": "🧦",
+   "ru": "носки"
+  },
+  {
+   "word": "shoes",
+   "emoji": "👟",
+   "ru": "обувь"
+  },
+  {
+   "word": "coat",
+   "emoji": "🧥",
+   "ru": "пальто"
+  },
+  {
+   "word": "scarf",
+   "emoji": "🧣",
+   "ru": "шарф"
+  },
+  {
+   "word": "gloves",
+   "emoji": "🧤",
+   "ru": "перчатки"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "shirt",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the shirt?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

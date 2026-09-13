@@ -1,0 +1,97 @@
+{
+ "id": "a2-21",
+ "num": 71,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 21. House (Дом)",
+ "vocabulary": [
+  {
+   "word": "bed",
+   "emoji": "🛏️",
+   "ru": "кровать"
+  },
+  {
+   "word": "chair",
+   "emoji": "🪑",
+   "ru": "стул"
+  },
+  {
+   "word": "lamp",
+   "emoji": "💡",
+   "ru": "лампа"
+  },
+  {
+   "word": "key",
+   "emoji": "🔑",
+   "ru": "ключ"
+  },
+  {
+   "word": "bath",
+   "emoji": "🛁",
+   "ru": "ванна"
+  },
+  {
+   "word": "tv",
+   "emoji": "📺",
+   "ru": "телевизор"
+  },
+  {
+   "word": "door",
+   "emoji": "🚪",
+   "ru": "дверь"
+  },
+  {
+   "word": "window",
+   "emoji": "🪟",
+   "ru": "окно"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "bed",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the bed?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

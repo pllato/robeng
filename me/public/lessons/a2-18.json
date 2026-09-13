@@ -1,0 +1,97 @@
+{
+ "id": "a2-18",
+ "num": 68,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 18. Actions (Действия)",
+ "vocabulary": [
+  {
+   "word": "jump",
+   "emoji": "🤸",
+   "ru": "прыгать"
+  },
+  {
+   "word": "eat",
+   "emoji": "🍽️",
+   "ru": "есть"
+  },
+  {
+   "word": "sleep",
+   "emoji": "😴",
+   "ru": "спать"
+  },
+  {
+   "word": "read",
+   "emoji": "📖",
+   "ru": "читать"
+  },
+  {
+   "word": "sing",
+   "emoji": "🎤",
+   "ru": "петь"
+  },
+  {
+   "word": "dance",
+   "emoji": "💃",
+   "ru": "танцевать"
+  },
+  {
+   "word": "run",
+   "emoji": "🏃",
+   "ru": "бежать"
+  },
+  {
+   "word": "swim",
+   "emoji": "🏊",
+   "ru": "плавать"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "jump",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the jump?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,97 @@
+{
+ "id": "b1-07",
+ "num": 82,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 7. Clothes (Одежда)",
+ "vocabulary": [
+  {
+   "word": "shirt",
+   "emoji": "👕",
+   "ru": "рубашка"
+  },
+  {
+   "word": "dress",
+   "emoji": "👗",
+   "ru": "платье"
+  },
+  {
+   "word": "hat",
+   "emoji": "🧢",
+   "ru": "кепка"
+  },
+  {
+   "word": "socks",
+   "emoji": "🧦",
+   "ru": "носки"
+  },
+  {
+   "word": "shoes",
+   "emoji": "👟",
+   "ru": "обувь"
+  },
+  {
+   "word": "coat",
+   "emoji": "🧥",
+   "ru": "пальто"
+  },
+  {
+   "word": "scarf",
+   "emoji": "🧣",
+   "ru": "шарф"
+  },
+  {
+   "word": "gloves",
+   "emoji": "🧤",
+   "ru": "перчатки"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "shirt",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the shirt?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

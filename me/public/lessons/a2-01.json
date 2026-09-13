@@ -1,0 +1,97 @@
+{
+ "id": "a2-01",
+ "num": 51,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 1. Fruits (Фрукты)",
+ "vocabulary": [
+  {
+   "word": "apple",
+   "emoji": "🍎",
+   "ru": "яблоко"
+  },
+  {
+   "word": "banana",
+   "emoji": "🍌",
+   "ru": "банан"
+  },
+  {
+   "word": "orange",
+   "emoji": "🍊",
+   "ru": "апельсин"
+  },
+  {
+   "word": "pear",
+   "emoji": "🍐",
+   "ru": "груша"
+  },
+  {
+   "word": "grapes",
+   "emoji": "🍇",
+   "ru": "виноград"
+  },
+  {
+   "word": "lemon",
+   "emoji": "🍋",
+   "ru": "лимон"
+  },
+  {
+   "word": "watermelon",
+   "emoji": "🍉",
+   "ru": "арбуз"
+  },
+  {
+   "word": "strawberry",
+   "emoji": "🍓",
+   "ru": "клубника"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "an",
+  "apple",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the apple?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

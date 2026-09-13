@@ -1,0 +1,97 @@
+{
+ "id": "b1-14",
+ "num": 89,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 14. Vegetables (Овощи)",
+ "vocabulary": [
+  {
+   "word": "potato",
+   "emoji": "🥔",
+   "ru": "картофель"
+  },
+  {
+   "word": "cucumber",
+   "emoji": "🥒",
+   "ru": "огурец"
+  },
+  {
+   "word": "corn",
+   "emoji": "🌽",
+   "ru": "кукуруза"
+  },
+  {
+   "word": "onion",
+   "emoji": "🧅",
+   "ru": "лук"
+  },
+  {
+   "word": "pepper",
+   "emoji": "🫑",
+   "ru": "перец"
+  },
+  {
+   "word": "mushroom",
+   "emoji": "🍄",
+   "ru": "гриб"
+  },
+  {
+   "word": "carrot",
+   "emoji": "🥕",
+   "ru": "морковь"
+  },
+  {
+   "word": "tomato",
+   "emoji": "🍅",
+   "ru": "помидор"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "potato",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the potato?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,97 @@
+{
+ "id": "a2-14",
+ "num": 64,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 14. Vegetables (Овощи)",
+ "vocabulary": [
+  {
+   "word": "potato",
+   "emoji": "🥔",
+   "ru": "картофель"
+  },
+  {
+   "word": "cucumber",
+   "emoji": "🥒",
+   "ru": "огурец"
+  },
+  {
+   "word": "corn",
+   "emoji": "🌽",
+   "ru": "кукуруза"
+  },
+  {
+   "word": "onion",
+   "emoji": "🧅",
+   "ru": "лук"
+  },
+  {
+   "word": "pepper",
+   "emoji": "🫑",
+   "ru": "перец"
+  },
+  {
+   "word": "mushroom",
+   "emoji": "🍄",
+   "ru": "гриб"
+  },
+  {
+   "word": "carrot",
+   "emoji": "🥕",
+   "ru": "морковь"
+  },
+  {
+   "word": "tomato",
+   "emoji": "🍅",
+   "ru": "помидор"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "potato",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the potato?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

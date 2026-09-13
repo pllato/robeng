@@ -1,0 +1,97 @@
+{
+ "id": "a2-17",
+ "num": 67,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 17. School (Школа)",
+ "vocabulary": [
+  {
+   "word": "pencil",
+   "emoji": "✏️",
+   "ru": "карандаш"
+  },
+  {
+   "word": "bag",
+   "emoji": "🎒",
+   "ru": "рюкзак"
+  },
+  {
+   "word": "ruler",
+   "emoji": "📏",
+   "ru": "линейка"
+  },
+  {
+   "word": "scissors",
+   "emoji": "✂️",
+   "ru": "ножницы"
+  },
+  {
+   "word": "clock",
+   "emoji": "🕐",
+   "ru": "часы"
+  },
+  {
+   "word": "globe",
+   "emoji": "🌍",
+   "ru": "глобус"
+  },
+  {
+   "word": "book",
+   "emoji": "📕",
+   "ru": "книга"
+  },
+  {
+   "word": "pen",
+   "emoji": "🖊️",
+   "ru": "ручка"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "pencil",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the pencil?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

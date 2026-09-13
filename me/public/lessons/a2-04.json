@@ -1,0 +1,97 @@
+{
+ "id": "a2-04",
+ "num": 54,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 4. Food (Еда)",
+ "vocabulary": [
+  {
+   "word": "bread",
+   "emoji": "🍞",
+   "ru": "хлеб"
+  },
+  {
+   "word": "cheese",
+   "emoji": "🧀",
+   "ru": "сыр"
+  },
+  {
+   "word": "egg",
+   "emoji": "🥚",
+   "ru": "яйцо"
+  },
+  {
+   "word": "milk",
+   "emoji": "🥛",
+   "ru": "молоко"
+  },
+  {
+   "word": "cake",
+   "emoji": "🎂",
+   "ru": "торт"
+  },
+  {
+   "word": "pizza",
+   "emoji": "🍕",
+   "ru": "пицца"
+  },
+  {
+   "word": "rice",
+   "emoji": "🍚",
+   "ru": "рис"
+  },
+  {
+   "word": "juice",
+   "emoji": "🧃",
+   "ru": "сок"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "bread",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the bread?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

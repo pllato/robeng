@@ -1,0 +1,97 @@
+{
+ "id": "a2-12",
+ "num": 62,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 12. Nature (Природа)",
+ "vocabulary": [
+  {
+   "word": "tree",
+   "emoji": "🌳",
+   "ru": "дерево"
+  },
+  {
+   "word": "flower",
+   "emoji": "🌸",
+   "ru": "цветок"
+  },
+  {
+   "word": "star",
+   "emoji": "⭐",
+   "ru": "звезда"
+  },
+  {
+   "word": "sea",
+   "emoji": "🌊",
+   "ru": "море"
+  },
+  {
+   "word": "mountain",
+   "emoji": "⛰️",
+   "ru": "гора"
+  },
+  {
+   "word": "leaf",
+   "emoji": "🍃",
+   "ru": "лист"
+  },
+  {
+   "word": "fire",
+   "emoji": "🔥",
+   "ru": "огонь"
+  },
+  {
+   "word": "stone",
+   "emoji": "🪨",
+   "ru": "камень"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "tree",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the tree?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

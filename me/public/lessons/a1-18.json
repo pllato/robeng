@@ -1,0 +1,92 @@
+{
+ "id": "a1-18",
+ "num": 43,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 18. Actions (Действия)",
+ "vocabulary": [
+  {
+   "word": "jump",
+   "emoji": "🤸",
+   "ru": "прыгать"
+  },
+  {
+   "word": "eat",
+   "emoji": "🍽️",
+   "ru": "есть"
+  },
+  {
+   "word": "sleep",
+   "emoji": "😴",
+   "ru": "спать"
+  },
+  {
+   "word": "read",
+   "emoji": "📖",
+   "ru": "читать"
+  },
+  {
+   "word": "sing",
+   "emoji": "🎤",
+   "ru": "петь"
+  },
+  {
+   "word": "dance",
+   "emoji": "💃",
+   "ru": "танцевать"
+  },
+  {
+   "word": "run",
+   "emoji": "🏃",
+   "ru": "бежать"
+  },
+  {
+   "word": "swim",
+   "emoji": "🏊",
+   "ru": "плавать"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "jump"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a jump, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,97 @@
+{
+ "id": "a2-20",
+ "num": 70,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 20. Weather (Погода)",
+ "vocabulary": [
+  {
+   "word": "snow",
+   "emoji": "❄️",
+   "ru": "снег"
+  },
+  {
+   "word": "wind",
+   "emoji": "🌬️",
+   "ru": "ветер"
+  },
+  {
+   "word": "cloud",
+   "emoji": "☁️",
+   "ru": "облако"
+  },
+  {
+   "word": "rainbow",
+   "emoji": "🌈",
+   "ru": "радуга"
+  },
+  {
+   "word": "storm",
+   "emoji": "⛈️",
+   "ru": "гроза"
+  },
+  {
+   "word": "moon",
+   "emoji": "🌙",
+   "ru": "луна"
+  },
+  {
+   "word": "sun",
+   "emoji": "☀️",
+   "ru": "солнце"
+  },
+  {
+   "word": "rain",
+   "emoji": "🌧️",
+   "ru": "дождь"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "snow",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the snow?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

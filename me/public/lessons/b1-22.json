@@ -1,0 +1,97 @@
+{
+ "id": "b1-22",
+ "num": 97,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 22. Transport (Транспорт)",
+ "vocabulary": [
+  {
+   "word": "bike",
+   "emoji": "🚲",
+   "ru": "велосипед"
+  },
+  {
+   "word": "plane",
+   "emoji": "✈️",
+   "ru": "самолёт"
+  },
+  {
+   "word": "train",
+   "emoji": "🚂",
+   "ru": "поезд"
+  },
+  {
+   "word": "ship",
+   "emoji": "🚢",
+   "ru": "корабль"
+  },
+  {
+   "word": "taxi",
+   "emoji": "🚕",
+   "ru": "такси"
+  },
+  {
+   "word": "rocket",
+   "emoji": "🚀",
+   "ru": "ракета"
+  },
+  {
+   "word": "car",
+   "emoji": "🚗",
+   "ru": "машина"
+  },
+  {
+   "word": "bus",
+   "emoji": "🚌",
+   "ru": "автобус"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "bike",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the bike?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

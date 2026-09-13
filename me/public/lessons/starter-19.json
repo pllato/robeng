@@ -1,0 +1,87 @@
+{
+ "id": "starter-19",
+ "num": 19,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 19. Clothes (Одежда)",
+ "vocabulary": [
+  {
+   "word": "hat",
+   "emoji": "🧢",
+   "ru": "кепка"
+  },
+  {
+   "word": "socks",
+   "emoji": "🧦",
+   "ru": "носки"
+  },
+  {
+   "word": "shoes",
+   "emoji": "👟",
+   "ru": "обувь"
+  },
+  {
+   "word": "coat",
+   "emoji": "🧥",
+   "ru": "пальто"
+  },
+  {
+   "word": "scarf",
+   "emoji": "🧣",
+   "ru": "шарф"
+  },
+  {
+   "word": "gloves",
+   "emoji": "🧤",
+   "ru": "перчатки"
+  },
+  {
+   "word": "shirt",
+   "emoji": "👕",
+   "ru": "рубашка"
+  },
+  {
+   "word": "dress",
+   "emoji": "👗",
+   "ru": "платье"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "hat"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the hat.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,92 @@
+{
+ "id": "a1-04",
+ "num": 29,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 4. Food (Еда)",
+ "vocabulary": [
+  {
+   "word": "bread",
+   "emoji": "🍞",
+   "ru": "хлеб"
+  },
+  {
+   "word": "cheese",
+   "emoji": "🧀",
+   "ru": "сыр"
+  },
+  {
+   "word": "egg",
+   "emoji": "🥚",
+   "ru": "яйцо"
+  },
+  {
+   "word": "milk",
+   "emoji": "🥛",
+   "ru": "молоко"
+  },
+  {
+   "word": "cake",
+   "emoji": "🎂",
+   "ru": "торт"
+  },
+  {
+   "word": "pizza",
+   "emoji": "🍕",
+   "ru": "пицца"
+  },
+  {
+   "word": "rice",
+   "emoji": "🍚",
+   "ru": "рис"
+  },
+  {
+   "word": "juice",
+   "emoji": "🧃",
+   "ru": "сок"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "bread"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a bread, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

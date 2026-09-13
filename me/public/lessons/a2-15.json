@@ -1,0 +1,97 @@
+{
+ "id": "a2-15",
+ "num": 65,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 15. Animals (Животные)",
+ "vocabulary": [
+  {
+   "word": "fish",
+   "emoji": "🐟",
+   "ru": "рыба"
+  },
+  {
+   "word": "bird",
+   "emoji": "🐦",
+   "ru": "птица"
+  },
+  {
+   "word": "horse",
+   "emoji": "🐴",
+   "ru": "лошадь"
+  },
+  {
+   "word": "cow",
+   "emoji": "🐮",
+   "ru": "корова"
+  },
+  {
+   "word": "sheep",
+   "emoji": "🐑",
+   "ru": "овца"
+  },
+  {
+   "word": "rabbit",
+   "emoji": "🐰",
+   "ru": "кролик"
+  },
+  {
+   "word": "dog",
+   "emoji": "🐶",
+   "ru": "собака"
+  },
+  {
+   "word": "cat",
+   "emoji": "🐱",
+   "ru": "кошка"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "fish",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the fish?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

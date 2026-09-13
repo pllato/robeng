@@ -1,0 +1,87 @@
+{
+ "id": "starter-23",
+ "num": 23,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 23. Toys (Игрушки)",
+ "vocabulary": [
+  {
+   "word": "bear",
+   "emoji": "🧸",
+   "ru": "мишка"
+  },
+  {
+   "word": "kite",
+   "emoji": "🪁",
+   "ru": "воздушный змей"
+  },
+  {
+   "word": "robot",
+   "emoji": "🤖",
+   "ru": "робот"
+  },
+  {
+   "word": "drum",
+   "emoji": "🥁",
+   "ru": "барабан"
+  },
+  {
+   "word": "puzzle",
+   "emoji": "🧩",
+   "ru": "пазл"
+  },
+  {
+   "word": "dice",
+   "emoji": "🎲",
+   "ru": "кубик"
+  },
+  {
+   "word": "ball",
+   "emoji": "⚽",
+   "ru": "мяч"
+  },
+  {
+   "word": "doll",
+   "emoji": "🪆",
+   "ru": "кукла"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "bear"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the bear.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

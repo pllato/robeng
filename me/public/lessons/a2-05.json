@@ -1,0 +1,97 @@
+{
+ "id": "a2-05",
+ "num": 55,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 5. School (Школа)",
+ "vocabulary": [
+  {
+   "word": "book",
+   "emoji": "📕",
+   "ru": "книга"
+  },
+  {
+   "word": "pen",
+   "emoji": "🖊️",
+   "ru": "ручка"
+  },
+  {
+   "word": "pencil",
+   "emoji": "✏️",
+   "ru": "карандаш"
+  },
+  {
+   "word": "bag",
+   "emoji": "🎒",
+   "ru": "рюкзак"
+  },
+  {
+   "word": "ruler",
+   "emoji": "📏",
+   "ru": "линейка"
+  },
+  {
+   "word": "scissors",
+   "emoji": "✂️",
+   "ru": "ножницы"
+  },
+  {
+   "word": "clock",
+   "emoji": "🕐",
+   "ru": "часы"
+  },
+  {
+   "word": "globe",
+   "emoji": "🌍",
+   "ru": "глобус"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "book",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the book?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

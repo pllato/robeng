@@ -1,0 +1,7 @@
+node_modules/
+data/
+*.log
+*.bak
+*.old-econ
+*.old-ui
+sweep.txt

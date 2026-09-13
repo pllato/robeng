@@ -1,0 +1,97 @@
+{
+ "id": "b1-16",
+ "num": 91,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 16. Food (Еда)",
+ "vocabulary": [
+  {
+   "word": "egg",
+   "emoji": "🥚",
+   "ru": "яйцо"
+  },
+  {
+   "word": "milk",
+   "emoji": "🥛",
+   "ru": "молоко"
+  },
+  {
+   "word": "cake",
+   "emoji": "🎂",
+   "ru": "торт"
+  },
+  {
+   "word": "pizza",
+   "emoji": "🍕",
+   "ru": "пицца"
+  },
+  {
+   "word": "rice",
+   "emoji": "🍚",
+   "ru": "рис"
+  },
+  {
+   "word": "juice",
+   "emoji": "🧃",
+   "ru": "сок"
+  },
+  {
+   "word": "bread",
+   "emoji": "🍞",
+   "ru": "хлеб"
+  },
+  {
+   "word": "cheese",
+   "emoji": "🧀",
+   "ru": "сыр"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "egg",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the egg?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

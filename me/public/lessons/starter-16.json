@@ -1,0 +1,87 @@
+{
+ "id": "starter-16",
+ "num": 16,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 16. Food (Еда)",
+ "vocabulary": [
+  {
+   "word": "egg",
+   "emoji": "🥚",
+   "ru": "яйцо"
+  },
+  {
+   "word": "milk",
+   "emoji": "🥛",
+   "ru": "молоко"
+  },
+  {
+   "word": "cake",
+   "emoji": "🎂",
+   "ru": "торт"
+  },
+  {
+   "word": "pizza",
+   "emoji": "🍕",
+   "ru": "пицца"
+  },
+  {
+   "word": "rice",
+   "emoji": "🍚",
+   "ru": "рис"
+  },
+  {
+   "word": "juice",
+   "emoji": "🧃",
+   "ru": "сок"
+  },
+  {
+   "word": "bread",
+   "emoji": "🍞",
+   "ru": "хлеб"
+  },
+  {
+   "word": "cheese",
+   "emoji": "🧀",
+   "ru": "сыр"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "egg"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the egg.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

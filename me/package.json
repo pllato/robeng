@@ -1,0 +1,22 @@
+{
+  "name": "mineenglish",
+  "version": "1.0.0",
+  "description": "MineEnglish — многопользовательский воксельный мир для изучения английского",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

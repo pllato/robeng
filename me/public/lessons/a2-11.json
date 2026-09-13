@@ -1,0 +1,97 @@
+{
+ "id": "a2-11",
+ "num": 61,
+ "level": "A2",
+ "age": "8-10",
+ "title": "A2 11. Toys (Игрушки)",
+ "vocabulary": [
+  {
+   "word": "ball",
+   "emoji": "⚽",
+   "ru": "мяч"
+  },
+  {
+   "word": "doll",
+   "emoji": "🪆",
+   "ru": "кукла"
+  },
+  {
+   "word": "bear",
+   "emoji": "🧸",
+   "ru": "мишка"
+  },
+  {
+   "word": "kite",
+   "emoji": "🪁",
+   "ru": "воздушный змей"
+  },
+  {
+   "word": "robot",
+   "emoji": "🤖",
+   "ru": "робот"
+  },
+  {
+   "word": "drum",
+   "emoji": "🥁",
+   "ru": "барабан"
+  },
+  {
+   "word": "puzzle",
+   "emoji": "🧩",
+   "ru": "пазл"
+  },
+  {
+   "word": "dice",
+   "emoji": "🎲",
+   "ru": "кубик"
+  }
+ ],
+ "sentence": [
+  "there",
+  "is",
+  "a",
+  "ball",
+  "in",
+  "my",
+  "room"
+ ],
+ "build": {
+  "block": 10,
+  "n": 3,
+  "en": "Build a window: 3 GLASS blocks!"
+ },
+ "roleplay": {
+  "title": "At school",
+  "a": "Where is the ball?",
+  "b": "It is on the table, next to the book."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

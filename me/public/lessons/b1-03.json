@@ -1,0 +1,97 @@
+{
+ "id": "b1-03",
+ "num": 78,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 3. Animals (Животные)",
+ "vocabulary": [
+  {
+   "word": "dog",
+   "emoji": "🐶",
+   "ru": "собака"
+  },
+  {
+   "word": "cat",
+   "emoji": "🐱",
+   "ru": "кошка"
+  },
+  {
+   "word": "fish",
+   "emoji": "🐟",
+   "ru": "рыба"
+  },
+  {
+   "word": "bird",
+   "emoji": "🐦",
+   "ru": "птица"
+  },
+  {
+   "word": "horse",
+   "emoji": "🐴",
+   "ru": "лошадь"
+  },
+  {
+   "word": "cow",
+   "emoji": "🐮",
+   "ru": "корова"
+  },
+  {
+   "word": "sheep",
+   "emoji": "🐑",
+   "ru": "овца"
+  },
+  {
+   "word": "rabbit",
+   "emoji": "🐰",
+   "ru": "кролик"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "dog",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the dog?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,92 @@
+{
+ "id": "a1-17",
+ "num": 42,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 17. School (Школа)",
+ "vocabulary": [
+  {
+   "word": "pencil",
+   "emoji": "✏️",
+   "ru": "карандаш"
+  },
+  {
+   "word": "bag",
+   "emoji": "🎒",
+   "ru": "рюкзак"
+  },
+  {
+   "word": "ruler",
+   "emoji": "📏",
+   "ru": "линейка"
+  },
+  {
+   "word": "scissors",
+   "emoji": "✂️",
+   "ru": "ножницы"
+  },
+  {
+   "word": "clock",
+   "emoji": "🕐",
+   "ru": "часы"
+  },
+  {
+   "word": "globe",
+   "emoji": "🌍",
+   "ru": "глобус"
+  },
+  {
+   "word": "book",
+   "emoji": "📕",
+   "ru": "книга"
+  },
+  {
+   "word": "pen",
+   "emoji": "🖊️",
+   "ru": "ручка"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "pencil"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a pencil, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

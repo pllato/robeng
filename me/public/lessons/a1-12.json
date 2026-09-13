@@ -1,0 +1,92 @@
+{
+ "id": "a1-12",
+ "num": 37,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 12. Nature (Природа)",
+ "vocabulary": [
+  {
+   "word": "tree",
+   "emoji": "🌳",
+   "ru": "дерево"
+  },
+  {
+   "word": "flower",
+   "emoji": "🌸",
+   "ru": "цветок"
+  },
+  {
+   "word": "star",
+   "emoji": "⭐",
+   "ru": "звезда"
+  },
+  {
+   "word": "sea",
+   "emoji": "🌊",
+   "ru": "море"
+  },
+  {
+   "word": "mountain",
+   "emoji": "⛰️",
+   "ru": "гора"
+  },
+  {
+   "word": "leaf",
+   "emoji": "🍃",
+   "ru": "лист"
+  },
+  {
+   "word": "fire",
+   "emoji": "🔥",
+   "ru": "огонь"
+  },
+  {
+   "word": "stone",
+   "emoji": "🪨",
+   "ru": "камень"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "tree"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a tree, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

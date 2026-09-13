@@ -1,0 +1,92 @@
+{
+ "id": "a1-22",
+ "num": 47,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 22. Transport (Транспорт)",
+ "vocabulary": [
+  {
+   "word": "bike",
+   "emoji": "🚲",
+   "ru": "велосипед"
+  },
+  {
+   "word": "plane",
+   "emoji": "✈️",
+   "ru": "самолёт"
+  },
+  {
+   "word": "train",
+   "emoji": "🚂",
+   "ru": "поезд"
+  },
+  {
+   "word": "ship",
+   "emoji": "🚢",
+   "ru": "корабль"
+  },
+  {
+   "word": "taxi",
+   "emoji": "🚕",
+   "ru": "такси"
+  },
+  {
+   "word": "rocket",
+   "emoji": "🚀",
+   "ru": "ракета"
+  },
+  {
+   "word": "car",
+   "emoji": "🚗",
+   "ru": "машина"
+  },
+  {
+   "word": "bus",
+   "emoji": "🚌",
+   "ru": "автобус"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "bike"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a bike, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

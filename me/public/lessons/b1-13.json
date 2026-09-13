@@ -1,0 +1,97 @@
+{
+ "id": "b1-13",
+ "num": 88,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 13. Fruits (Фрукты)",
+ "vocabulary": [
+  {
+   "word": "orange",
+   "emoji": "🍊",
+   "ru": "апельсин"
+  },
+  {
+   "word": "pear",
+   "emoji": "🍐",
+   "ru": "груша"
+  },
+  {
+   "word": "grapes",
+   "emoji": "🍇",
+   "ru": "виноград"
+  },
+  {
+   "word": "lemon",
+   "emoji": "🍋",
+   "ru": "лимон"
+  },
+  {
+   "word": "watermelon",
+   "emoji": "🍉",
+   "ru": "арбуз"
+  },
+  {
+   "word": "strawberry",
+   "emoji": "🍓",
+   "ru": "клубника"
+  },
+  {
+   "word": "apple",
+   "emoji": "🍎",
+   "ru": "яблоко"
+  },
+  {
+   "word": "banana",
+   "emoji": "🍌",
+   "ru": "банан"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "orange",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the orange?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

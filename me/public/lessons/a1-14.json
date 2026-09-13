@@ -1,0 +1,92 @@
+{
+ "id": "a1-14",
+ "num": 39,
+ "level": "A1",
+ "age": "7-9",
+ "title": "A1 14. Vegetables (Овощи)",
+ "vocabulary": [
+  {
+   "word": "potato",
+   "emoji": "🥔",
+   "ru": "картофель"
+  },
+  {
+   "word": "cucumber",
+   "emoji": "🥒",
+   "ru": "огурец"
+  },
+  {
+   "word": "corn",
+   "emoji": "🌽",
+   "ru": "кукуруза"
+  },
+  {
+   "word": "onion",
+   "emoji": "🧅",
+   "ru": "лук"
+  },
+  {
+   "word": "pepper",
+   "emoji": "🫑",
+   "ru": "перец"
+  },
+  {
+   "word": "mushroom",
+   "emoji": "🍄",
+   "ru": "гриб"
+  },
+  {
+   "word": "carrot",
+   "emoji": "🥕",
+   "ru": "морковь"
+  },
+  {
+   "word": "tomato",
+   "emoji": "🍅",
+   "ru": "помидор"
+  }
+ ],
+ "sentence": [
+  "i",
+  "can",
+  "see",
+  "a",
+  "potato"
+ ],
+ "build": {
+  "block": 9,
+  "n": 3,
+  "en": "Place 3 BRICK blocks!"
+ },
+ "roleplay": {
+  "title": "In the shop",
+  "a": "Can I have a potato, please?",
+  "b": "Here you are! One dollar, please."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

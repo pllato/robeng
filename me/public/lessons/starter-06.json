@@ -1,0 +1,87 @@
+{
+ "id": "starter-06",
+ "num": 6,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 6. Actions (Действия)",
+ "vocabulary": [
+  {
+   "word": "run",
+   "emoji": "🏃",
+   "ru": "бежать"
+  },
+  {
+   "word": "swim",
+   "emoji": "🏊",
+   "ru": "плавать"
+  },
+  {
+   "word": "jump",
+   "emoji": "🤸",
+   "ru": "прыгать"
+  },
+  {
+   "word": "eat",
+   "emoji": "🍽️",
+   "ru": "есть"
+  },
+  {
+   "word": "sleep",
+   "emoji": "😴",
+   "ru": "спать"
+  },
+  {
+   "word": "read",
+   "emoji": "📖",
+   "ru": "читать"
+  },
+  {
+   "word": "sing",
+   "emoji": "🎤",
+   "ru": "петь"
+  },
+  {
+   "word": "dance",
+   "emoji": "💃",
+   "ru": "танцевать"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "run"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the run.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

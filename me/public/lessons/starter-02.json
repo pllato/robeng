@@ -1,0 +1,87 @@
+{
+ "id": "starter-02",
+ "num": 2,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 2. Vegetables (Овощи)",
+ "vocabulary": [
+  {
+   "word": "carrot",
+   "emoji": "🥕",
+   "ru": "морковь"
+  },
+  {
+   "word": "tomato",
+   "emoji": "🍅",
+   "ru": "помидор"
+  },
+  {
+   "word": "potato",
+   "emoji": "🥔",
+   "ru": "картофель"
+  },
+  {
+   "word": "cucumber",
+   "emoji": "🥒",
+   "ru": "огурец"
+  },
+  {
+   "word": "corn",
+   "emoji": "🌽",
+   "ru": "кукуруза"
+  },
+  {
+   "word": "onion",
+   "emoji": "🧅",
+   "ru": "лук"
+  },
+  {
+   "word": "pepper",
+   "emoji": "🫑",
+   "ru": "перец"
+  },
+  {
+   "word": "mushroom",
+   "emoji": "🍄",
+   "ru": "гриб"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "carrot"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the carrot.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

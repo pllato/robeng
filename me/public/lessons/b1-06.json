@@ -1,0 +1,97 @@
+{
+ "id": "b1-06",
+ "num": 81,
+ "level": "B1",
+ "age": "9-11",
+ "title": "B1 6. Actions (Действия)",
+ "vocabulary": [
+  {
+   "word": "run",
+   "emoji": "🏃",
+   "ru": "бежать"
+  },
+  {
+   "word": "swim",
+   "emoji": "🏊",
+   "ru": "плавать"
+  },
+  {
+   "word": "jump",
+   "emoji": "🤸",
+   "ru": "прыгать"
+  },
+  {
+   "word": "eat",
+   "emoji": "🍽️",
+   "ru": "есть"
+  },
+  {
+   "word": "sleep",
+   "emoji": "😴",
+   "ru": "спать"
+  },
+  {
+   "word": "read",
+   "emoji": "📖",
+   "ru": "читать"
+  },
+  {
+   "word": "sing",
+   "emoji": "🎤",
+   "ru": "петь"
+  },
+  {
+   "word": "dance",
+   "emoji": "💃",
+   "ru": "танцевать"
+  }
+ ],
+ "sentence": [
+  "i",
+  "think",
+  "the",
+  "run",
+  "is",
+  "very",
+  "interesting"
+ ],
+ "build": {
+  "block": 8,
+  "n": 5,
+  "en": "Build a bridge: 5 WOOD blocks in a row!"
+ },
+ "roleplay": {
+  "title": "Interview",
+  "a": "What do you think about the run?",
+  "b": "I think it is great, because it helps people."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "grammar"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "saymove"
+  },
+  {
+   "proc": "roleplay"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

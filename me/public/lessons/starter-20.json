@@ -1,0 +1,87 @@
+{
+ "id": "starter-20",
+ "num": 20,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 20. Weather (Погода)",
+ "vocabulary": [
+  {
+   "word": "snow",
+   "emoji": "❄️",
+   "ru": "снег"
+  },
+  {
+   "word": "wind",
+   "emoji": "🌬️",
+   "ru": "ветер"
+  },
+  {
+   "word": "cloud",
+   "emoji": "☁️",
+   "ru": "облако"
+  },
+  {
+   "word": "rainbow",
+   "emoji": "🌈",
+   "ru": "радуга"
+  },
+  {
+   "word": "storm",
+   "emoji": "⛈️",
+   "ru": "гроза"
+  },
+  {
+   "word": "moon",
+   "emoji": "🌙",
+   "ru": "луна"
+  },
+  {
+   "word": "sun",
+   "emoji": "☀️",
+   "ru": "солнце"
+  },
+  {
+   "word": "rain",
+   "emoji": "🌧️",
+   "ru": "дождь"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "snow"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the snow.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

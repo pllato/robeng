@@ -1,0 +1,87 @@
+{
+ "id": "starter-24",
+ "num": 24,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 24. Nature (Природа)",
+ "vocabulary": [
+  {
+   "word": "star",
+   "emoji": "⭐",
+   "ru": "звезда"
+  },
+  {
+   "word": "sea",
+   "emoji": "🌊",
+   "ru": "море"
+  },
+  {
+   "word": "mountain",
+   "emoji": "⛰️",
+   "ru": "гора"
+  },
+  {
+   "word": "leaf",
+   "emoji": "🍃",
+   "ru": "лист"
+  },
+  {
+   "word": "fire",
+   "emoji": "🔥",
+   "ru": "огонь"
+  },
+  {
+   "word": "stone",
+   "emoji": "🪨",
+   "ru": "камень"
+  },
+  {
+   "word": "tree",
+   "emoji": "🌳",
+   "ru": "дерево"
+  },
+  {
+   "word": "flower",
+   "emoji": "🌸",
+   "ru": "цветок"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "star"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the star.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

@@ -1,0 +1,87 @@
+{
+ "id": "starter-09",
+ "num": 9,
+ "level": "Starter",
+ "age": "5-7",
+ "title": "Starter 9. House (Дом)",
+ "vocabulary": [
+  {
+   "word": "door",
+   "emoji": "🚪",
+   "ru": "дверь"
+  },
+  {
+   "word": "window",
+   "emoji": "🪟",
+   "ru": "окно"
+  },
+  {
+   "word": "bed",
+   "emoji": "🛏️",
+   "ru": "кровать"
+  },
+  {
+   "word": "chair",
+   "emoji": "🪑",
+   "ru": "стул"
+  },
+  {
+   "word": "lamp",
+   "emoji": "💡",
+   "ru": "лампа"
+  },
+  {
+   "word": "key",
+   "emoji": "🔑",
+   "ru": "ключ"
+  },
+  {
+   "word": "bath",
+   "emoji": "🛁",
+   "ru": "ванна"
+  },
+  {
+   "word": "tv",
+   "emoji": "📺",
+   "ru": "телевизор"
+  }
+ ],
+ "sentence": [
+  "i",
+  "like",
+  "door"
+ ],
+ "build": {
+  "block": 8,
+  "n": 2,
+  "en": "Place 2 WOOD blocks!"
+ },
+ "roleplay": {
+  "title": "Say hello!",
+  "a": "Hello! I like the door.",
+  "b": "Me too! It is nice."
+ },
+ "phraseFinale": [
+  "we",
+  "learn",
+  "english",
+  "together"
+ ],
+ "stages": [
+  {
+   "proc": "hello"
+  },
+  {
+   "proc": "wordhunt"
+  },
+  {
+   "proc": "touchname"
+  },
+  {
+   "proc": "listenbuild"
+  },
+  {
+   "proc": "finale"
+  }
+ ]
+}

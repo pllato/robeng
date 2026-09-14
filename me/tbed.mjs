@@ -32,21 +32,23 @@ const plants=await p.evaluate(()=>{ const out=[]; bedPlants(bedAt(0), bedPos(myP
   return out.filter(o=>o.kind==='plant').length; });
 ok(plants===3, `нарисовано кустов: ${plants}`);
 
-// повтор того же слова на ту же грядку не пускаем
+// повтор того же слова на ту же грядку теперь разрешён: это ещё один куст
 await p.evaluate(()=>{ window.__d=[]; const o=eval('toast'); eval('toast = m=>{ window.__d.push(m); return ('+o.toString()+')(m); }'); });
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'buy',lesson:'starter-01#apple'})"));
 await p.waitForTimeout(700);
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'plant',bed:0,lesson:'starter-01#apple'})"));
 await p.waitForTimeout(800);
 g=await G();
-ok((g.beds['0'].words||[]).length===3, 'одно и то же слово дважды на грядку не встало');
+ok((g.beds['0'].words||[]).length===4 && (g.beds['0'].st.apple.k|0)===2,
+   `то же слово посажено ещё раз: кустов на грядке ${(g.beds['0'].words||[]).length}, из них apple ${g.beds['0'].st.apple.k}`);
 
 // урожай: у каждого куста свои плоды
 await p.waitForTimeout(8600);
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'get'})")); await p.waitForTimeout(800);
 const ripe=await p.evaluate(()=>ripeWords(bedAt(0)));
 const per={}; ripe.forEach(w=>per[w]=(per[w]||0)+1);
-ok(Object.keys(per).length===3, `созрели все три: ${Object.entries(per).map(([w,n])=>`${w}×${n}`).join(', ')}`);
+ok(Object.keys(per).length===3 && per.apple===(per.banana||0)*2,
+   `созрели все три, а apple вдвое больше — два куста: ${Object.entries(per).map(([w,n])=>`${w}×${n}`).join(', ')}`);
 // и через интерфейс: с семенем в руке подсказка предлагает досадить
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'buy',lesson:'starter-01#pear'})"));
 await p.waitForTimeout(900);
@@ -58,5 +60,5 @@ ok(/Досадить/.test(hint), `подсказка на занятой гря
 await p.evaluate(()=>window.game.doInteract());
 await p.waitForTimeout(1600);
 const after=(await G()).beds['0'].words.map(w=>w.word);
-ok(after.length===4, `после «Досадить» на грядке ${after.length}: ${after.join(', ')}`);
+ok(after.length===5 && after.includes('pear'), `после «Досадить» на грядке ${after.length} кустов: ${after.join(', ')}`);
 await b.close();

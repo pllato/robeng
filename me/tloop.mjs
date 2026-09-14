@@ -34,7 +34,7 @@ await p.evaluate(()=>{ window.game.setPaused(false); window.game.setDrag(true); 
 
 let g = await G();
 ok(Object.keys(g.seeds).length===0 && g.coins===0,'старт: сумка пуста и 0 монет — первое семя надо взять в киоске');
-ok((await p.evaluate(()=>eval('PLOT_BEDS')))===6,'грядок на участке: '+await p.evaluate(()=>eval('PLOT_BEDS')));
+ok((await p.evaluate(()=>eval('PLOT_BEDS')))>=12,'грядок на участке: '+await p.evaluate(()=>eval('PLOT_BEDS')));
 
 // киоск: редкие заперты
 await p.evaluate(()=>{ const {sx,sz,H}=gardenOrigin(), P=window.game.P; P.x=sx-5; P.z=sz+11; P.y=H+1; P.vx=P.vy=P.vz=0; });

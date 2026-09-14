@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-14-39';
+const BUILD = '2026-09-14-40';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -428,7 +428,7 @@ function bagList(g) {
   for (const nm of (g.pets || [])) out.push({ id: 'pet:' + nm, kind: 'pet', n: 1, name: nm, emoji: '🐾', desc: 'питомец — ходит по участку' });
   return out;
 }
-const BED_SLOTS = 8;                   // столько растений помещается на одну грядку
+const BED_SLOTS = 16;                  // столько кустов помещается на одну грядку
 // как босс догоняет и чем бьёт — у каждого своё
 const BOSS_MOVE = { walk:{sp:2.4,reach:2.8,every:2400}, crawl:{sp:1.9,reach:2.6,every:2600},
                     fly:{sp:3.4,reach:3.4,every:2000},  hop:{sp:2.8,reach:3.0,every:2500},
@@ -869,8 +869,10 @@ function sanitizeBed(b) {              // грядка из чужих рук (�
   const seed = String(b.seed || '');
   const ws = parseSeed(seed);
   const picked = Array.isArray(b.words) ? b.words.map(w => w && w.word).filter(Boolean) : null;
+  const byWord = new Map(lesson.words.map(w => [w.word, w]));
+  // повторы сохраняем: одно и то же слово может расти на грядке несколькими кустами
   const words = picked && picked.length
-    ? lesson.words.filter(w => picked.includes(w.word)).slice(0, BED_SLOTS)
+    ? picked.filter(w => byWord.has(w)).slice(0, BED_SLOTS).map(w => byWord.get(w))
     : ((ws && ws.lesson === lesson.id) ? lesson.words.filter(w => w.word === ws.word) : lesson.words);
   if (!words.length) return null;
   const known = new Set(words.map(w => w.word));
@@ -878,11 +880,14 @@ function sanitizeBed(b) {              // грядка из чужих рук (�
   const cycle = Math.min(Math.max(b.cycle | 0, 0), 999);
   const readyAt = Math.max(0, +b.readyAt || 0);
   const st = {};
-  for (const w of words) {
-    const src = (b.st && b.st[w.word]) || {};
-    st[w.word] = { c: Math.min(999, Math.max(0, src.c | 0)),
-                   r: Math.max(0, +src.r || readyAt),
-                   n: Math.min(9, Math.max(0, src.n | 0)) };
+  const count = {};
+  for (const w of words) count[w.word] = (count[w.word] | 0) + 1;
+  for (const word of Object.keys(count)) {
+    const src = (b.st && b.st[word]) || {};
+    st[word] = { c: Math.min(999, Math.max(0, src.c | 0)),
+                 r: Math.max(0, +src.r || readyAt),
+                 n: Math.min(99, Math.max(0, src.n | 0)),
+                 k: count[word] };
   }
   return { seed: seed || lesson.id, lesson: lesson.id, title: lesson.title,
     theme: ws ? ws.word : lesson.theme, tier: lesson.tier, words, ripe, cycle, readyAt, st };
@@ -936,23 +941,28 @@ function sanitizeGarden(src) {
   }
   return g;
 }
-function plantState(b, word) {          // состояние одного куста: свой круг и свой срок
+// k — сколько кустов этого слова растёт на грядке. Одно и то же слово можно сажать
+// сколько угодно раз: больше кустов — больше плодов за круг.
+function plantState(b, word) {          // состояние куста: свой круг, свой срок, своё число кустов
   b.st = b.st || {};
-  if (!b.st[word]) b.st[word] = { c: b.cycle | 0, r: +b.readyAt || Date.now(), n: 0 };
+  if (!b.st[word]) b.st[word] = { c: b.cycle | 0, r: +b.readyAt || Date.now(), n: 0, k: 1 };
+  if (!(b.st[word].k > 0)) b.st[word].k = 1;
   return b.st[word];
 }
+const bedKinds = b => [...new Set(((b && b.words) || []).map(w => w.word))];   // слова без повторов
 function ripenGarden(g) {              // каждый куст зреет сам по себе, по своим часам
   const now = Date.now();
   for (const b of Object.values(g.beds || {})) {
     if (!b || !b.words) continue;
-    for (const w of b.words) {
-      const st = plantState(b, w.word);
+    const kinds = bedKinds(b);
+    for (const word of kinds) {
+      const st = plantState(b, word);
       if (st.n > 0 || now < st.r) continue;
-      st.n = bedFruits(b, w.word, st.c);       // сперва один плод, потом больше
+      st.n = bedFruits(b, word, st.c) * (st.k | 0 || 1);   // каждый куст даёт свой урожай
     }
     b.ripe = [];                               // общий список — для клиента, он его и рисует
-    for (const w of b.words) for (let i = 0; i < (b.st[w.word].n | 0); i++) b.ripe.push(w.word);
-    b.readyAt = Math.min(...b.words.map(w => b.st[w.word].r));   // ближайший срок — для подписи
+    for (const word of kinds) for (let i = 0; i < (b.st[word].n | 0); i++) b.ripe.push(word);
+    b.readyAt = Math.min(...kinds.map(w => b.st[w].r));   // ближайший срок — для подписи
   }
 }
 function tierOpen(g, tier) {           // редкое семя открывается, когда снят урожай попроще
@@ -1597,16 +1607,22 @@ wss.on('connection', (ws, req) => {
           if (b.lesson !== lesson.id)
             return deny(`На этой грядке растёт «${b.theme || b.title}» — досаживай слова той же темы или выбери пустую`);
           if ((b.words || []).length >= BED_SLOTS)
-            return deny(`Грядка полная: ${BED_SLOTS} растений — больше не помещается`);
-          if ((b.words || []).some(w => w.word === words[0].word))
-            return deny(`«${words[0].word}» уже растёт на этой грядке`);
+            return deny(`Грядка полная: ${BED_SLOTS} кустов — посади на соседнюю`);
           g.seeds[raw]--;
           if (!g.seeds[raw]) delete g.seeds[raw];
-          b.words = b.words.concat(words);
-          b.theme = b.words.length > 1 ? (lesson.theme || lesson.title) : b.theme;
+          const word = words[0].word;
+          const again = (b.words || []).some(w => w.word === word);
+          b.words = b.words.concat(words);     // повторы разрешены: это ещё один куст того же слова
+          b.theme = bedKinds(b).length > 1 ? (lesson.theme || lesson.title) : b.theme;
           b.st = b.st || {};
-          b.st[words[0].word] = { c: 0, r: Date.now() + growMs(0, g, raw), n: 0 };  // новое растение зреет быстро
-          console.log(`досажено: ${u ? u.name : 'гость'} — ${raw} на грядку ${bed} (${b.words.length} растений)`);
+          if (again) {                          // ещё один куст: урожай станет больше и придёт скорее
+            const st = plantState(b, word);
+            st.k = (st.k | 0 || 1) + 1;
+            st.r = Math.min(st.r, Date.now() + growMs(0, g, raw));
+          } else {
+            b.st[word] = { c: 0, r: Date.now() + growMs(0, g, raw), n: 0, k: 1 };  // новое растение зреет быстро
+          }
+          console.log(`досажено: ${u ? u.name : 'гость'} — ${raw} на грядку ${bed} (${b.words.length} кустов)`);
           logAct(room, me, `досадил «${label}» — на грядке ${b.words.length}`, 'plant');
         } else {
           g.seeds[raw]--;
@@ -1627,6 +1643,24 @@ wss.on('connection', (ws, req) => {
         return reply({ planted: raw,
           opened: opened.map(x => ({ id: x.id, theme: x.theme, level: x.level })),
           bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null });
+      } else if (m.act === 'uproot') { // выкорчевать куст: место освобождается под новое слово
+        if (!b) return deny('На этой грядке ничего не растёт');
+        const word = String(m.word || '').toLowerCase();
+        const all = !!m.all;
+        const idx = (b.words || []).map(w => w.word).lastIndexOf(word);
+        if (idx < 0) return deny(`«${word}» на этой грядке не растёт`);
+        const st = plantState(b, word);
+        const gone = all ? (st.k | 0 || 1) : 1;
+        if (all) b.words = b.words.filter(w => w.word !== word);
+        else b.words = b.words.slice(0, idx).concat(b.words.slice(idx + 1));
+        st.k = (st.k | 0 || 1) - gone;
+        if (st.k <= 0) { delete b.st[word]; }
+        else st.n = Math.min(st.n | 0, bedFruits(b, word, st.c) * st.k);
+        if (!b.words.length) { delete g.beds[bed]; }           // грядка опустела — она снова свободна
+        else { ripenGarden(g); b.theme = bedKinds(b).length > 1 ? (b.title || b.theme) : b.theme; }
+        console.log(`выкорчевано: ${u ? u.name : 'гость'} — ${word}${all ? ' (все)' : ''} с грядки ${bed}`);
+        logAct(room, me, `убрал «${word}» с грядки`, 'plant');
+        return reply({ uprooted: { word, n: gone, bed: +bed } });
       } else if (m.act === 'pick') { // собрал плод, назвав слово
         if (!b) return deny('На этой грядке ничего не растёт');
         ripenGarden(g);
@@ -1648,7 +1682,7 @@ wss.on('connection', (ws, req) => {
         if (!pst.n) {   // этот куст обобран — он один и уходит на следующий круг
           pst.c++;
           pst.r = Date.now() + growMs(pst.c, g, wordSeedId(b.lesson, word));
-          b.cycle = Math.min(...b.words.map(w => b.st[w.word].c));
+          b.cycle = Math.min(...bedKinds(b).map(w => b.st[w].c));
           g.done[String(b.tier)] = (g.done[String(b.tier)] | 0) + 1;
           const wordSeed = parseSeed(String(b.seed || ''));
           const sid = wordSeed ? wordSeedId(b.lesson, word) : null;

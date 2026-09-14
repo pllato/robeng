@@ -702,6 +702,13 @@
       <button id="sellClose" class="ghost">← В сад</button>
     </div>
 
+    <div id="mBed" class="mview" hidden>
+      <p class="hint" id="bedTitle">🌿 Грядка</p>
+      <div id="bedList" style="max-height:44vh;overflow:auto;text-align:left;margin:8px 0"></div>
+      <p class="hint" id="bedHint" style="font-size:12px;opacity:.75"></p>
+      <button id="bedClose" class="ghost">← В сад</button>
+    </div>
+
     <div id="mHome" class="mview" hidden>
       <p class="hint" id="authTitle">🎟 Стойка «Аккаунт»</p>
       <div id="authBox"></div>
@@ -1690,12 +1697,15 @@ function handleNet(m){
         toast(`🌱 Семя «${seedInHand.theme}» куплено и уже в руке`); }
       snd(760,.1,'triangle',.13);
     }
+    if(m.uprooted){ toast(`✂️ Убрал «${m.uprooted.word}» — место освободилось`);
+      snd(280,.1,'sine',.13); if(!$('mBed').hidden) renderBed(); gardenRedraw(); }
     if(m.sold){ toast(`🪙 Сдал ${fruitsWord(m.sold.fruits)} за ${coinsWord(m.sold.coins)}`);
       coinRain(m.sold.coins); }
     if(m.harvested){ toast(`🧺 Тема «${m.harvested.theme}» собрана целиком! Следующий урожай — круг ${m.harvested.cycle+1}`);
       snd(700,.1,'triangle',.15); setTimeout(()=>snd(1050,.2,'triangle',.15),130); }
     if(!$('mShop').hidden) renderShop(shopLevelNow());
     if(!$('mSell').hidden) renderSell();
+    if(!$('mBed').hidden) renderBed();
     gardenRedraw(); updateClassInfo();
   }
   else if(m.t==='worddayok'){
@@ -2000,14 +2010,18 @@ const WORD_FRUITS=[3,2,2];                      // новый куст — ср�
 const isWordSeed=id=>/^[a-z0-9-]{3,24}#[a-z]{2,20}$/.test(String(id||''));
 const bedFruits=(b,w,cyc)=>isWordSeed(b.seed)
   ? WORD_FRUITS[Math.min(WORD_FRUITS.length-1,(cyc===undefined?b.cycle:cyc)|0)] : fruitsOf(w);
-const pst=(b,w)=>(b&&b.st&&b.st[w])||{c:b?(b.cycle|0):0,r:b?(+b.readyAt||0):0,n:0};
-function ripeWords(b){                          // у каждого куста свой срок и свой круг
+const pst=(b,w)=>(b&&b.st&&b.st[w])||{c:b?(b.cycle|0):0,r:b?(+b.readyAt||0):0,n:0,k:1};
+// одно слово может расти несколькими кустами: считаем по уникальным словам, а не по списку
+const bedKinds=b=>[...new Set(((b&&b.words)||[]).map(w=>w.word))];
+const bedCount=(b,w)=>((b&&b.words)||[]).filter(x=>x.word===w).length||1;
+function ripeWords(b){                          // у каждого слова свой срок и свой круг
   if(!b) return [];
   const out=[];
-  for(const w of (b.words||[])){
-    const st=pst(b,w.word);
-    const n=(st.n|0)>0 ? (st.n|0) : (nowMs()>=st.r ? bedFruits(b,w.word,st.c) : 0);
-    for(let i=0;i<n;i++) out.push(w.word);
+  for(const w of bedKinds(b)){
+    const st=pst(b,w);
+    const k=(st.k|0)||bedCount(b,w);
+    const n=(st.n|0)>0 ? (st.n|0) : (nowMs()>=st.r ? bedFruits(b,w,st.c)*k : 0);
+    for(let i=0;i<n;i++) out.push(w);
   }
   return out;
 }
@@ -2044,9 +2058,9 @@ function gardenOrigin(){ // улица длинная — держим её це
   return {sx:cl(Math.floor(spawnPt.x),46,WX-46), sz:cl(Math.floor(spawnPt.z),59,WZ-59), H:Math.floor(spawnPt.y)-1};
 }
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
-const PLOT_MAX=8, PLOT_BEDS=6;             // восемь участков на улице, по шесть грядок на каждом
+const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-14-39';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-14-40';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2055,19 +2069,59 @@ function plotPos(i){
   const side=i%2, row=(i/2)|0;
   return {x: side? sx+24 : sx-24, y:H+1, z: sz-42+row*28};
 }
+// Насколько прокачан участок: считаем разные растения на нём. Продвинутый огород
+// должен быть виден с улицы — забор, дорожки, фонари и клумбы меняются по уровню.
+function plotLevel(i){
+  const p=plots[i]; if(!p||!p.beds) return 0;
+  const set=new Set();
+  for(const b of Object.values(p.beds)) for(const w of (b.words||[])) set.add(b.lesson+'#'+w.word);
+  const n=set.size;
+  return n>=35?4 : n>=20?3 : n>=10?2 : n>=5?1 : 0;
+}
+const PLOT_FENCE=[LOG,LOG,BRICK,BRICK,C_YEL];        // чем выше уровень, тем нарядней ограда
 function drawPlotFence(i){ // забор рисуем заново после каждой перерисовки: растения затирают его
-  const c=plotPos(i), H=c.y-1;
+  const c=plotPos(i), H=c.y-1, lv=plotLevel(i);
   const put=(x,z,id)=>{ if(x>0&&x<WX&&z>0&&z<WZ) world[idx(x,H+1,z)]=id; };
-  for(let x=c.x-PLOT_RX;x<=c.x+PLOT_RX;x++){ put(x,c.z-PLOT_RZ,LOG); put(x,c.z+PLOT_RZ,LOG); }
-  for(let z=c.z-PLOT_RZ;z<=c.z+PLOT_RZ;z++){ put(c.x-PLOT_RX,z,LOG); put(c.x+PLOT_RX,z,LOG); }
+  const put2=(x,y,z,id)=>{ if(x>0&&x<WX&&y>0&&y<WY&&z>0&&z<WZ) world[idx(x,y,z)]=id; };
+  const F=PLOT_FENCE[lv];
+  for(let x=c.x-PLOT_RX;x<=c.x+PLOT_RX;x++){ put(x,c.z-PLOT_RZ,F); put(x,c.z+PLOT_RZ,F); }
+  for(let z=c.z-PLOT_RZ;z<=c.z+PLOT_RZ;z++){ put(c.x-PLOT_RX,z,F); put(c.x+PLOT_RX,z,F); }
+  // ① пять разных растений — дорожка между грядками, ходить и видно, что огород обжитой
+  if(lv>=1){
+    // дорожки идут ровно в промежутках между грядками (грядки 9×9 с шагом 9)
+    for(let x=c.x-PLOT_RX+1;x<=c.x+PLOT_RX-1;x++) for(const dz of [-5,-4,4,5]) put(x,c.z+dz,PLANK);
+    for(let z=c.z-PLOT_RZ+1;z<=c.z+PLOT_RZ-1;z++) for(const dx of [-10,-9,0,9,10]) put(c.x+dx,z,PLANK);
+  }
+  // ② десять — клумбы по углам и фонари на столбах
+  if(lv>=2){
+    const flo=[C_RED,C_PINK,C_YEL,C_PUR];
+    for(let k=0;k<4;k++){ const dx=k%2?PLOT_RX-2:-PLOT_RX+2, dz=k<2?-PLOT_RZ+2:PLOT_RZ-2;
+      put(c.x+dx,c.z+dz,flo[k]); put(c.x+dx+1,c.z+dz,C_LIME); put(c.x+dx,c.z+dz+1,flo[(k+1)%4]); }
+    for(const dx of [-PLOT_RX,PLOT_RX]) for(const dz of [-PLOT_RZ,PLOT_RZ]){
+      for(let y=1;y<=3;y++) put2(c.x+dx,H+y,c.z+dz,LOG);
+      put2(c.x+dx,H+4,c.z+dz,C_YEL);
+    }
+  }
+  // ③ двадцать — стеклянная теплица у калитки: сразу видно мастера
+  if(lv>=3){
+    const gx=i%2? c.x-PLOT_RX+3 : c.x+PLOT_RX-3;
+    for(let dz=-2;dz<=2;dz++) for(let y=1;y<=3;y++) put2(gx,H+y,c.z+dz,GLASS);
+    for(let dz=-2;dz<=2;dz++) put2(gx,H+4,c.z+dz,C_CYAN);
+  }
+  // ④ тридцать пять — золотые колонны по углам, участок светится
+  if(lv>=4) for(const dx of [-PLOT_RX,PLOT_RX]) for(const dz of [-PLOT_RZ,PLOT_RZ]){
+    if(i===myPlotIndex() && dx===-PLOT_RX && dz===-PLOT_RZ) continue;  // тут стоит метка «мой участок»
+    for(let y=1;y<=5;y++) put2(c.x+dx,H+y,c.z+dz,C_YEL);
+    put2(c.x+dx,H+6,c.z+dz,C_WHT);
+  }
   put(i%2? c.x-PLOT_RX : c.x+PLOT_RX, c.z, AIR); // калитка со стороны улицы
   if(i===myPlotIndex()) for(let dy=1;dy<=5;dy++){ // свой участок помечен светящимся столбом
     const y=c.y+dy; if(y<WY) world[idx(c.x-PLOT_RX,y,c.z-PLOT_RZ)]=dy>3?C_LIME:GLASS;
   }
 }
-function bedPos(pi,bi){ // 6 грядок: три в ряд, два ряда
-  const c=plotPos(pi), col=bi%3, row=(bi/3)|0;
-  return {x:c.x+[-12,0,12][col], y:c.y, z:c.z+[-6,6][row]};
+function bedPos(pi,bi){ // 12 грядок: четыре в ряд, три ряда — участок засаживается целиком
+  const c=plotPos(pi), col=bi%4, row=(bi/4)|0;
+  return {x:c.x+[-14,-5,5,14][col], y:c.y, z:c.z+[-9,0,9][row]};
 }
 const bedOfPlot=(pi,bi)=>{ const p=plots[pi]; if(!p||!p.beds) return null; return p.beds[bi]||p.beds[String(bi)]||null; };
 function buildGardenWorld(){
@@ -2289,10 +2343,11 @@ function wordColor(word){ // самый частый цвет картинки �
 const TIER_H=[2.4,3.0,3.8,4.6];           // высота дерева в блоках по редкости
 const tierH=t=>TIER_H[Math.min(TIER_H.length-1,Math.max(0,t|0))];
 const tierScale=t=>tierH(t)*0.032;        // размер кубика, из которого собран плод
-const BED_R=2;   // кустики стоят тесно — грядка, а не поле
-const BED_SLOTS=[[-BED_R,-BED_R],[0,-BED_R],[BED_R,-BED_R],[-BED_R,0],[BED_R,0],
-                 [-BED_R,BED_R],[0,BED_R],[BED_R,BED_R]];
-const FRUIT_SPOTS=[[.34,.54,.18],[-.33,.68,-.20],[.04,.86,.30]]; // до трёх плодов в кроне
+const BED_R=4;   // грядка 9×9: кусты стоят в четыре ряда, тесно, как в саду
+const BED_STEP=[-3.6,-1.2,1.2,3.6];
+const BED_SLOTS=[];
+for(const dz of BED_STEP) for(const dx of BED_STEP) BED_SLOTS.push([dx,dz]);   // 16 мест
+const FRUIT_SPOTS=[[.24,.54,.13],[-.23,.68,-.14],[.03,.86,.21]]; // до трёх плодов в кроне
 const bedTop=b=>tierH(b.tier)+0.5;
 function plantSpot(b,q,i){                        // где стоит кустик слова №i
   const sl=BED_SLOTS[i%BED_SLOTS.length];
@@ -2305,7 +2360,11 @@ function bedPlants(b,q,out,withFruit){
     const hh=h*plantGrow(b,w.word);             // сорванный куст начинает расти заново
     out.push({kind:'plant', x:c.x, y:c.y, z:c.z, h:hh});
     if(!withFruit) return;
-    const n=ripeLeft(b,w.word);                 // сколько плодов ещё не сорвали — столько и рисуем
+    // плоды слова делим между его кустами: два куста apple — плоды висят на обоих
+    const same=b.words.filter(x=>x.word===w.word).length||1;
+    const mine=b.words.slice(0,i+1).filter(x=>x.word===w.word).length-1;   // какой это по счёту куст
+    const total=ripeLeft(b,w.word);
+    const n=Math.floor(total/same)+(mine<total%same?1:0);
     for(let k=0;k<n && k<FRUIT_SPOTS.length;k++){
       const [dx,dy,dz]=FRUIT_SPOTS[k];
       out.push({kind:'fruit', x:c.x+dx*hh, y:c.y+dy*hh, z:c.z+dz*hh, s, word:w.word});
@@ -2315,10 +2374,11 @@ function bedPlants(b,q,out,withFruit){
 // Настоящее дерево: ствол из брёвен и крона в три яруса. Раньше это была палка
 // с зелёным колпачком — ребёнок не узнавал в ней дерево, на котором растут плоды.
 function pushPlant(V,x,y,z,h){
-  const t=0.075*h;
+  const t=0.065*h;
   pushBox(V,x-t,y,z-t,x+t,y+h*0.58,z+t,LOG);                              // ствол
   const c=y+h*0.46;
-  const w1=0.26*h, w2=0.34*h, w3=0.19*h;
+  // крона узкая: широкая смыкалась в сплошную стену — ребёнок оказывался внутри листвы
+  const w1=0.17*h, w2=0.23*h, w3=0.13*h;
   pushBox(V,x-w1,c,           z-w1,x+w1,c+0.16*h,z+w1,LEAF);              // нижний ярус кроны
   pushBox(V,x-w2,c+0.15*h,    z-w2,x+w2,c+0.34*h,z+w2,LEAF);              // самый широкий
   pushBox(V,x-w3,c+0.33*h,    z-w3,x+w3,c+0.47*h,z+w3,LEAF);              // макушка
@@ -2379,24 +2439,34 @@ function gardenRedraw(){
     const owner=plots[i]||null;
     for(let b=0;b<PLOT_BEDS;b++){
       const q=bedPos(i,b), bd=owner?(i===mine?bedAt(b):bedOfPlot(i,b)):null;
+      // чистим строго внутри своего участка: иначе грядка у края стирает забор соседа
+      const cp=plotPos(i);
+      const inPlot=(x,z)=>x>cp.x-PLOT_RX && x<cp.x+PLOT_RX && z>cp.z-PLOT_RZ && z<cp.z+PLOT_RZ;
       for(let dy=0;dy<9;dy++) for(let dz=-6;dz<=6;dz++) for(let dx=-6;dx<=6;dx++){
         const x=q.x+dx, y=q.y+dy, z=q.z+dz;
-        if(x>0&&x<WX&&y>0&&y<WY&&z>0&&z<WZ) world[idx(x,y,z)]=AIR;
+        if(x>0&&x<WX&&y>0&&y<WY&&z>0&&z<WZ&&inPlot(x,z)) world[idx(x,y,z)]=AIR;
       }
       for(let dz=-6;dz<=6;dz++) for(let dx=-6;dx<=6;dx++){   // земля под грядкой рисуется заново по её размеру
         const x=q.x+dx, z=q.z+dz;
-        if(x>0&&x<WX&&z>0&&z<WZ) world[idx(x,q.y-1,z)]=GRASS;
+        if(x>0&&x<WX&&z>0&&z<WZ&&inPlot(x,z)) world[idx(x,q.y-1,z)]=GRASS;
       }
-      const R=BED_R+1;                                // земля грядки — ровный квадрат
+      const R=BED_R;                                  // земля грядки — ровный квадрат
       for(let dz=-R;dz<=R;dz++) for(let dx=-R;dx<=R;dx++){
         const x=q.x+dx, z=q.z+dz;
-        if(x>0&&x<WX&&z>0&&z<WZ) world[idx(x,q.y-1,z)]=DIRT;   // земля видна всегда — понятно, куда сажать
+        if(x>0&&x<WX&&z>0&&z<WZ&&inPlot(x,z)) world[idx(x,q.y-1,z)]=DIRT;   // земля видна всегда
       }
       const tag=bedTags[i*PLOT_BEDS+b];
       if(tag){ tag.y=q.y+(bd?bedTop(bd)+0.7:1.2); tag.el.innerHTML=bedTagHtml(i,b,q,owner,bd,mine); }
       for(const [ox,oz] of [[-6,-6],[0,-6],[6,-6],[-6,0],[6,0],[-6,6],[0,6],[6,6],[0,0]]) touchChunk(q.x+ox,q.z+oz);
     }
     drawPlotFence(i); // растения стирают ограду — ставим её обратно
+    // ограда, дорожки и украшения лежат далеко от грядок: их чанки надо пометить отдельно,
+    // иначе блоки в мире есть, а на экране их нет
+    {
+      const cp=plotPos(i);
+      for(let x=cp.x-PLOT_RX;x<=cp.x+PLOT_RX;x+=8) for(let z=cp.z-PLOT_RZ;z<=cp.z+PLOT_RZ;z+=8) touchChunk(x,z);
+      for(const x of [cp.x-PLOT_RX,cp.x+PLOT_RX]) for(const z of [cp.z-PLOT_RZ,cp.z+PLOT_RZ]) touchChunk(x,z);
+    }
     const pt=plotTags[i], owner2=plots[i]||null;
     if(pt) pt.el.innerHTML = owner2
       ? `${owner2.role==='teacher'?'🧑‍🏫':'🧒'} <b>${owner2.name}</b>${i===mine?' <small>— твой участок</small>':''}`
@@ -2773,6 +2843,14 @@ function fruitAtPoint(px,py){           // какой плод под пальц
   }
   return best;
 }
+let heardTxt='', heardAt=0;
+function heardShow(t){                    // показываем распознанное вслух, пока ребёнок говорит
+  heardTxt=String(t||'').trim(); heardAt=Date.now();
+  if(holdFruit) pickTagShow(holdFruit, listening?'rec':'');
+  if(talkOn) $('talkScore').innerHTML = heardTxt
+    ? `слышу: <b style="color:#ffe066">${heardTxt}</b>` : '';
+}
+const heardNow=()=>Date.now()-heardAt<2500 ? heardTxt : '';
 function pickTagShow(f,state){
   const el=$('pickTag'); if(!el) return;
   if(!f){ el.style.display='none'; return; }
@@ -2782,8 +2860,11 @@ function pickTagShow(f,state){
   el.style.left=Math.round(pt[0])+'px';
   el.style.top=Math.round(pt[1])+'px';
   el.className=state||'';
-  el.innerHTML=`<b>${f.word}</b>`+(state==='rec'?'<i>говори…</i>'
-    :(state==='wait'?'<i>слушай и повтори</i>':(state==='miss'?'<i>не расслышал</i>':'')));
+  const heard=heardNow();
+  el.innerHTML=`<b>${f.word}</b>`+(state==='rec'
+      ? (heard?`<i class="hrd">${heard}</i>`:'<i>говори…</i>')
+      :(state==='wait'?'<i>слушай и повтори</i>'
+      :(state==='miss'?`<i>не расслышал${heard?': '+heard:''}</i>`:'')));
 }
 function bossAtPoint(px,py){             // палец попал в самого босса?
   if(!lastMVP||!bossServer||!bossHere()) return null;
@@ -2832,7 +2913,7 @@ function pickStart(px,py){
   const f=fruitAtPoint(px,py); if(!f) return false;
   holdFruit=f;
   askBed=f.bed; askWord=f.word; askOn=true;   // совместимость с проверкой слова
-  say(f.word);
+  heardTxt=''; say(f.word);
   pickTagShow(f,'wait');
   waitQuiet(()=>{ if(holdFruit===f){ pickTagShow(f,'rec'); startListen(true); } });
   snd(520,.06,'triangle',.1);
@@ -3615,6 +3696,38 @@ function renderShop(level){
     gardenRedraw();
   });
 }
+// ── Экран грядки: что на ней растёт, сколько кустов и что можно выкорчевать ──
+let bedNow=-1;
+function openBed(bed){
+  bedNow=bed;
+  overlayView('mBed');
+  $('hintBar').style.display='none';
+  document.exitPointerLock && document.exitPointerLock();
+  renderBed();
+}
+function renderBed(){
+  const bd=bedAt(bedNow);
+  if(!bd){ $('bedTitle').textContent='🕳 Пустая грядка';
+    $('bedList').innerHTML='<div class="hint">здесь пусто — возьми семя в киоске 🏪</div>';
+    $('bedHint').textContent=''; return; }
+  const kinds=bedKinds(bd), slots=BED_SLOTS.length;
+  const busy=(bd.words||[]).length;
+  $('bedTitle').innerHTML=`${tierInfo(bd.tier).emoji} Грядка «${bd.theme||bd.title}» — <b>${busy}</b> из ${slots} мест`;
+  $('bedList').innerHTML=kinds.map(w=>{
+    const k=bedCount(bd,w), ripe=ripeLeft(bd,w);
+    return `<div class="shopRow"><span>${emojiOf(bd,w)} <b>${w}</b>
+      <small style="color:#9fb6d4"> · кустов ${k}${ripe?` · созрело ${ripe}`:''}</small></span>
+      <span><button class="ghost" data-cut="${w}" style="padding:4px 9px;font-size:13px">✂️ убрать</button></span></div>`;
+  }).join('');
+  $('bedHint').innerHTML = busy<slots
+    ? `Свободно ${slots-busy} мест — одно и то же слово можно сажать сколько угодно раз, урожай будет больше.`
+    : 'Грядка полная — выкорчуй что-нибудь или посади на соседнюю.';
+  $('bedList').querySelectorAll('[data-cut]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    sendWS({t:'garden',act:'uproot',bed:bedNow,word:b.dataset.cut});
+    b.textContent='…';
+  });
+}
 function openSell(){
   overlayView('mSell');
   $('hintBar').style.display='none';
@@ -3914,8 +4027,7 @@ function doInteract(){
     }
     const left=ripeWords(bd);
     if(left.length) openAsk(bd,a.bed);     // клавиша E на компьютере: ближайший плод
-    else toast(`${tierInfo(bd.tier).emoji} «${bd.theme||bd.title}» — урожай ${waitText(bd)}`
-      +(seedInHand?' · можно досадить ещё слово':''));
+    else openBed(a.bed);                   // урожая нет — показываем грядку: что растёт и что убрать
   }
 }
 function showBoard(){
@@ -4302,13 +4414,16 @@ function phraseMatch(transcript, words, ordered){
   }
   return true;
 }
-function checkWord(t){
-  if(talkOn) return talkHeard(t);         // открыта разговорная станция — слушаем фразу целиком
+// soft — «примерка»: пришёл промежуточный результат распознавания. Совпало — засчитываем
+// сразу, не дожидаясь конца фразы; не совпало — молчим, ребёнок ещё договаривает.
+function checkWord(t, soft){
+  if(talkOn) return soft ? false : talkHeard(t);   // фразу на станции проверяем только целиком
   // во время боя произнесённое слово бьёт босса, а не собирает урожай
-  if(bossHere()) return bossOnWord(t);   // идёт бой — слово летит в босса, а не собирает урожай
+  if(bossHere()) return soft ? false : bossOnWord(t);   // бой: слово летит в босса
   // слово дня в лобби
   if(worddayNear && lobbyData && lobbyData.wordday){
     if(wordMatch(t, lobbyData.wordday.word)){ sendWS({t:'wordday', word:lobbyData.wordday.word}); return true; }
+    if(soft) return false;
     toast(`Я услышал: «${t}». Слово дня начинается на "${lobbyData.wordday.word[0].toUpperCase()}"…`);
     return false;
   }
@@ -4331,6 +4446,7 @@ function checkWord(t){
         setTimeout(askRefresh,120);
         return true;
       }
+      if(soft) return false;              // ещё говорит — не перебиваем
       askFail();
       toast(`Ты держишь ${emojiOf(bd,w)} — скажи «${w}», а я услышал «${t}»`);
       say(w);
@@ -4353,14 +4469,16 @@ function checkWord(t){
         setTimeout(askRefresh,120);
         return true;
       }
+      if(soft) return false;
       askFail();
       toast(`Я услышал: «${t}». Скажи: ${askWord||left[0]}`); say(askWord||left[0]); return false;
     }
-    if(bd){ toast(`Ещё растёт — урожай ${waitText(bd)}`); return false; }
+    if(bd){ if(!soft) toast(`Ещё растёт — урожай ${waitText(bd)}`); return false; }
   }
   // фразовые процедуры урока (Hello Circle, Say&Move, Grammar Bridge, Team Finale)
   if(curTask && curTask.kind==='phrase' && !myDone){
     if(phraseMatch(t, curTask.words, curTask.ordered)){ completeTask(); return true; }
+    if(soft) return false;
     toast(`Я услышал: «${t}». Попробуй ещё!`);
     raceFails++;
     if(raceFails>=2){ say(curTask.words.join(' ')); raceFails=0; }
@@ -4369,6 +4487,7 @@ function checkWord(t){
   // задание «Скажи слово»
   if(curTask && curTask.kind==='say' && !myDone){
     if(wordMatch(t,curTask.word)){ completeTask(); return true; }
+    if(soft) return false;
     toast(`Я услышал: «${t}». Попробуй ещё!`);
     say(curTask.word); // эталонное произношение как подсказка
     return false;
@@ -4376,6 +4495,7 @@ function checkWord(t){
   // гонка: предмет засчитывается только после произнесения слова
   if(race && raceNear && !myGot.has(raceNear.word)){
     if(wordMatch(t,raceNear.word)){ collectStation(raceNear); raceFails=0; return true; }
+    if(soft) return false;
     raceFails++;
     toast(`Я услышал: «${t}». Попробуй ещё!`);
     if(raceFails>=2){ say(raceNear.word); raceFails=0; } // после двух неудач — образец произношения
@@ -4394,7 +4514,9 @@ function startListen(cont){
   if(listening) return;                       // уже слушаем — второе нажатие ничего не ломает
   const r=new SR();
   recog=r;
-  r.lang='en-US'; r.interimResults=false; r.maxAlternatives=3;
+  // interimResults — главное для скорости: слово засчитывается, как только оно прозвучало,
+  // а не когда браузер решит, что фраза кончилась. И ребёнок видит, что именно его услышали.
+  r.lang='en-US'; r.interimResults=true; r.maxAlternatives=3;
   r.continuous=!!cont;                    // держат плод — слушаем сколько угодно
   listening=true;
   $('sayBtn').textContent='🎙 Слушаю…';
@@ -4403,7 +4525,16 @@ function startListen(cont){
     // игра сама произносит слово вслух, и с открытым микрофоном распознавание слышит её же —
     // плод срывался бы без участия ребёнка. Свой голос пропускаем.
     if(gameTalking()) return;
-    checkWord([...e.results[0]].map(a=>a.transcript).join(' '));
+    let fin='', live='';
+    for(let i=0;i<e.results.length;i++){
+      const t=[...e.results[i]].map(a=>a.transcript).join(' ');
+      if(e.results[i].isFinal) fin+=' '+t; else live+=' '+t;
+    }
+    const all=(fin+' '+live).trim();
+    heardShow(all);                       // видно, что игра слышит прямо сейчас
+    if(!all) return;
+    if(checkWord(all, true)) return;      // совпало на лету — засчитываем мгновенно
+    if(fin.trim()) checkWord(fin.trim()); // договорил, а совпадения нет — вот тогда объясняем
   };
   r.onerror=ev=>{ if(ev && ev.error==='aborted') return;
     askFail(); toast('Не расслышал — попробуй ещё раз'); };
@@ -4467,6 +4598,7 @@ document.querySelectorAll('#gardenNav button[data-go]').forEach(b=>{
   b.onclick=e=>{ e.stopPropagation(); gardenGo(b.dataset.go); };
 });
 $('sellClose').onclick=e=>{ e.stopPropagation(); resumeGame(); };
+$('bedClose').onclick=e=>{ e.stopPropagation(); resumeGame(); };
 $('sellGo').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'sell'}); resumeGame(); };
 $('talkGive').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'orderGive',kind:talkKindNow}); };
 $('talkPrize').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'orderTake',kind:talkKindNow}); };

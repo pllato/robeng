@@ -19,6 +19,15 @@ ok(st.length===4, `станций на улице: ${st.length} — ${st.map(s=>
 const o=await p.evaluate(()=>gardenOrigin());
 ok(st.every(s=>Math.abs(s.x-o.sx)<=7), 'все стоят на улице, а не на чужих огородах');
 ok(st.every(s=>s.z>o.sz), 'квартал — дальше по улице, за прилавками');
+// улица кончается на sz+57: за краем павильон повиснет в воздухе
+ok(st.every(s=>s.z<o.sz+54), `все павильоны внутри улицы: дальний на ${Math.max(...st.map(x=>x.z))-o.sz}`);
+const onGround=await p.evaluate(ss=>ss.every(a=>{
+  const gx=Math.round(a.x), gz=Math.round(a.z);
+  return isSolid(getB(gx, eval('gardenOrigin()').H, gz)); }), st);
+ok(onGround, 'под каждым павильоном есть земля, а не воздух');
+// у каждой станции свой силуэт, а не только цвет
+const deco=await p.evaluate(()=>eval('TALK_ST').map(x=>x.deco));
+ok(new Set(deco).size===4, `оформление у всех разное: ${deco.join(', ')}`);
 const sides=new Set(st.map(s=>s.x>o.sx?'право':'лево'));
 ok(sides.size===2, 'павильоны чередуются по сторонам улицы — проход остаётся');
 

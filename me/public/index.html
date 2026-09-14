@@ -302,6 +302,10 @@
   .wtag.st{font-size:19px;font-weight:800;color:#ffe066;text-shadow:0 2px 6px rgba(0,0,0,.85);
     letter-spacing:1px;text-align:center;white-space:nowrap}
   .wtag.st small{display:block;font-size:11px;font-weight:600;color:#cfe3ff;letter-spacing:.4px}
+  /* карточка задания в киоске: ступень между темами, её нельзя не заметить */
+  .seedCard.quest{border-color:#ffd166;background:linear-gradient(180deg,rgba(200,144,31,.30),rgba(18,26,42,.85))}
+  .seedCard.quest .sub{color:#ffe9b8}
+  .seedCard.quest .sub b{color:#fff}
   /* карточка заказа станции: что принести и сколько фраз сказать */
   #talkOrder{margin:8px 0 6px;padding:9px 10px;border-radius:12px;
     background:rgba(12,20,36,.7);border:1px solid rgba(120,160,220,.35)}
@@ -2042,7 +2046,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=6;             // восемь участков на улице, по шесть грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-14-38';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-14-39';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2102,24 +2106,26 @@ function buildGardenWorld(){
 }
 // 🗣 РАЗГОВОРНЫЙ КВАРТАЛ. Четыре станции стоят прямо на улице (на участки не залезают:
 // огороды начинаются с x = sx±6). У каждой свой цвет, свой житель и своя грамматика.
+// Квартал целиком внутри улицы: земля кончается на sz±57, дальше павильон повиснет в воздухе.
 const TALK_ST=[
-  {kind:'cook', z:16, side:-1, wall:BRICK, roof:C_ORG, acc:C_YEL,  belt:C_GRY,
+  {kind:'cook', z:14, side:-1, wall:BRICK,  roof:C_ORG,  acc:C_YEL, belt:C_GRY, deco:'kitchen',
    emoji:'🧑‍🍳', tag:'Повар Джек',   title:'🍳 КУХНЯ',        sub:'скажи, что тебе нравится',
    ava:{skin:3,hair:1,hairStyle:2,shirt:12,pants:2,hat:3}},
-  {kind:'shop', z:32, side:+1, wall:C_PUR, roof:C_PINK, acc:C_YEL, belt:C_WHT,
+  {kind:'shop', z:26, side:+1, wall:C_PUR,  roof:C_PINK, acc:C_YEL, belt:C_WHT, deco:'till',
    emoji:'🧕',   tag:'Тётя Роза',    title:'💰 КАССА',         sub:'спроси цену целой фразой',
    ava:{skin:1,hair:5,hairStyle:1,shirt:17,pants:15,hat:0}},
-  {kind:'lost', z:48, side:-1, wall:C_BLU, roof:C_CYAN, acc:C_WHT, belt:C_GRY,
+  {kind:'lost', z:38, side:-1, wall:C_BLU,  roof:C_CYAN, acc:C_WHT, belt:C_GRY, deco:'shelf',
    emoji:'🧑‍✈️', tag:'Сторож Тимур', title:'🧳 БЮРО НАХОДОК', sub:'назови, что твоё',
    ava:{skin:2,hair:19,hairStyle:0,shirt:20,pants:19,hat:2}},
-  {kind:'stage',z:64, side:+1, wall:C_DGRN, roof:C_RED, acc:C_YEL, belt:C_PUR,
+  {kind:'stage',z:50, side:+1, wall:C_DGRN, roof:C_RED,  acc:C_YEL, belt:C_PUR, deco:'stage',
    emoji:'🎭',   tag:'Актриса Лия',  title:'🎭 СЦЕНА',         sub:'сыграй диалог по ролям',
    ava:{skin:1,hair:12,hairStyle:1,shirt:11,pants:15,hat:0}},
 ];
 let beltItems=[];                          // ползущие по ленте предметы: emoji + подпись
 function talkQuarter(sx, sz, H){
   beltItems=[];
-  addWorldTag(sx+.5,H+11,sz+40,'🗣 РАЗГОВОРНЫЙ КВАРТАЛ<br><small>здесь платят за целые фразы — в разы больше, чем за плоды</small>','big');
+  addWorldTag(sx+.5,H+15,sz+32,'🗣 РАЗГОВОРНЫЙ КВАРТАЛ<br><small>здесь дают задания — за них открывают новые темы</small>','big');
+  worldTags[worldTags.length-1].near=30;   // вывеска квартала не лезет на вывески павильонов
   for(const st of TALK_ST) talkStation(sx, sz+st.z, H, st);
 }
 // Одна станция: навес у края улицы, стойка, лента вдоль улицы и житель за прилавком.
@@ -2129,11 +2135,14 @@ function talkStation(sx, cz, H, st){
   const s=st.side, wx=sx+5*s;               // стена у самого края улицы
   const L=4;                                // половина длины павильона по z
   const col=d=>wx-d*s;                      // d=0 стена · 1 житель · 2 стойка · 3 лента
-  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++) put(col(d),H,z,PLANK);       // помост
-  for(let y=H+1;y<=H+3;y++) for(let z=cz-L;z<=cz+L;z++) put(wx,y,z,st.wall);         // задняя стена
-  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++) put(col(d),H+4,z,st.roof);   // навес
+  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++){
+    put(col(d),H,z,PLANK);                                                           // помост
+    put(col(d),H-1,z,DIRT); put(col(d),H-2,z,DIRT);   // фундамент: павильон не висит в воздухе
+  }
+  for(let y=H+1;y<=H+4;y++) for(let z=cz-L;z<=cz+L;z++) put(wx,y,z,st.wall);         // задняя стена
+  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++) put(col(d),H+5,z,st.roof);   // навес
   for(const z of [cz-L,cz+L]){                                                       // угловые столбы
-    for(let y=H+1;y<=H+3;y++){ put(col(1),y,z,LOG); put(col(3),y,z,LOG); }
+    for(let y=H+1;y<=H+4;y++){ put(col(1),y,z,LOG); put(col(3),y,z,LOG); }
   }
   for(let z=cz-L+1; z<=cz+L-1; z++){
     put(col(2),H+1,z,LOG); put(col(2),H+2,z,st.acc);   // стойка со столешницей
@@ -2142,19 +2151,50 @@ function talkStation(sx, cz, H, st){
     put(col(1),H+1,z,AIR); put(col(1),H+2,z,AIR);      // проход, где стоит житель
   }
   put(wx,H+3,cz,GLASS); put(wx,H+2,cz,GLASS);                                        // окошко в стене
-  for(const dz of [-L+1,L-1]) put(col(0),H+3,cz+dz,st.acc);                          // фонарики под навесом
-  addWorldTag(col(2)+.5,H+5.6,cz+.5,`${st.title}<br><small>${st.sub}</small>`,'st');
-  worldTags[worldTags.length-1].near=34;    // вывеска не висит через всю улицу
+  for(const dz of [-L+1,L-1]) put(col(0),H+4,cz+dz,st.acc);                          // фонарики под навесом
+  talkDeco(st, put, col, cz, H, L, s);                                               // своё лицо у каждой
+  addWorldTag(col(2)+.5,H+7.2,cz+.5,`${st.title}<br><small>${st.sub}</small>`,'st');
+  worldTags[worldTags.length-1].near=22;    // вывеска не висит через всю улицу
   npcFigure(col(1),H,cz,st.ava);
   addWorldTag(col(1)+.5,H+3.2,cz+.5,`${st.emoji} <b>${st.tag}</b>`);
-  worldTags[worldTags.length-1].near=22;
+  worldTags[worldTags.length-1].near=14;
   interactables.push({x:col(3)+.9*s,y:H+1,z:cz+.5,r:4.5,
     label:`${st.tag}: ${st.sub}`,act:'phrase',kind:st.kind});
   // три ящика на ленте, равномерно — их двигает beltTick()
   for(let i=0;i<3;i++){
     addWorldTag(col(3)+.5, H+2.3, cz, '', 'belt');
-    const t=worldTags[worldTags.length-1]; t.near=26;
+    const t=worldTags[worldTags.length-1]; t.near=18;
     beltItems.push({tag:t, slot:i, z0:cz-L+0.5, z1:cz+L-0.5, t:i/3});
+  }
+}
+// Каждая станция должна узнаваться с улицы по силуэту, а не только по цвету вывески.
+function talkDeco(st, put, col, cz, H, L, s){
+  const d=st.deco;
+  if(d==='kitchen'){                       // печь с трубой и котёл на стойке
+    for(let y=H+5;y<=H+7;y++) put(col(1),y,cz-2,BRICK);
+    put(col(1),H+8,cz-2,C_GRY);
+    for(const dz of [-1,0,1]) put(col(2),H+3,cz+dz,C_BLK);         // котёл над прилавком
+    put(col(2),H+3,cz,C_ORG);
+    for(const dz of [-L+1,L-1]) for(let y=H+1;y<=H+2;y++) put(col(0),y,cz+dz,C_RED); // плита у стены
+  }
+  if(d==='till'){                          // витрина, столбик монет и вывеска-стрелка
+    for(let y=H+2;y<=H+3;y++) for(const dz of [-2,-1,1,2]) put(col(0),y,cz+dz,GLASS);
+    for(let y=H+3;y<=H+5;y++) put(col(3),y,cz-L,C_YEL);            // монетный столб у входа
+    put(col(3),H+6,cz-L,C_WHT);
+    for(let dz=-2;dz<=2;dz++) put(col(1),H+3,cz+dz,C_YEL);         // касса-конторка
+  }
+  if(d==='shelf'){                         // стеллаж с ящиками и часы над окном
+    const box=[C_RED,C_LIME,C_ORG,C_PINK,C_YEL];
+    for(let k=0;k<5;k++){ put(col(1),H+2,cz-2+k,box[k]); put(col(1),H+3,cz-2+k,box[(k+2)%5]); }
+    put(col(0),H+3,cz,C_WHT); put(col(0),H+3,cz-1,C_BLK);          // циферблат
+    for(let y=H+1;y<=H+3;y++) put(col(3),y,cz+L,C_BLU);            // будка у края
+  }
+  if(d==='stage'){                         // занавес, ступени и прожекторы
+    for(let y=H+1;y<=H+4;y++){ put(col(1),y,cz-L+1,C_RED); put(col(1),y,cz+L-1,C_RED); }
+    for(let dz=-L+2;dz<=L-2;dz++) put(col(0),H+4,cz+dz,C_RED);     // ламбрекен
+    for(let dz=-1;dz<=1;dz++) put(col(2),H+2,cz+dz,PLANK);        // край подмостков
+    put(col(3)+0,H+5,cz-2,C_YEL); put(col(3)+0,H+5,cz+2,C_YEL);    // прожекторы
+    for(let dz=-2;dz<=2;dz++) put(col(3),H,cz+dz,C_WHT);           // светлые подмостки
   }
 }
 // Лента живёт всегда, а не только когда открыт экран: улица должна выглядеть работающей.
@@ -3433,6 +3473,12 @@ function openNpc(kind){
   $('npcGo').textContent = sell?'🧺 Показать корзину':'🌱 Посмотреть семена';
   $('npcGo').onclick=e=>{ e.stopPropagation(); sell?openSell():openShop(); };
 }
+function goToStation(kind){        // по клику на задание — сразу к нужной станции
+  const a=interactables.find(x=>x.act==='phrase'&&x.kind===kind);
+  if(!a) return;
+  P.x=a.x+(a.x>gardenOrigin().sx?-2.5:2.5); P.z=a.z; P.y=a.y; P.vx=P.vy=P.vz=0;
+  gardenRedraw();
+}
 function shopLevelNow(){
   const b=$('shopLevels').querySelector('button:not(.ghost)');
   return b?b.dataset.l:(TIERS.length?TIERS[0].level:'Starter');
@@ -3501,16 +3547,51 @@ function renderShop(level){
   const openIds=new Set(mineW.map(w=>w.id));
   const lockedThemes=(shopIndex||[]).filter(x=>x.level===level&&!open[x.id]
       && !mineW.some(w=>w.lesson===x.id));
+  // 2.5) ПРАКТИКА НА СТАНЦИИ — ступень между темами, и её видно прямо в списке,
+  // иначе ребёнок не понимает, почему следующая тема закрыта и что делать сейчас.
+  const ord=myGarden.order||null;
+  const ordLes=ord?((shopIndex||[]).find(x=>x.id===ord.lesson)||{}):null;
+  const ordHere=ord && (!ordLes.level || ordLes.level===level);
+  let stCard='';
+  if(ordHere){
+    const stn=talkStOf(ord.kind);
+    const items=Object.keys(ord.need||{}).map(w=>{
+      const g=Math.min((ord.gave&&ord.gave[w])|0, ord.need[w]|0);
+      return `${(ord.emo&&ord.emo[w])||emojiFor(ord.lesson,w)}<b>${g}/${ord.need[w]|0}</b>`;
+    }).join(' ');
+    stCard=`<div class="seedCard quest" data-quest="${ord.kind}">
+      <div class="badge" style="background:#c8901f;left:-5px;right:auto">задание</div>
+      <div class="em">${stn.emoji}</div><div class="nm">${stn.tag}</div>
+      <div class="pr" style="color:#ffd166">${stn.title}</div>
+      <div class="sub">принести ${items}<br>🗣 фразы <b>${ord.said|0}/${ord.say|0}</b><br>станция на улице →</div></div>`;
+  } else if(!ord && mineW.length){
+    const stn=TALK_ST[(myGarden.orders|0)%TALK_ST.length];
+    stCard=`<div class="seedCard lock" data-lock="1">
+      <div class="em">${stn.emoji}</div><div class="nm">${stn.title}</div>
+      <div class="pr" style="color:#6d7994">после темы</div>
+      <div class="sub">соберёшь все слова темы — ${stn.tag} даст задание</div></div>`;
+  }
+  const lockWhy = ord ? 'откроется после задания' : 'пока недоступно';
   const lockCards=lockedThemes.map(x=>`<div class="seedCard lock" data-lock="1">
       <div class="em">🔒</div><div class="nm">${x.theme||x.title}</div>
-      <div class="pr" style="color:#6d7994">— — —</div><div class="sub">пока недоступно</div></div>`).join('');
+      <div class="pr" style="color:#6d7994">— — —</div><div class="sub">${lockWhy}</div></div>`).join('');
 
-  $('shopGrid').innerHTML=(wordCards+themeCards+lockCards)||'<div class="hint">на этом уровне пока пусто</div>';
+  $('shopGrid').innerHTML=(wordCards+themeCards+stCard+lockCards)||'<div class="hint">на этом уровне пока пусто</div>';
   const bn=bossNeed;
-  $('shopFoot').innerHTML = (mineW.length
-    ? '🌱 Посадил семя — в киоске появляется следующее. Деньгами вперёд не перепрыгнуть.'
-    : (nextUp ? `🔒 Дальше откроется <b>${nextUp.theme}</b>` : ''))
+  const ordLine = ord
+    ? `📦 <b>Сейчас задание:</b> ${talkStOf(ord.kind).emoji} ${talkStOf(ord.kind).tag}, ${talkStOf(ord.kind).title} `
+      + `— принеси плоды и скажи ${ord.say|0} фразы. Новая тема откроется после него.`
+    : (mineW.length
+        ? '🌱 Посадил семя — в киоске появляется следующее. Деньгами вперёд не перепрыгнуть.'
+        : (nextUp ? `🔒 Дальше откроется <b>${nextUp.theme}</b>` : ''));
+  $('shopFoot').innerHTML = ordLine
     + (bn && bn.next<20 ? `<br>⛈️ Босс №${bn.next+1} придёт, когда на участке будет <b>${bn.need}</b> разных растений (сейчас ${bn.have})` : '');
+  $('shopGrid').querySelectorAll('[data-quest]').forEach(c=>c.onclick=()=>{
+    const stn=talkStOf(c.dataset.quest);
+    closeShop();
+    toast(`${stn.emoji} ${stn.tag} ждёт на улице — ${stn.sub}`);
+    goToStation(c.dataset.quest);
+  });
   $('shopGrid').querySelectorAll('[data-lock]').forEach(c=>c.onclick=()=>{
     toast('🔒 Эти семена сейчас недоступны — обратись позже, когда соберёшь урожай попроще');
     snd(220,.12,'sine',.12);

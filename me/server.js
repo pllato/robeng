@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-14-38';
+const BUILD = '2026-09-14-39';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -711,9 +711,13 @@ function makeOrder(g, lessonId) {
   if (!phraseTemplate(les, kind)) return null;             // нечего просить — не мучаем ребёнка
   const words = (les.words || []).slice(0, ORDER_WORDS).map(w => String(w.word));
   if (!words.length) return null;
-  const need = {}; for (const w of words) need[w] = ORDER_EACH;
+  const need = {}, emo = {};
+  for (const w of words) {
+    need[w] = ORDER_EACH;
+    emo[w] = ((les.words || []).find(x => x.word === w) || {}).emoji || '🌱';
+  }
   return { kind, lesson: lessonId, theme: les.theme || les.title,
-           need, gave: {}, say: ORDER_SAY, said: 0, at: Date.now() };
+           need, emo, gave: {}, say: ORDER_SAY, said: 0, at: Date.now() };
 }
 function orderCard(g) {                 // как заказ выглядит на экране станции
   const o = g.order; if (!o) return null;
@@ -923,7 +927,9 @@ function sanitizeGarden(src) {
     for (const [w, n] of Object.entries(so.gave || {})) if (need[w]) gave[String(w)] = Math.min(need[w], Math.max(0, n | 0));
     if (Object.keys(need).length) {
       const les = loadLesson(so.lesson);
-      g.order = { kind: so.kind, lesson: so.lesson, theme: les.theme || les.title, need, gave,
+      const emo = {};
+      for (const w of Object.keys(need)) emo[w] = ((les.words || []).find(x => x.word === w) || {}).emoji || '🌱';
+      g.order = { kind: so.kind, lesson: so.lesson, theme: les.theme || les.title, need, emo, gave,
                   say: Math.min(20, Math.max(1, so.say | 0 || ORDER_SAY)),
                   said: Math.min(20, Math.max(0, so.said | 0)), at: Date.now() };
     }

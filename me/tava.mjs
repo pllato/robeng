@@ -26,7 +26,14 @@ ok(combos>50000, `коллекция: ${combos.toLocaleString('ru-RU')} соче
 await A.evaluate(()=>openAva()); await A.waitForTimeout(500);
 ok(await A.evaluate(()=>!document.getElementById('mAva').hidden), 'конструктор открылся');
 const tabs=await A.evaluate(()=>[...document.querySelectorAll('#avaTabs button')].map(b=>b.textContent));
-ok(tabs.length===6, 'вкладки: '+tabs.join(', '));
+ok(tabs.length===7, 'вкладки: '+tabs.join(', '));
+// спутник выбирается здесь же — магическое животное на выбор
+await A.evaluate(()=>{ eval('avaTab="pet"'); avaRender(); }); await A.waitForTimeout(400);
+const pets=await A.evaluate(()=>[...document.querySelectorAll('#avaGrid button')].map(b=>b.textContent));
+ok(pets.length>=12, `спутников на выбор: ${pets.length} — ${pets.slice(0,3).join(', ')}…`);
+await A.evaluate(()=>{ document.querySelectorAll('#avaGrid button')[5].click(); }); await A.waitForTimeout(300);
+ok((await A.evaluate(()=>eval('avaDraft').pet))===5, 'спутник выбран и запомнился в персонаже');
+await A.evaluate(()=>{ eval('avaTab="skin"'); avaRender(); }); await A.waitForTimeout(300);
 const sw=await A.evaluate(()=>document.querySelectorAll('#avaGrid .avaSw').length);
 ok(sw>0, `на вкладке «Кожа» ${sw} вариантов`);
 

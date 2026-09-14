@@ -51,7 +51,8 @@ await p.waitForTimeout(1000);
 g=await G();
 ok(!!g.open['starter-01'], `тема пройдена по словам → открылся набор «вся тема»`);
 const nextFirst=Object.keys(g.openW).find(k=>k.startsWith('starter-02#'));
-ok(!!nextFirst, 'и первое слово следующей темы: '+nextFirst);
+ok(!nextFirst, 'следующая тема пока закрыта — её открывает заказ на станции');
+ok(!!g.order, `и заказ выдан: ${g.order&&g.order.kind} по теме «${g.order&&g.order.theme}»`);
 
 // покупаем набор и проверяем, что кустов много и плодов на них 2–3
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'buy',lesson:'starter-01'})"));

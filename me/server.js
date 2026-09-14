@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-13-35';
+const BUILD = '2026-09-14-38';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -211,8 +211,8 @@ const makeCode = () => {
 const send = (ws, o) => { try { ws.send(JSON.stringify(o)); } catch (e) {} };
 const bcast = (room, o, exceptId) => { for (const c of room.clients.values()) if (c.id !== exceptId) send(c.ws, o); };
 // размеры палитр держим здесь: клиент рисует, сервер проверяет границы
-const AVA_LIM = { skin: 6, hair: 12, hairStyle: 3, shirt: 14, pants: 8, hat: 5 };
-const DEF_AVA = { skin: 1, hair: 1, hairStyle: 0, shirt: 6, pants: 0, hat: 0 };
+const AVA_LIM = { skin: 6, hair: 12, hairStyle: 3, shirt: 14, pants: 8, hat: 5, pet: 20 };
+const DEF_AVA = { skin: 1, hair: 1, hairStyle: 0, shirt: 6, pants: 0, hat: 0, pet: 0 };
 function sanitizeAva(a) {
   const o = Object.assign({}, DEF_AVA);
   if (a && typeof a === 'object') for (const k of Object.keys(AVA_LIM)) {
@@ -612,14 +612,22 @@ function unlockAfterWord(g, lessonId, word) {   // собрал слово — �
     const id = wordSeedId(lessonId, nx.word);
     if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: nx.word, level: les.level }); }
   } else {
-    // слова темы кончились: даём набор «вся тема» и первое слово следующей темы
+    // Слова темы кончились. Даём набор «вся тема» — и вместо следующей темы выдаём
+    // ЗАКАЗ на станции. Следующая тема откроется, когда заказ будет выполнен:
+    // так практика фраз становится обязательной ступенью, а не необязательным кружком.
     if (!g.open[lessonId]) { g.open[lessonId] = 1; opened.push({ id: lessonId, theme: les.theme || les.title, level: les.level }); }
-    const nl = nextLesson(lessonId);
-    if (nl) {
-      const first = (loadLesson(nl.id) || {}).words || [];
-      if (first[0]) {
-        const id = wordSeedId(nl.id, first[0].word);
-        if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: first[0].word, level: nl.level }); }
+    if (!g.order) {
+      const o = makeOrder(g, lessonId);
+      if (o) { g.order = o; opened.push({ order: true, kind: o.kind, theme: o.theme }); }
+      else {                                  // для темы нет шаблона фраз — пропускаем станцию
+        const nl = nextLesson(lessonId);
+        if (nl) {
+          const first = (loadLesson(nl.id) || {}).words || [];
+          if (first[0]) {
+            const id = wordSeedId(nl.id, first[0].word);
+            if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: first[0].word, level: nl.level }); }
+          }
+        }
       }
     }
   }
@@ -643,8 +651,31 @@ function helpingHand(g) {               // тупика быть не должн
 // Так грамматика тренируется на уже знакомых словах, а платят за фразу много больше, чем за плод:
 // новые семена покупаются именно здесь, а не бесконечным сбором старого урожая.
 const PHRASE_PAY = 4;                  // фраза стоит столько же, сколько 4 плода этого уровня
-function phraseTemplate(les) {
-  const raw = (les && les.sentence) || [];
+// Четыре станции разговорного квартала. У каждой своя грамматика, и все рамки
+// осмысленны с ЛЮБЫМ существительным — иначе ребёнок заучит бессмыслицу.
+const TALK = {
+  cook:  { pay: 4, title: 'Кухня',        ask: 'What do you like?'   },  // шаблон самого урока
+  shop:  { pay: 5, title: 'Касса',        ask: 'What do you want?',
+           frame: ['how', 'much', 'is', 'the', '*'] },
+  lost:  { pay: 4, title: 'Бюро находок', ask: 'Whose is this?',
+           frame: ['this', 'is', 'my', '*'] },
+  stage: { pay: 7, title: 'Сцена',        ask: 'Say your line'       },  // реплика из ролевой сценки
+};
+const talkKind = k => (TALK[k] ? String(k) : 'cook');
+// Шаблон фразы для станции: где слот под слово ребёнка и из каких частей собрать фразу.
+function phraseTemplate(les, kind) {
+  const k = talkKind(kind);
+  if (k === 'stage') {                          // сценка: готовая реплика, слота нет
+    const a = les && les.roleplay && les.roleplay.a;
+    if (!a) return null;
+    const parts = String(a).toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean);
+    return parts.length ? { parts, slot: -1, reply: (les.roleplay.b || '') } : null;
+  }
+  if (TALK[k].frame) {
+    const parts = TALK[k].frame.slice();
+    return { parts, slot: parts.indexOf('*') };
+  }
+  const raw = (les && les.sentence) || [];      // кухня — грамматика самого урока
   if (!raw.length) return null;
   const vocab = new Set((les.words || []).map(w => String(w.word).toLowerCase()));
   const slot = raw.findIndex(t => vocab.has(String(t).toLowerCase()));
@@ -664,28 +695,107 @@ function grownWords(g) {
   for (const b of Object.values(g.beds || {})) for (const w of (b.words || [])) add(b.lesson, w.word);
   return out;
 }
-function phraseTask(g) {               // что сказать прямо сейчас
-  const pool = grownWords(g).filter(x => phraseTemplate(loadLesson(x.lesson)));
+// ── ЗАКАЗЫ СТАНЦИЙ: главная цепочка обучения ──────────────────────────────────
+// Тема пройдена (все её слова выращены) → на одной из станций появляется ЗАКАЗ.
+// Заказ конечный: принести названные плоды и сказать столько-то фраз. Выполнил —
+// большой приз, трофей и ТОЛЬКО ТОГДА открывается следующая тема в киоске.
+// Без заказа станция ничего не даёт: бесконечной фермы фраз быть не должно.
+const ORDER_KINDS = ['cook', 'shop', 'lost', 'stage'];
+const ORDER_TROPHY = { cook:'a5', shop:'a1', lost:'a2', stage:'a6' };
+const ORDER_SAY = 4;            // столько фраз в заказе
+const ORDER_EACH = 2;           // столько плодов каждого названного слова
+const ORDER_WORDS = 3;          // сколько слов темы попадает в заказ
+function makeOrder(g, lessonId) {
+  const les = loadLesson(lessonId); if (!les) return null;
+  const kind = ORDER_KINDS[(g.orders | 0) % ORDER_KINDS.length];
+  if (!phraseTemplate(les, kind)) return null;             // нечего просить — не мучаем ребёнка
+  const words = (les.words || []).slice(0, ORDER_WORDS).map(w => String(w.word));
+  if (!words.length) return null;
+  const need = {}; for (const w of words) need[w] = ORDER_EACH;
+  return { kind, lesson: lessonId, theme: les.theme || les.title,
+           need, gave: {}, say: ORDER_SAY, said: 0, at: Date.now() };
+}
+function orderCard(g) {                 // как заказ выглядит на экране станции
+  const o = g.order; if (!o) return null;
+  const les = loadLesson(o.lesson) || {};
+  const emo = w => ((les.words || []).find(x => x.word === w) || {}).emoji || '🌱';
+  const items = Object.keys(o.need).map(w => ({ word: w, emoji: emo(w),
+    need: o.need[w] | 0, gave: Math.min(o.gave[w] | 0, o.need[w] | 0),
+    have: (g.basket && g.basket[o.lesson]) | 0 }));
+  const bring = items.every(i => i.gave >= i.need);
+  return { kind: o.kind, theme: o.theme, lesson: o.lesson, items,
+           say: o.say, said: Math.min(o.said, o.say),
+           bringDone: bring, sayDone: o.said >= o.say, ready: bring && o.said >= o.say,
+           prize: orderPrize(o) };
+}
+const orderPrize = o => Math.max(24, fruitPrice(loadLesson(o.lesson) || {}) * 12);
+// сколько плодов этой темы лежит в корзине — сдают именно их
+function orderGive(g) {
+  const o = g.order; if (!o) return { moved: 0 };
+  let moved = 0;
+  let have = (g.basket && g.basket[o.lesson]) | 0;
+  for (const w of Object.keys(o.need)) {
+    const want = (o.need[w] | 0) - (o.gave[w] | 0);
+    if (want <= 0 || have <= 0) continue;
+    const take = Math.min(want, have);
+    o.gave[w] = (o.gave[w] | 0) + take; have -= take; moved += take;
+  }
+  if (moved) { g.basket[o.lesson] = have; if (!have) delete g.basket[o.lesson]; }
+  return { moved };
+}
+function orderFinish(g) {
+  const o = g.order; if (!o) return null;
+  const prize = orderPrize(o);
+  g.coins += prize;
+  g.orders = (g.orders | 0) + 1;
+  const trophy = artById(ORDER_TROPHY[o.kind] || 'a5');
+  if (trophy) bagAdd(g, trophy.id, 1);
+  const opened = [];
+  const nl = nextLesson(o.lesson);          // вот теперь открывается следующая тема
+  if (nl) {
+    const first = (loadLesson(nl.id) || {}).words || [];
+    if (first[0]) {
+      const id = wordSeedId(nl.id, first[0].word);
+      if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: first[0].word, level: nl.level }); }
+    }
+  }
+  const res = { kind: o.kind, theme: o.theme, prize, opened,
+                trophy: trophy ? { emoji: trophy.emoji, name: trophy.name, desc: trophy.desc } : null,
+                next: nl ? (loadLesson(nl.id) || {}).theme || nl.id : '' };
+  g.order = null;
+  return res;
+}
+const saidKey = (kind, lesson, word) => talkKind(kind) + ':' + lesson + '#' + word;
+function phraseTask(g, kind) {          // что сказать прямо сейчас на этой станции
+  const k = talkKind(kind);
+  const pool = grownWords(g).filter(x => phraseTemplate(loadLesson(x.lesson), k));
   if (!pool.length) return null;
-  // реже повторяем то, что уже отвечали: счётчик в g.said
+  // реже повторяем то, что уже отвечали: счётчик в g.said, у каждой станции свой
   g.said = g.said || {};
-  pool.sort((a, b) => (g.said[a.lesson + '#' + a.word] | 0) - (g.said[b.lesson + '#' + b.word] | 0));
-  const best = pool.filter(x => (g.said[x.lesson + '#' + x.word] | 0) === (g.said[pool[0].lesson + '#' + pool[0].word] | 0));
+  const seen = x => g.said[saidKey(k, x.lesson, x.word)] | 0;
+  pool.sort((a, b) => seen(a) - seen(b));
+  const best = pool.filter(x => seen(x) === seen(pool[0]));
   const pick = best[Math.floor(Math.random() * best.length)];
-  const les = loadLesson(pick.lesson), tpl = phraseTemplate(les);
-  const parts = tpl.parts.slice(); parts[tpl.slot] = pick.word;
+  const les = loadLesson(pick.lesson), tpl = phraseTemplate(les, k);
+  const parts = tpl.parts.slice();
+  if (tpl.slot >= 0) parts[tpl.slot] = pick.word;
   const voc = (les.words || []).find(w => w.word === pick.word) || {};
   return {
-    lesson: pick.lesson, word: pick.word, emoji: voc.emoji || '🌱', ru: voc.ru || '',
+    kind: k, lesson: pick.lesson, word: pick.word, emoji: voc.emoji || '🌱', ru: voc.ru || '',
     text: parts.join(' '), parts, slot: tpl.slot,
-    pay: phrasePay(les, g, pick.lesson + '#' + pick.word),
-    title: (les.roleplay && les.roleplay.title) || '',
-    ask: (les.roleplay && les.roleplay.a) || '',
+    pay: phrasePay(les, g, saidKey(k, pick.lesson, pick.word), k),
+    title: k === 'stage' ? ((les.roleplay && les.roleplay.title) || TALK[k].title) : TALK[k].title,
+    ask: k === 'stage' ? ((les.roleplay && les.roleplay.title) || '') : TALK[k].ask,
+    reply: tpl.reply || '',
+    belt: grownWords(g).slice(0, 8).map(x => {
+      const l = loadLesson(x.lesson), v = (l && (l.words || []).find(w => w.word === x.word)) || {};
+      return { word: x.word, emoji: v.emoji || '🌱' };
+    }),
   };
 }
-function phrasePay(les, g, key) {
+function phrasePay(les, g, key, kind) {
   const times = (g.said && g.said[key]) | 0;
-  const base = fruitPrice(les) * PHRASE_PAY;
+  const base = fruitPrice(les) * (TALK[talkKind(kind)].pay || PHRASE_PAY);
   return Math.max(1, Math.round(base * (times === 0 ? 1 : times === 1 ? 0.6 : 0.35)));
 }
 function shopWords(g) {                 // что лежит на прилавке по словам
@@ -746,7 +856,7 @@ function migrateTrees(u) {             // сады старой версии: д
   delete u.trees;
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
-function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0,
+function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0,
   bossDone: 0, weapon: 0, pets: [], sinceBoss: 0, boss: null, items: {} }; }
 function sanitizeBed(b) {              // грядка из чужих рук (браузер гостя) — доверяем только структуре
   if (!b || typeof b !== 'object') return null;
@@ -799,8 +909,25 @@ function sanitizeGarden(src) {
   g.gifted = !!src.gifted;
   g.soldOnce = src.soldOnce ? 1 : 0;
   for (const k of Object.keys(src.days || {}).slice(-400)) if (/^\d{4}-\d{2}-\d{2}$/.test(k)) g.days[k] = 1;
-  for (const [id, n] of Object.entries(src.said || {})) if (parseSeed(id)) g.said[id] = Math.min(9999, Math.max(0, n | 0));
+  // ключ счётчика фраз теперь «станция:урок#слово» — старый формат тоже принимаем
+  for (const [id, n] of Object.entries(src.said || {})) {
+    const bare = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
+    if (parseSeed(bare)) g.said[id] = Math.min(9999, Math.max(0, n | 0));
+  }
   g.phrases = Math.min(999999, Math.max(0, src.phrases | 0));
+  g.orders = Math.min(9999, Math.max(0, src.orders | 0));
+  const so = src.order;                       // заказ станции переносим целиком, но с проверкой
+  if (so && ORDER_KINDS.includes(so.kind) && loadLesson(so.lesson)) {
+    const need = {}, gave = {};
+    for (const [w, n] of Object.entries(so.need || {})) need[String(w)] = Math.min(20, Math.max(1, n | 0));
+    for (const [w, n] of Object.entries(so.gave || {})) if (need[w]) gave[String(w)] = Math.min(need[w], Math.max(0, n | 0));
+    if (Object.keys(need).length) {
+      const les = loadLesson(so.lesson);
+      g.order = { kind: so.kind, lesson: so.lesson, theme: les.theme || les.title, need, gave,
+                  say: Math.min(20, Math.max(1, so.say | 0 || ORDER_SAY)),
+                  said: Math.min(20, Math.max(0, so.said | 0)), at: Date.now() };
+    }
+  }
   return g;
 }
 function plantState(b, word) {          // состояние одного куста: свой круг и свой срок
@@ -1360,19 +1487,51 @@ wss.on('connection', (ws, req) => {
         console.log(`сад обнулён: ${u ? u.name : 'гость'}`);
         return reply({ reset: true });
       }
-      if (m.act === 'phrase') {        // станция выдаёт задание: что сказать
-        const t = phraseTask(g);
-        if (!t) return deny('Сперва вырасти хоть одно слово на грядке');
-        g.phraseNow = t.lesson + '#' + t.word;
-        return reply({ phrase: t });
+      if (m.act === 'phrase') {        // подошёл к станции: показываем её заказ
+        const kind = talkKind(m.kind);
+        const card = orderCard(g);
+        if (!card || card.kind !== kind) {
+          // у этой станции сейчас заказа нет — и придумывать бесконечные фразы не надо
+          const mine = card ? ORDER_KINDS.indexOf(card.kind) : -1;
+          return reply({ order: null, orderKind: kind,
+            orderWhere: card ? card.kind : '', orderTheme: card ? card.theme : '' });
+        }
+        let t = null;
+        if (!card.sayDone) {
+          t = phraseTask(g, kind);
+          if (t) { g.phraseNow = t.lesson + '#' + t.word; g.phraseKind = t.kind; }
+        }
+        return reply({ order: card, phrase: t });
+      }
+      if (m.act === 'orderGive') {     // сдать плоды в заказ
+        const card = orderCard(g);
+        if (!card) return deny('Заказа сейчас нет');
+        if (card.bringDone) return deny('Плоды уже сданы — осталось сказать фразы');
+        const r = orderGive(g);
+        if (!r.moved) return deny('В корзине нет нужных плодов — собери урожай этой темы');
+        logAct(room, me, `сдал ${r.moved} плодов в заказ 📦`, 'sell');
+        return reply({ orderGave: r.moved, order: orderCard(g) });
+      }
+      if (m.act === 'orderTake') {     // забрать приз
+        const card = orderCard(g);
+        if (!card) return deny('Заказа сейчас нет');
+        if (!card.ready) return deny('Заказ ещё не готов');
+        const res = orderFinish(g);
+        if (u) u.stars = (u.stars || 0) + 5; else guestStars += 5;
+        markDay(g);
+        logAct(room, me, `выполнил заказ «${res.theme}» 🏆`, 'win');
+        console.log(`заказ выполнен: ${u ? u.name : 'гость'} — ${res.theme} (+${res.prize})`);
+        return reply({ orderDone: res, opened: res.opened });
       }
       if (m.act === 'phraseSaid') {    // ребёнок произнёс фразу — проверяем и платим
         const key = String(m.key || g.phraseNow || '');
+        const kind = talkKind(m.kind || g.phraseKind);
         const ws = parseSeed(key);
         if (!ws) return deny('Задание не выдано');
-        const les = loadLesson(ws.lesson), tpl = les && phraseTemplate(les);
+        const les = loadLesson(ws.lesson), tpl = les && phraseTemplate(les, kind);
         if (!tpl) return deny('Для этой темы фразы ещё нет');
-        const parts = tpl.parts.slice(); parts[tpl.slot] = ws.word;
+        const parts = tpl.parts.slice();
+        if (tpl.slot >= 0) parts[tpl.slot] = ws.word;
         const said = String(m.said || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
         const strip = w => w.endsWith('s') ? w.slice(0, -1) : w;
         const toks = said.map(strip);
@@ -1384,16 +1543,23 @@ wss.on('connection', (ws, req) => {
           pos = i + 1;
         }
         if (!ok) return reply({ phraseMiss: { text: parts.join(' '), heard: String(m.said || '') } });
+        if (!g.order || g.order.kind !== kind) return deny('Заказа на этой станции сейчас нет');
         g.said = g.said || {};
-        const pay = phrasePay(les, g, key);
-        g.said[key] = (g.said[key] | 0) + 1;
+        const sk = saidKey(kind, ws.lesson, ws.word);
+        const pay = phrasePay(les, g, sk, kind);
+        g.said[sk] = (g.said[sk] | 0) + 1;
         g.phrases = (g.phrases | 0) + 1;
         g.coins += pay;
         if (u) u.stars = (u.stars || 0) + 2; else guestStars += 2;
         markDay(g);
         logAct(room, me, `сказал фразу «${parts.join(' ')}» 🗣`, 'say');
         console.log(`фраза: ${u ? u.name : 'гость'} — ${parts.join(' ')} (+${pay})`);
-        return reply({ phraseOk: { text: parts.join(' '), pay, total: g.phrases | 0 }, phrase: phraseTask(g) });
+        g.order.said = (g.order.said | 0) + 1;
+        const card = orderCard(g);
+        const more = card.sayDone ? null : phraseTask(g, kind);
+        if (more) { g.phraseNow = more.lesson + '#' + more.word; g.phraseKind = kind; }
+        return reply({ phraseOk: { text: parts.join(' '), pay, total: g.phrases | 0,
+                                   reply: tpl.reply || '' }, order: card, phrase: more });
       }
       if (m.act === 'sell') { // лавка плодов: корзина превращается в монеты
         let coins = 0, fruits = 0;

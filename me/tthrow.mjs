@@ -48,8 +48,13 @@ await p.waitForTimeout(200);
 const mid=await p.evaluate(()=>window.game.bossShots());
 ok(mid.length>0 && mid[0].t>inFlight[0].t, `плод продвинулся: ${inFlight[0].t} → ${mid.length?mid[0].t:'долетел'}`);
 // долетел — брызги и число урона
-await p.waitForTimeout(900);
-const pops=await p.evaluate(()=>window.game.dmgPops());
+// цифра урона живёт около секунды — ловим её, а не подглядываем один раз наугад
+let pops=[];
+for(let i=0;i<25;i++){
+  pops=await p.evaluate(()=>window.game.dmgPops());
+  if(pops.length) break;
+  await p.waitForTimeout(80);
+}
 ok(pops.length>0 && /^−\d+$/.test(pops[0]), `над боссом всплыло число урона: «${pops[0]||'—'}»`);
 g=await G();
 const dmg=hp0-g.boss.hp;

@@ -48,7 +48,10 @@ await p.waitForTimeout(900);
 let L=await p.evaluate(()=>window.__log);
 ok((await p.evaluate(()=>!!holdFruit)), 'палец попал в плод — начался сбор');
 ok(L.said.includes(f.word), `слово произнесено: «${f.word}»`);
-ok(L.starts>=1 && L.cont>=1, 'запись пошла и она непрерывная — говорить можно сколько угодно');
+// микрофон открывается, только когда игра договорила: иначе ответ ребёнка выбрасывается
+await p.waitForFunction(()=>eval('listening'),null,{timeout:6000}).catch(()=>{});
+L=await p.evaluate(()=>window.__log);
+ok(L.starts>=1 && L.cont>=1, 'игра договорила — запись пошла, и она непрерывная');
 const tag=await p.evaluate(()=>({on:getComputedStyle(document.getElementById('pickTag')).display,
   txt:document.getElementById('pickTag').textContent}));
 ok(tag.on!=='none', `над плодом ярлык: «${tag.txt}»`);

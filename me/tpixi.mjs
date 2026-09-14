@@ -6,6 +6,7 @@ const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194
 const ctx=await b.newContext({...devices['iPhone 13'],viewport:{width:390,height:844},isMobile:true,hasTouch:true});
 const p=await ctx.newPage();
 p.on('pageerror',e=>console.log('PAGEERROR:',e.message.slice(0,170)));
+const PIXI_CLOSE_OK=3.4;
 const ok=(c,m)=>console.log((c?'  OK  ':' FAIL ')+m);
 const X=()=>p.evaluate(()=>window.game.pixi());
 await p.goto('http://localhost:8642',{waitUntil:'load'}); await p.waitForTimeout(1500);
@@ -20,18 +21,35 @@ ok(x.here, 'Пикси появился рядом с новичком');
 ok(/Привет/.test(x.said), `и поздоровался: «${x.said}»`);
 ok(x.shown==='block', 'облачко с репликой видно');
 
-// держится рядом, но не вплотную
-await p.waitForTimeout(1500);
-let d=await p.evaluate(()=>{ const q=window.game.pixi(), P=window.game.P;
+// подошёл поздороваться — значит, встал близко
+const dist=()=>p.evaluate(()=>{ const q=window.game.pixi(), P=window.game.P;
   return +Math.hypot(q.x-P.x,q.z-P.z).toFixed(1); });
-ok(d>0.5 && d<8, `стоит рядом, но не мешает: ${d} блока от игрока`);
+await p.waitForTimeout(2500);
+let d=await dist();
+ok(d<5, `подошёл сказать — встал в ${d} блока`);
 
-// игрок ушёл — Пикси догоняет
+// сказал — и отошёл: впритык ходить не должен
+await p.evaluate(()=>{ eval('pixiUntil=Date.now()+300'); });   // дочитали реплику
+await p.waitForTimeout(3000);
+const mode=await p.evaluate(()=>eval('pixiMode'));
+ok(mode==='idle', `реплика кончилась — вернулся к своим делам (режим «${mode}»)`);
+let far=0, close=0;
+for(let i=0;i<12;i++){ await p.waitForTimeout(900); const v=await dist();
+  far=Math.max(far,v); if(v<PIXI_CLOSE_OK) close++; }
+ok(far>6, `отходит гулять — отдалялся до ${far} блоков`);
+ok(close===0, 'и ни разу не встал вплотную, пока молчит');
+
+// гуляет сам по себе, а не стоит столбом
+const a=await p.evaluate(()=>{const q=window.game.pixi(); return [q.x,q.z];});
+await p.waitForTimeout(2500);
+const bb=await p.evaluate(()=>{const q=window.game.pixi(); return [q.x,q.z];});
+ok(Math.hypot(bb[0]-a[0],bb[1]-a[1])>0.5, 'бродит рядом сам по себе, а не стоит на месте');
+
+// игрок ушёл — Пикси не бросает его, но и не липнет
 await p.evaluate(()=>{ const P=window.game.P; P.x+=22; P.z+=14; });
-await p.waitForTimeout(3500);
-d=await p.evaluate(()=>{ const q=window.game.pixi(), P=window.game.P;
-  return +Math.hypot(q.x-P.x,q.z-P.z).toFixed(1); });
-ok(d<8, `игрок отошёл на 26 блоков — Пикси догнал, теперь ${d}`);
+await p.waitForTimeout(6000);
+d=await dist();
+ok(d<20, `игрок отошёл на 26 блоков — Пикси подтянулся, теперь ${d}`);
 
 // реплика меняется вместе с шагом
 await p.evaluate(()=>openShop()); await p.waitForTimeout(900);

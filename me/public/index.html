@@ -292,6 +292,30 @@
   @keyframes vOff{0%,100%{box-shadow:0 8px 24px rgba(0,0,0,.45)}
                   50%{box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 0 6px rgba(176,42,28,.25)}}
   html.menu #voiceOff, html.fight #voiceOff{display:none!important}
+  /* ящик на конвейере: предмет крупно, под ним слово — видно с улицы */
+  .wtag.belt{background:rgba(18,26,42,.86);border:2px solid rgba(255,214,102,.75);
+    border-radius:10px;padding:2px 7px 3px;line-height:1.05;text-align:center;white-space:nowrap;
+    box-shadow:0 4px 12px rgba(0,0,0,.45)}
+  .wtag.belt .bEm{display:block;font-size:17px}
+  .wtag.belt b{font-size:10px;color:#ffe066;letter-spacing:.3px}
+  /* вывеска станции: заметная, но не во всё небо */
+  .wtag.st{font-size:19px;font-weight:800;color:#ffe066;text-shadow:0 2px 6px rgba(0,0,0,.85);
+    letter-spacing:1px;text-align:center;white-space:nowrap}
+  .wtag.st small{display:block;font-size:11px;font-weight:600;color:#cfe3ff;letter-spacing:.4px}
+  /* карточка заказа станции: что принести и сколько фраз сказать */
+  #talkOrder{margin:8px 0 6px;padding:9px 10px;border-radius:12px;
+    background:rgba(12,20,36,.7);border:1px solid rgba(120,160,220,.35)}
+  #talkOrder .oHead{font-size:13px;color:#cfe3ff;margin-bottom:6px}
+  #talkOrder .oHead b{color:#ffe066}
+  #talkOrder .oRow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  #talkOrder .oIt{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:9px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);font-size:14px}
+  #talkOrder .oIt.ok{background:rgba(60,160,90,.25);border-color:rgba(120,230,150,.5)}
+  #talkOrder .oIt small{font-size:12px;color:#dbe7f7}
+  #talkOrder .oSay{margin-top:7px;font-size:13px;color:#cfe3ff}
+  #talkOrder .oSay b{color:#ffe066}
+  #talkGive,#talkPrize{display:none;width:100%;margin:4px 0 2px}
+  #talkPrize{background:#c8901f;border-color:#ffd166}
   /* обрыв связи: телефон заснул — сокет умер. Раньше игра молчала, ребёнок тыкал в пустоту */
   #netOff{position:fixed;left:0;right:0;margin:0 auto;top:8px;z-index:14;display:none;
     width:min(420px,92vw);padding:11px 14px;border-radius:14px;
@@ -574,6 +598,9 @@
   <div id="talkBox">
     <div id="talkWho">🧑‍🍳 <b>Повар Джек</b></div>
     <div id="talkAsk"></div>
+    <div id="talkOrder"></div>
+    <button id="talkGive">📦 Сдать плоды</button>
+    <button id="talkPrize">🏆 Забрать приз</button>
     <div id="talkBelt"></div>
     <div id="talkItem">🍎</div>
     <div id="talkPhrase"></div>
@@ -632,7 +659,7 @@
       <button id="pmReset" class="ghost">♻️ Начать сад заново</button>
       <button id="pmAva" class="ghost">🎨 Мой персонаж</button>
       <button id="pmOnb" class="ghost">🧭 Показать подсказки заново</button>
-      <button id="pmPixi" class="ghost">🧚 Помощник Пикси</button>
+      <button id="pmPixi" class="ghost">🐲 Спутник</button>
       <p class="hint" id="pmBoss" style="margin-top:10px;font-size:12.5px"></p>
       <div id="mvBox">
         <button class="ghost" id="mvBtn">🎵 Музыка включена</button>
@@ -1224,10 +1251,10 @@ const AVA_HAT  =['нет','кепка','ободок','шляпа','корона
 const AVA_HAIRSTYLE=['короткие','длинные','пучок'];
 const HEXC=h=>[parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
 const pick=(arr,i)=>arr[((i|0)%arr.length+arr.length)%arr.length];
-const DEF_AVA={skin:1,hair:1,hairStyle:0,shirt:6,pants:0,hat:0};
+const DEF_AVA={skin:1,hair:1,hairStyle:0,shirt:6,pants:0,hat:0,pet:0};
 function avaOf(a){                       // нормализуем что угодно к полному набору
   const o=Object.assign({},DEF_AVA,a&&typeof a==='object'?a:{});
-  for(const k of ['skin','hair','hairStyle','shirt','pants','hat']) o[k]=o[k]|0;
+  for(const k of ['skin','hair','hairStyle','shirt','pants','hat','pet']) o[k]=o[k]|0;
   return o;
 }
 function pushPlayerMesh(V, st){ // st: {x,y,z,yaw,walkPhase,walkAmp,ava}
@@ -1586,6 +1613,10 @@ function handleNet(m){
     if(m.bosses) BOSSES=m.bosses;
     if(m.weapons) WEAPONS=m.weapons;
     if(m.bossWords) bossWordList=m.bossWords;
+    if(talkOn && 'order' in m && !m.order && !m.orderDone) talkNoOrder(m);
+    if(m.order) talkOrderShow(m.order);
+    if(m.orderGave) { toast(`📦 Сдал ${fruitsWord(m.orderGave)} в заказ`); snd(680,.1,'triangle',.15); }
+    if(m.orderDone) talkPrizeGot(m.orderDone);
     if(m.phrase) talkShow(m.phrase);
     if(m.phraseOk) talkOk(m.phraseOk);
     if(m.phraseMiss) talkMissed(m.phraseMiss);
@@ -1636,7 +1667,9 @@ function handleNet(m){
     if(m.bossFled){ toast('Ты убежал. Босс ушёл, но грядки уже потоптаны.'); $('storm').style.display='none'; }
     if(m.gotWeapon){ toast(`${m.gotWeapon.emoji} Куплено: ${m.gotWeapon.name}`); if(!$('mArms').hidden) renderArms(); }
     if(m.opened&&m.opened.length){       // новая тема — заметное событие, а не строчка в списке
-      for(const o of m.opened) toast(`🔓 Открылась новая тема: «${o.theme}»! Загляни в киоск 🏪`);
+      for(const o of m.opened) toast(o.order
+        ? `📦 Новый заказ! ${talkStOf(o.kind).emoji} ${talkStOf(o.kind).tag} ждёт тебя на улице — ${talkStOf(o.kind).title}`
+        : `🔓 Открылась новая тема: «${o.theme}»! Загляни в киоск 🏪`);
       snd(620,.1,'triangle',.15); setTimeout(()=>snd(830,.12,'triangle',.15),120);
       setTimeout(()=>snd(1050,.22,'triangle',.15),250);
     }
@@ -1982,7 +2015,11 @@ const SPROUT=0.16;                                              // росток 
 function plantGrow(b,w){        // 0..1 — насколько этот куст вырос прямо сейчас
   if(!b) return 1;
   if(ripeLeft(b,w)>0) return 1;                                 // плоды висят — куст взрослый
-  const st=pst(b,w), left=st.r-nowMs();
+  const st=pst(b,w);
+  // Дерево растёт один раз и остаётся большим. Раньше сорванный куст съёживался
+  // до ростка и полз вверх заново — ребёнку казалось, что его растение пропало.
+  if((st.c|0)>0) return 1;
+  const left=st.r-nowMs();
   if(left<=0) return SPROUT;                                    // сорвали, новый круг ещё не пошёл
   const total=Math.max(1,growMsC(st.c, b.lesson+"#"+w));
   return Math.max(SPROUT,Math.min(1,1-left/total));             // тянется вверх, пока зреет
@@ -2005,7 +2042,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=6;             // восемь участков на улице, по шесть грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-13-35';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-14-38';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2060,31 +2097,96 @@ function buildGardenWorld(){
       interactables.push({x:q.x+.5,y:H+1,z:q.z+.5,r:5,label:'грядка',act:'bed',plot:i,bed:b});
     }
   }
-  talkStation(sx-14, sz+6, H);  // разговорная станция: фразы приносят настоящие деньги
+  talkQuarter(sx, sz, H);       // разговорный квартал: четыре станции вдоль улицы
   gardenPortal(sx, sz-12, H);   // портал в школу — в конце улицы, напротив прилавков
 }
-// 🗣 Разговорная станция: будка с конвейером. По ленте едут предметы, а житель за стойкой
-// просит сказать про них целую фразу. Платят здесь в разы больше, чем за плоды, —
-// именно тут зарабатывают на следующее семя.
-function talkStation(px, pz, H){
+// 🗣 РАЗГОВОРНЫЙ КВАРТАЛ. Четыре станции стоят прямо на улице (на участки не залезают:
+// огороды начинаются с x = sx±6). У каждой свой цвет, свой житель и своя грамматика.
+const TALK_ST=[
+  {kind:'cook', z:16, side:-1, wall:BRICK, roof:C_ORG, acc:C_YEL,  belt:C_GRY,
+   emoji:'🧑‍🍳', tag:'Повар Джек',   title:'🍳 КУХНЯ',        sub:'скажи, что тебе нравится',
+   ava:{skin:3,hair:1,hairStyle:2,shirt:12,pants:2,hat:3}},
+  {kind:'shop', z:32, side:+1, wall:C_PUR, roof:C_PINK, acc:C_YEL, belt:C_WHT,
+   emoji:'🧕',   tag:'Тётя Роза',    title:'💰 КАССА',         sub:'спроси цену целой фразой',
+   ava:{skin:1,hair:5,hairStyle:1,shirt:17,pants:15,hat:0}},
+  {kind:'lost', z:48, side:-1, wall:C_BLU, roof:C_CYAN, acc:C_WHT, belt:C_GRY,
+   emoji:'🧑‍✈️', tag:'Сторож Тимур', title:'🧳 БЮРО НАХОДОК', sub:'назови, что твоё',
+   ava:{skin:2,hair:19,hairStyle:0,shirt:20,pants:19,hat:2}},
+  {kind:'stage',z:64, side:+1, wall:C_DGRN, roof:C_RED, acc:C_YEL, belt:C_PUR,
+   emoji:'🎭',   tag:'Актриса Лия',  title:'🎭 СЦЕНА',         sub:'сыграй диалог по ролям',
+   ava:{skin:1,hair:12,hairStyle:1,shirt:11,pants:15,hat:0}},
+];
+let beltItems=[];                          // ползущие по ленте предметы: emoji + подпись
+function talkQuarter(sx, sz, H){
+  beltItems=[];
+  addWorldTag(sx+.5,H+11,sz+40,'🗣 РАЗГОВОРНЫЙ КВАРТАЛ<br><small>здесь платят за целые фразы — в разы больше, чем за плоды</small>','big');
+  for(const st of TALK_ST) talkStation(sx, sz+st.z, H, st);
+}
+// Одна станция: навес у края улицы, стойка, лента вдоль улицы и житель за прилавком.
+// Лента настоящая: по ней едут предметы из твоего огорода, под каждым — его слово.
+function talkStation(sx, cz, H, st){
   const put=(x,y,z,id)=>{ if(x>0&&x<WX&&y>0&&y<WY&&z>0&&z<WZ) world[idx(x,y,z)]=id; };
-  // площадка
-  for(let x=px-4;x<=px+4;x++) for(let z=pz-3;z<=pz+3;z++) put(x,H,z,PLANK);
-  // задняя стена и крыша навеса
-  for(let x=px-4;x<=px+4;x++) for(let y=H+1;y<=H+3;y++) put(x,y,pz-3,BRICK);
-  for(let x=px-4;x<=px+4;x++) for(let z=pz-3;z<=pz+1;z++) put(x,H+4,z,C_ORG);
-  for(const dz of [-3,1]) { put(px-4,H+1,pz+1,LOG); put(px+4,H+1,pz+1,LOG);
-    put(px-4,H+2,pz+1,LOG); put(px+4,H+2,pz+1,LOG); put(px-4,H+3,pz+1,LOG); put(px+4,H+3,pz+1,LOG); }
-  // стойка
-  for(let x=px-3;x<=px+3;x++){ put(x,H+1,pz,LOG); put(x,H+2,pz,C_WHT); }
-  // конвейерная лента перед стойкой: серая дорожка с цветными «коробками»
-  for(let x=px-4;x<=px+4;x++) put(x,H+1,pz+2,C_GRY);
-  const box=[C_RED,C_YEL,C_LIME,C_CYAN,C_PUR];
-  for(let i=0;i<5;i++) put(px-4+i*2,H+2,pz+2,box[i]);
-  addWorldTag(px+.5,H+6,pz+1.6,'🗣 РАЗГОВОРНАЯ СТАНЦИЯ<br><small>скажи фразу целиком — заплатят как за четыре плода</small>','big');
-  npcFigure(px,H,pz-1,{skin:3,hair:1,hairStyle:2,shirt:12,pants:2,hat:3});
-  addWorldTag(px+.5,H+3.1,pz-0.5,`🧑‍🍳 <b>${NPC_TALK.tag}</b><br><small>E — поговорить</small>`);
-  interactables.push({x:px+.5,y:H+1,z:pz+2.6,r:4,label:'разговорная станция — сказать фразу',act:'phrase'});
+  const s=st.side, wx=sx+5*s;               // стена у самого края улицы
+  const L=4;                                // половина длины павильона по z
+  const col=d=>wx-d*s;                      // d=0 стена · 1 житель · 2 стойка · 3 лента
+  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++) put(col(d),H,z,PLANK);       // помост
+  for(let y=H+1;y<=H+3;y++) for(let z=cz-L;z<=cz+L;z++) put(wx,y,z,st.wall);         // задняя стена
+  for(let d=0; d<=3; d++) for(let z=cz-L; z<=cz+L; z++) put(col(d),H+4,z,st.roof);   // навес
+  for(const z of [cz-L,cz+L]){                                                       // угловые столбы
+    for(let y=H+1;y<=H+3;y++){ put(col(1),y,z,LOG); put(col(3),y,z,LOG); }
+  }
+  for(let z=cz-L+1; z<=cz+L-1; z++){
+    put(col(2),H+1,z,LOG); put(col(2),H+2,z,st.acc);   // стойка со столешницей
+    put(col(3),H+1,z, (z-cz)%2 ? st.belt : C_BLK);     // лента: полотно и валики через один
+    put(col(3),H+2,z,AIR);
+    put(col(1),H+1,z,AIR); put(col(1),H+2,z,AIR);      // проход, где стоит житель
+  }
+  put(wx,H+3,cz,GLASS); put(wx,H+2,cz,GLASS);                                        // окошко в стене
+  for(const dz of [-L+1,L-1]) put(col(0),H+3,cz+dz,st.acc);                          // фонарики под навесом
+  addWorldTag(col(2)+.5,H+5.6,cz+.5,`${st.title}<br><small>${st.sub}</small>`,'st');
+  worldTags[worldTags.length-1].near=34;    // вывеска не висит через всю улицу
+  npcFigure(col(1),H,cz,st.ava);
+  addWorldTag(col(1)+.5,H+3.2,cz+.5,`${st.emoji} <b>${st.tag}</b>`);
+  worldTags[worldTags.length-1].near=22;
+  interactables.push({x:col(3)+.9*s,y:H+1,z:cz+.5,r:4.5,
+    label:`${st.tag}: ${st.sub}`,act:'phrase',kind:st.kind});
+  // три ящика на ленте, равномерно — их двигает beltTick()
+  for(let i=0;i<3;i++){
+    addWorldTag(col(3)+.5, H+2.3, cz, '', 'belt');
+    const t=worldTags[worldTags.length-1]; t.near=26;
+    beltItems.push({tag:t, slot:i, z0:cz-L+0.5, z1:cz+L-0.5, t:i/3});
+  }
+}
+// Лента живёт всегда, а не только когда открыт экран: улица должна выглядеть работающей.
+let beltLast=0;
+function beltTick(){
+  if(!beltItems.length || roomKind!=='garden') return;
+  const tn=performance.now();
+  const dt=Math.min(0.1, beltLast?(tn-beltLast)/1000:1/60);
+  beltLast=tn;
+  const goods=beltGoods();
+  for(const b of beltItems){
+    const was=b.t;
+    b.t+=dt*0.07; if(b.t>=1){ b.t-=1; b.slot++; }          // ящик уехал — на ленту встаёт следующий
+    const n=goods[(b.slot+b.t*0)%goods.length] || goods[0];
+    const html=`<span class="bEm">${n.emoji}</span><b>${n.word}</b>`;
+    if(b.html!==html){ b.html=html; b.tag.el.innerHTML=html; }
+    b.tag.z=b.z0+(b.z1-b.z0)*b.t;
+  }
+}
+// что едет по ленте: то, что ребёнок уже вырастил — иначе просить о нём фразу нечестно
+let beltCache=[], beltCacheAt=0;
+function beltGoods(){
+  if(Date.now()-beltCacheAt<2000) return beltCache;
+  beltCacheAt=Date.now();
+  const seen=new Set(), out=[];
+  for(const b of Object.values(myGarden.beds||{}))
+    for(const w of (b.words||[])){
+      if(seen.has(w.word)) continue; seen.add(w.word);
+      out.push({word:w.word, emoji:w.emoji||'🌱'});
+    }
+  beltCache=out.length?out:[{word:'apple',emoji:'🍎'},{word:'banana',emoji:'🍌'},{word:'pear',emoji:'🍐'}];
+  return beltCache;
 }
 // Арка-портал в конце улицы: сквозь неё видно «школу», внутрь — по нажатию.
 // Ставим приметно: кирпичные столбы, светящаяся сердцевина, ковровая дорожка и фонари.
@@ -2144,20 +2246,20 @@ function wordColor(word){ // самый частый цвет картинки �
 // ---- растения: настоящий куст со стеблем, листьями и плодами НА нём ----
 // Куст растёт сам и остаётся навсегда; плоды вызревают на нём и срываются. Размер куста
 // задаёт только редкость семени — по чужому огороду сразу видно, насколько игрок прокачан.
-const TIER_H=[1.6,2.1,2.7,3.4];           // высота куста в блоках по редкости
+const TIER_H=[2.4,3.0,3.8,4.6];           // высота дерева в блоках по редкости
 const tierH=t=>TIER_H[Math.min(TIER_H.length-1,Math.max(0,t|0))];
-const tierScale=t=>tierH(t)*0.05;         // размер кубика, из которого собран плод
+const tierScale=t=>tierH(t)*0.032;        // размер кубика, из которого собран плод
 const BED_R=2;   // кустики стоят тесно — грядка, а не поле
 const BED_SLOTS=[[-BED_R,-BED_R],[0,-BED_R],[BED_R,-BED_R],[-BED_R,0],[BED_R,0],
                  [-BED_R,BED_R],[0,BED_R],[BED_R,BED_R]];
-const FRUIT_SPOTS=[[.32,.28,.04],[-.30,.50,-.04],[.10,.68,.10]]; // до трёх плодов по бокам куста
+const FRUIT_SPOTS=[[.34,.54,.18],[-.33,.68,-.20],[.04,.86,.30]]; // до трёх плодов в кроне
 const bedTop=b=>tierH(b.tier)+0.5;
 function plantSpot(b,q,i){                        // где стоит кустик слова №i
   const sl=BED_SLOTS[i%BED_SLOTS.length];
   return {x:q.x+sl[0]+.5, y:q.y, z:q.z+sl[1]+.5};
 }
 function bedPlants(b,q,out,withFruit){
-  const h=tierH(b.tier), s=tierH(b.tier)*0.075;
+  const h=tierH(b.tier), s=tierH(b.tier)*0.038;   // плод соразмерен дереву, а не больше него
   b.words.forEach((w,i)=>{
     const c=plantSpot(b,q,i);
     const hh=h*plantGrow(b,w.word);             // сорванный куст начинает расти заново
@@ -2170,12 +2272,16 @@ function bedPlants(b,q,out,withFruit){
     }
   });
 }
-function pushPlant(V,x,y,z,h){                    // простой куст: стебель и одна шапка листвы
-  const t=0.05*h;
-  pushBox(V,x-t,y,z-t,x+t,y+h*0.78,z+t,C_DGRN);
-  const w=0.13*h, yy=y+h*0.70;
-  pushBox(V,x-w,yy,z-w,x+w,yy+0.10*h,z+w,LEAF);
-  pushBox(V,x-w*0.65,yy+0.10*h,z-w*0.65,x+w*0.65,yy+0.19*h,z+w*0.65,LEAF);
+// Настоящее дерево: ствол из брёвен и крона в три яруса. Раньше это была палка
+// с зелёным колпачком — ребёнок не узнавал в ней дерево, на котором растут плоды.
+function pushPlant(V,x,y,z,h){
+  const t=0.075*h;
+  pushBox(V,x-t,y,z-t,x+t,y+h*0.58,z+t,LOG);                              // ствол
+  const c=y+h*0.46;
+  const w1=0.26*h, w2=0.34*h, w3=0.19*h;
+  pushBox(V,x-w1,c,           z-w1,x+w1,c+0.16*h,z+w1,LEAF);              // нижний ярус кроны
+  pushBox(V,x-w2,c+0.15*h,    z-w2,x+w2,c+0.34*h,z+w2,LEAF);              // самый широкий
+  pushBox(V,x-w3,c+0.33*h,    z-w3,x+w3,c+0.47*h,z+w3,LEAF);              // макушка
 }
 let gCache=null,gCacheT=0,gCacheX=0,gCacheZ=0;
 const gardenDirty=()=>{ gCache=null; };   // данные сада пришли — пересобрать немедленно
@@ -2207,8 +2313,8 @@ function gardenMesh(V){                   // собираем растения �
 }
 function bedLabel(b,mine,near){ // вблизи — подробно, издалека — значок, иначе подписи налезают друг на друга
   const t=tierInfo(b.tier), left=ripeWords(b);
-  if(!near) return left.length ? `🧺 ${left.length}` : `${t.emoji}`;
-  if(!left.length) return `${t.emoji} <b>${b.theme||b.title}</b><br><small>повторим позже · урожай ${waitText(b)}</small>`;
+  if(!near) return left.length ? `🧺 ${left.length}` : `${t.emoji} <small>${waitText(b)}</small>`;
+  if(!left.length) return `${t.emoji} <b>${b.theme||b.title}</b><br><small>⏳ следующий урожай ${waitText(b)}</small>`;
   if(!mine) return `${t.emoji} <b>${b.theme||b.title}</b><br><small>созрело ${left.length}</small>`;
   // перечисляем каждый вид отдельно: «🍎 apple ×2 · 🍊 orange ×1»
   const list=ripeUniq(b).slice(0,8)
@@ -2268,15 +2374,17 @@ function bedTagHtml(i,b,q,owner,bd,mine){
   return seedInHand ? `🕳 <b>пустая грядка</b><br><small>E — посадить «${seedInHand.theme||seedInHand.title}»</small>`
                     : '🕳 <b>пустая грядка</b><br><small>возьми семя в киоске 🏪</small>';
 }
-let lastNearKey='';
+let lastNearKey='', lastTagTick=0;
 function gardenLabels(){ // только текст, без пересборки мира: подписи следуют за игроком
   if(roomKind!=='garden'||!plots.length) return;
   const mine=myPlotIndex();
   let key='';
   for(let i=0;i<PLOT_MAX;i++) for(let b=0;b<PLOT_BEDS;b++)
     if(bedNear(bedPos(i,b))) key+=i+':'+b+',';
-  if(key===lastNearKey) return;
-  lastNearKey=key;
+  // обратный отсчёт должен идти, а не застывать: раз в 4 с обновляем подписи принудительно
+  const tick=Math.floor(Date.now()/4000);
+  if(key===lastNearKey && tick===lastTagTick) return;
+  lastNearKey=key; lastTagTick=tick;
   for(let i=0;i<PLOT_MAX;i++){
     const owner=plots[i]||null;
     for(let b=0;b<PLOT_BEDS;b++){
@@ -2634,7 +2742,8 @@ function pickTagShow(f,state){
   el.style.left=Math.round(pt[0])+'px';
   el.style.top=Math.round(pt[1])+'px';
   el.className=state||'';
-  el.innerHTML=`<b>${f.word}</b>`+(state==='rec'?'<i>говори…</i>':(state==='miss'?'<i>не расслышал</i>':''));
+  el.innerHTML=`<b>${f.word}</b>`+(state==='rec'?'<i>говори…</i>'
+    :(state==='wait'?'<i>слушай и повтори</i>':(state==='miss'?'<i>не расслышал</i>':'')));
 }
 function bossAtPoint(px,py){             // палец попал в самого босса?
   if(!lastMVP||!bossServer||!bossHere()) return null;
@@ -2684,8 +2793,8 @@ function pickStart(px,py){
   holdFruit=f;
   askBed=f.bed; askWord=f.word; askOn=true;   // совместимость с проверкой слова
   say(f.word);
-  pickTagShow(f,'rec');
-  setTimeout(()=>{ if(holdFruit) startListen(true); }, 380);
+  pickTagShow(f,'wait');
+  waitQuiet(()=>{ if(holdFruit===f){ pickTagShow(f,'rec'); startListen(true); } });
   snd(520,.06,'triangle',.1);
   return true;
 }
@@ -2902,7 +3011,9 @@ function pushBossMesh(V, st){
   const bob = B.move==='fly' ? Math.sin(t*2.2)*0.35
             : B.move==='hop' ? Math.abs(Math.sin(t*2.6))*0.5
             : Math.sin(t*3.2)*0.06;
-  const lift = B.move==='fly' ? 1.6 : (B.move==='crawl'||B.move==='burrow' ? -0.2 : 0);
+  // спутник должен стоять на земле рядом с ребёнком, а не парить над головой,
+  // поэтому у него подъём и «подкоп» выключены
+  const lift = st.noLift ? 0 : (B.move==='fly' ? 1.6 : (B.move==='crawl'||B.move==='burrow' ? -0.2 : 0));
   const shake = bossShake>0 ? (Math.random()-0.5)*0.18*bossShake : 0;
   for(const pt of parts){
     let [x0,y0,z0,x1,y1,z1]=pt.b;
@@ -3024,9 +3135,28 @@ setInterval(()=>{ if(!onbOff && roomKind==='garden' && !paused) onbDirPoint(); }
 // Уходит, когда на грядках выросло 10 разных растений — дальше ребёнок справляется сам.
 const PIXI_LS='me_pixi';
 const PIXI_GOAL=10;                       // сколько разных растений помогаем посадить
-const PIXI_AVA={skin:1,hair:8,hairStyle:2,shirt:3,pants:6,hat:4};
+// Спутник — магическое животное. Модели те же, что у боссов, только маленькие и дружелюбные:
+// ребёнок выбирает своего в конструкторе персонажа, и он ходит с ним по саду.
+const PETS_LIST=[
+  {n:'Кротёнок',emoji:'🐹'},        {n:'Лозовичок',emoji:'🌿'},     {n:'Светлячок',emoji:'✨'},
+  {n:'Камешек',emoji:'🪨'},         {n:'Головастик',emoji:'🐸'},    {n:'Лисёнок-Искра',emoji:'🦊'},
+  {n:'Тенекот',emoji:'🐈‍⬛'},        {n:'Воронёнок',emoji:'🐦‍⬛'},     {n:'Скорпиончик',emoji:'🦂'},
+  {n:'Слизнячок',emoji:'🟢'},       {n:'Паучок',emoji:'🕷'},        {n:'Совёнок',emoji:'🦉'},
+  {n:'Тролленок',emoji:'👹'},       {n:'Жучок-Броневик',emoji:'🪲'},{n:'Птенец Феникса',emoji:'🔥'},
+  {n:'Мамонтёнок',emoji:'🦣'},      {n:'Змейка-Молния',emoji:'⚡'}, {n:'Дракончик',emoji:'🐲'},
+  {n:'Голем-Малыш',emoji:'🗿'},     {n:'Титанёнок',emoji:'💠'},
+];
+const petIdx=()=>Math.max(0,Math.min(PETS_LIST.length-1,(myAva&&myAva.pet|0)||0));
+const petNow=()=>PETS_LIST[petIdx()];
 let pixiOn=true, pixiDone=false, pixiForced=false, pixiX=0, pixiZ=0, pixiYaw=0, pixiPhase=0,
     pixiSaid='', pixiUntil=0, pixiHi=false, pixiStep='', pixiNext=0;
+// Спутник не ходит впритык: обычно гуляет поодаль, по своим делам, и подходит,
+// только когда есть что сказать — на входе, на новом шаге или если ребёнок надолго застрял.
+const PIXI_FAR_MIN=7, PIXI_FAR_MAX=12;    // кольцо, по которому гуляет, когда молчит
+const PIXI_CLOSE=3;                       // на сколько подходит, когда хочет сказать
+const PIXI_GAP_MS=180000;                 // между непрошеными подходами — не чаще трёх минут
+let pixiMode='idle', pixiPend='', pixiLastCome=0, pixiStepAt=0,
+    pixiAng=0, pixiRad=9, pixiDir=1, pixiWhen=0;
 try{ const v=JSON.parse(localStorage.getItem(PIXI_LS)||'null');
      if(v){ pixiOn=v.on!==false; pixiDone=!!v.done; } }catch(e){}
 function pixiSave(){ try{ localStorage.setItem(PIXI_LS,JSON.stringify({on:pixiOn,done:pixiDone})); }catch(e){} }
@@ -3051,6 +3181,18 @@ function pixiLine(st){
   if(/Подожди/.test(st.text))       return `Растёт. Можно погулять, я подожду.${tail}`;
   return st.text;
 }
+// Гуляет по кругу ВОКРУГ игрока, а не от точки к точке: так он не проходит сквозь него
+// и не оказывается впритык, пока молчит.
+function pixiWander(){
+  pixiAng=Math.atan2(pixiX-P.x, pixiZ-P.z);                 // продолжаем с того места, где стоим
+  pixiRad=PIXI_FAR_MIN+Math.random()*(PIXI_FAR_MAX-PIXI_FAR_MIN);
+  if(Math.random()<0.4) pixiDir=-pixiDir;
+  pixiWhen=Date.now()+5000+Math.random()*6000;
+}
+function pixiCome(text){                  // подойти и сказать; пока не подошла — молчит
+  if(!text) return;
+  pixiMode='come'; pixiPend=text; pixiLastCome=Date.now();
+}
 function pixiSay(text, ms, force){
   if(!text) return;
   // не перебиваем сами себя: дочитать успевает даже медленный читатель
@@ -3067,35 +3209,59 @@ function pixiTick(){
   if(!pixiHere()){ if(el) el.style.display='none';
     document.documentElement.classList.remove('pixiTalk'); return; }
   // ── появление и прощание ──
-  if(!pixiHi){ pixiHi=true; pixiX=P.x+2; pixiZ=P.z+2;
-    pixiSay('Привет! Я Пикси. Вырастим твои первые 10 растений — я подскажу.', 9000, true);
-    pixiNext=Date.now()+3000; }        // первые секунды — только приветствие
+  if(!pixiHi){ pixiHi=true;
+    // появляется поодаль и сама подходит поздороваться — так заметнее, что это живой спутник
+    const a=Math.random()*Math.PI*2;
+    pixiX=P.x+Math.sin(a)*9; pixiZ=P.z+Math.cos(a)*9;
+    pixiStepAt=Date.now(); pixiNext=Date.now()+3000;
+    pixiCome(`Привет! Я ${petNow().n}. Вырастим твои первые 10 растений — я подскажу.`); }
   if(!pixiForced && pixiGrown()>=PIXI_GOAL){
     pixiDone=true; pixiSave();
-    toast('🧚 Пикси: «Десять растений! Дальше ты сам. Позвать меня снова — в меню».');
+    toast(`${petNow().emoji} ${petNow().n}: «Десять растений! Дальше ты сам. Позвать снова — в меню».`);
     return;
   }
-  // ── идёт рядом, чуть в стороне от цели, и оборачивается к игроку ──
-  const tgt=onbTarget;
-  let ax=P.x, az=P.z;
-  if(tgt){ const d=Math.hypot(tgt.x-P.x,tgt.z-P.z);
-    if(d>3){ ax=P.x+(tgt.x-P.x)/d*2.2; az=P.z+(tgt.z-P.z)/d*2.2; } }
-  ax+=1.6; az+=1.0;                                   // держится сбоку, не перед носом
+  // ── два состояния: гуляет поодаль или подошла сказать ──
+  const now=Date.now();
+  const near=Math.hypot(P.x-pixiX, P.z-pixiZ);
+  if(pixiMode==='come' && pixiPend && near<=PIXI_CLOSE+0.8){   // дошёл — только теперь говорит
+    pixiSay(pixiPend, 7000, true); pixiPend='';
+  }
+  // отходит, когда облачко догорело: так он слушается и «дочитал раньше срока»
+  if(pixiMode==='come' && !pixiPend && now>pixiUntil+2000){
+    pixiMode='idle'; pixiWander();                             // сказал — и отошёл по своим делам
+  }
+  let ax, az, run;
+  if(pixiMode==='come'){
+    const a=Math.atan2(pixiX-P.x, pixiZ-P.z)+0.45;             // подходит сбоку, а не в лицо
+    ax=P.x+Math.sin(a)*PIXI_CLOSE; az=P.z+Math.cos(a)*PIXI_CLOSE;
+    run = near>14 ? 7 : 4.4;
+  } else {
+    if(!pixiWhen || now>pixiWhen) pixiWander();
+    pixiAng+=pixiDir*dt*0.20;                                   // медленно обходит игрока по кругу
+    ax=P.x+Math.sin(pixiAng)*pixiRad; az=P.z+Math.cos(pixiAng)*pixiRad;
+    run = near>PIXI_FAR_MAX+8 ? 6 : 2.4;                        // отстал — догоняет, иначе просто гуляет
+  }
   const dx=ax-pixiX, dz=az-pixiZ, dist=Math.hypot(dx,dz);
   if(dist>0.35){
-    const sp=Math.min(dist, (dist>6?7:3.4)*dt);       // отстал — догоняет бегом
+    const sp=Math.min(dist, run*dt);
     pixiX+=dx/dist*sp; pixiZ+=dz/dist*sp;
     pixiPhase+=sp*2.2;
+    if(pixiMode!=='come' && !(Date.now()<pixiUntil)) pixiYaw=Math.atan2(dx,dz); // гуляет — смотрит куда идёт
   }
-  const lx=P.x-pixiX, lz=P.z-pixiZ;
-  if(Math.hypot(lx,lz)>0.2) pixiYaw=Math.atan2(lx,lz);
+  if(pixiMode==='come' || Date.now()<pixiUntil){               // говорит — поворачивается к ребёнку
+    const lx=P.x-pixiX, lz=P.z-pixiZ;
+    if(Math.hypot(lx,lz)>0.2) pixiYaw=Math.atan2(lx,lz);
+  }
   // ── что сказать прямо сейчас (пересчитываем дважды в секунду, не каждый кадр) ──
-  const now=Date.now();
   if(now>=pixiNext){
     pixiNext=now+500;
     const st=onbNow();
     const step=st?st.text:'';
-    if(step && step!==pixiStep){ pixiStep=step; pixiSay(pixiLine(st)); }
+    if(step && step!==pixiStep){                 // новый шаг — подходит и подсказывает
+      pixiStep=step; pixiStepAt=now; pixiCome(pixiLine(st));
+    } else if(pixiMode==='idle' && step && now-pixiStepAt>120000 && now-pixiLastCome>PIXI_GAP_MS){
+      pixiStepAt=now; pixiCome(pixiLine(st));    // застрял на одном шаге — подошла напомнить
+    }
   }
   // ── облачко над головой ──
   if(!el) return;
@@ -3113,22 +3279,37 @@ function pixiTick(){
   } else {                                   // спутник не в кадре — показываем внизу, чтобы не потерялось
     el.style.left=''; el.style.top='';
   }
-  el.innerHTML=`<b>🧚 Пикси</b>${pixiSaid}`;
+  el.innerHTML=`<b>${petNow().emoji} ${petNow().n}</b>${pixiSaid}`;
 }
 function pushPixi(V){
   if(!pixiHere()) return;
   const g=gardenOrigin();
-  const bob=Math.sin(performance.now()/380)*0.06;
-  pushPlayerMesh(V,{x:pixiX, y:g.H+1+bob, z:pixiZ, yaw:pixiYaw,
-                    walkPhase:pixiPhase, walkAmp:0.55, ava:PIXI_AVA});
+  const bob=Math.sin(performance.now()/380)*0.12;       // зверёк парит и покачивается
+  pushBossMesh(V,{i:petIdx(), sc:0.42, noLift:1, x:pixiX, y:g.H+1+bob, z:pixiZ, yaw:pixiYaw+Math.PI});
+}
+function pixiAsk(){                        // спросили спутника: текущее задание и что за ним
+  pixiForced=true; pixiMode='come'; pixiPend=''; pixiLastCome=Date.now();
+  const st=onbNow(), now=st?pixiLine(st):'';
+  const o=myGarden.order;
+  let next='';
+  if(o){
+    const stn=talkStOf(o.kind);
+    const left=Object.keys(o.need||{}).map(w=>`${w} ${Math.min(o.gave&&o.gave[w]|0,o.need[w])}/${o.need[w]}`).join(', ');
+    next=`Потом — заказ у ${stn.tag}: принести ${left} и сказать ${o.say} фразы.`;
+  } else if(pixiGrown()<PIXI_GOAL){
+    next=`Потом — новые слова в киоске. Посадили ${pixiGrown()} из ${PIXI_GOAL}.`;
+  } else next='Потом пройди тему до конца — и на улице появится заказ.';
+  pixiSay(`Сейчас: ${now||'просто расти и собирай урожай'} ${next}`, 11000, true);
+  snd(700,.08,'triangle',.13); setTimeout(()=>snd(920,.1,'triangle',.13),90);
 }
 function pixiCall(){                       // вернуть помощника из меню: остаётся, пока не прогонят
-  pixiOn=true; pixiDone=false; pixiHi=false; pixiForced=true; pixiSave();
-  toast('🧚 Пикси снова рядом');
+  pixiOn=true; pixiDone=false; pixiHi=false; pixiForced=true;
+  pixiMode='idle'; pixiPend=''; pixiStep=''; pixiSave();
+  toast(`${petNow().emoji} ${petNow().n} снова рядом`);
 }
 function pixiDismiss(){
   pixiOn=false; pixiForced=false; pixiSave();
-  toast('🧚 Пикси ушёл. Вернуть — в меню');
+  toast(`${petNow().emoji} ${petNow().n} ушёл. Вернуть — в меню`);
 }
 // ── стрелки по земле: от ног игрока до цели, бегут вперёд ──
 function pushTintBox(V,x0,y0,z0,x1,y1,z1,tile,tint,yaw,cx,cz){
@@ -3175,7 +3356,7 @@ function pushGuideArrows(V){
   pushRing(V, onbTarget.x, y, onbTarget.z, 0.5*pulse, 0.07, CY);
 }
 setInterval(()=>{ syncMenuClass(); gardenHud(); mobileGarden(); updateMicBtn(); voiceBanner(); onbTick(); bossRender(); },400);
-setInterval(()=>{ if(holdFruit) pickTagShow(holdFruit, listening?'rec':(holdMiss?'miss':'')); },90);
+setInterval(()=>{ if(holdFruit) pickTagShow(holdFruit, listening?'rec':(holdMiss?'miss':(gameTalking()?'wait':''))); },90);
 setInterval(actRender,3000);   // подсветка «свежее/старое» обновляется сама // подпись микрофона тоже держим свежей
 // ---- разговор с жителем: сначала слово, потом дело ----
 // ---- окно сбора: назвали слово голосом или вписали руками, вторая клавиша не нужна ----
@@ -3206,7 +3387,7 @@ function openAsk(bd,bed){
   holdFruit=f?{...f,bed}:{x:t.c.x,y:t.c.y+1,z:t.c.z,s:.2,word:t.word,bed};
   pickTagShow(holdFruit,'rec');
   say(t.word);
-  if(!IS_TOUCH) setTimeout(()=>{ if(askOn) startListen(true); }, 500);
+  if(!IS_TOUCH) waitQuiet(()=>{ if(askOn && !listening) startListen(true); });
 }
 function closeAsk(){ askOn=false; askBed=-1; askWord=''; pickDone(); }
 function askRefresh(){                   // сорвали — переходим к следующему плоду или закрываем
@@ -3381,15 +3562,17 @@ function resumeGame(){ paused=false; overlay.style.display='none'; syncMenuClass
 function closeShop(){ resumeGame(); }
 // ── разговорная станция: сказал фразу целиком — получил монеты ──
 let talkOn=false, talkTask=null, talkRec=false, talkMiss=0;
-function openTalk(){
-  talkOn=true; talkMiss=0;
+let talkKindNow='cook';
+const talkStOf=k=>TALK_ST.find(x=>x.kind===k)||TALK_ST[0];
+function openTalk(kind){
+  talkOn=true; talkMiss=0; talkKindNow=kind||'cook';
   paused=true;
   $('talk').classList.add('on');
   $('talkRow').classList.remove('on');
   $('talkScore').textContent='';
   $('talkAsk').textContent='Минутку, смотрю, что у тебя выросло…';
   $('talkPhrase').textContent=''; $('talkItem').textContent='⏳'; $('talkRu').textContent='';
-  sendWS({t:'garden',act:'phrase'});
+  sendWS({t:'garden',act:'phrase',kind:talkKindNow});
   if(document.exitPointerLock) document.exitPointerLock();
 }
 function closeTalk(){
@@ -3402,7 +3585,9 @@ function talkShow(t){
   if(!talkOn) return;
   $('talkRow').classList.remove('on');
   $('talkInput').value='';
-  $('talkWho').innerHTML=`${NPC_TALK.face} <b>${NPC_TALK.tag}</b>`;
+  const st=talkStOf(t.kind||talkKindNow);
+  $('talkWho').innerHTML=`${st.emoji} <b>${st.tag}</b> <small style="opacity:.7">· ${st.title}</small>`;
+  $('talkSay').style.display='block'; $('talkWrite').style.display='inline-block';
   $('talkAsk').textContent = t.ask || 'Скажи про это целую фразу:';
   $('talkItem').textContent = t.emoji || '🌱';
   $('talkItem').style.animation='none'; void $('talkItem').offsetWidth; $('talkItem').style.animation='';
@@ -3412,8 +3597,8 @@ function talkShow(t){
 }
 function talkRecStart(){
   if(!talkOn || !talkTask || listening) return;
-  talkRec=true; $('talkSay').classList.add('rec'); $('talkSay').textContent='🎙 Говори!';
-  setTimeout(()=>{ if(talkRec && !listening) startListen(true); }, 260);
+  talkRec=true; $('talkSay').classList.add('rec'); $('talkSay').textContent='⏳ Слушай…';
+  waitQuiet(()=>{ if(talkRec && !listening){ $('talkSay').textContent='🎙 Говори!'; startListen(true); } });
 }
 function talkRecStop(){
   talkRec=false;
@@ -3422,7 +3607,7 @@ function talkRecStop(){
 }
 function talkHeard(text){                 // сюда приходит распознанное, пока открыта станция
   if(!talkOn || !talkTask) return false;
-  sendWS({t:'garden',act:'phraseSaid',key:talkTask.lesson+'#'+talkTask.word,said:text});
+  sendWS({t:'garden',act:'phraseSaid',kind:talkTask.kind||talkKindNow,key:talkTask.lesson+'#'+talkTask.word,said:text});
   return true;
 }
 function talkOk(r){
@@ -3438,6 +3623,66 @@ function talkMissed(r){
   $('talkScore').innerHTML=`Я услышал: «${r.heard||'—'}». Нужно целиком: <b>${r.text}</b>`;
   say(r.text);
   if(talkMiss>=1) $('talkRow').classList.add('on');   // не выходит голосом — можно написать
+}
+// ── ЗАКАЗ СТАНЦИИ: конечное задание, а не бесконечная ферма фраз ──
+let talkOrder=null;
+function talkNoOrder(m){                  // у этой станции заказа нет — честно говорим, где он
+  const st=talkStOf(m.orderKind);
+  talkOrder=null; talkTask=null;
+  $('talkWho').innerHTML=`${st.emoji} <b>${st.tag}</b> <small style="opacity:.7">· ${st.title}</small>`;
+  $('talkOrder').innerHTML='';
+  $('talkGive').style.display='none'; $('talkPrize').style.display='none';
+  $('talkItem').textContent='💤'; $('talkPhrase').textContent=''; $('talkScore').textContent='';
+  $('talkSay').style.display='none'; $('talkWrite').style.display='none';
+  if(m.orderWhere){
+    const other=talkStOf(m.orderWhere);
+    $('talkAsk').textContent='Заказ сейчас не у меня.';
+    $('talkRu').innerHTML=`Тебя ждут здесь: ${other.emoji} <b>${other.tag}</b> · ${other.title}`;
+  } else {
+    $('talkAsk').textContent='Заказов пока нет.';
+    $('talkRu').textContent='Пройди тему в киоске до конца — и я дам заказ.';
+  }
+}
+function talkOrderShow(o){
+  talkOrder=o;
+  const st=talkStOf(o.kind);
+  $('talkWho').innerHTML=`${st.emoji} <b>${st.tag}</b> <small style="opacity:.7">· ${st.title}</small>`;
+  const items=o.items.map(i=>`<span class="oIt${i.gave>=i.need?' ok':''}">${i.emoji}
+      <small>${i.gave}/${i.need}</small></span>`).join('');
+  $('talkOrder').innerHTML=`<div class="oHead">📦 Заказ по теме <b>«${o.theme}»</b> · приз <b>${o.prize} 🪙</b></div>
+    <div class="oRow">${items}</div>
+    <div class="oSay">🗣 фразы: <b>${o.said}/${o.say}</b>${o.ready?' · всё готово!':''}</div>`;
+  $('talkGive').style.display = o.bringDone ? 'none' : 'block';
+  $('talkPrize').style.display = o.ready ? 'block' : 'none';
+  const sayNow = !o.sayDone;
+  $('talkSay').style.display = sayNow ? 'block' : 'none';
+  $('talkWrite').style.display = sayNow ? 'inline-block' : 'none';
+  if(!sayNow && !o.ready){
+    $('talkItem').textContent='📦'; $('talkPhrase').textContent='';
+    $('talkAsk').textContent='Фразы сказаны. Осталось принести плоды.';
+    $('talkRu').textContent='Собери урожай этой темы и сдай его мне.';
+  }
+  if(o.ready){
+    $('talkItem').textContent='🏆'; $('talkPhrase').textContent='';
+    $('talkAsk').textContent='Заказ готов!'; $('talkRu').textContent='Забирай приз — и открою тебе новую тему.';
+  }
+}
+function talkPrizeGot(r){
+  const st=talkStOf(r.kind);
+  talkOrder=null; talkTask=null;
+  coinRain(r.prize);
+  snd(700,.12,'triangle',.17); setTimeout(()=>snd(980,.12,'triangle',.17),130);
+  setTimeout(()=>snd(1320,.28,'triangle',.17),270);
+  $('talkOrder').innerHTML=`<div class="oHead">🏆 Заказ «${r.theme}» выполнен · <b>+${r.prize} 🪙</b></div>`
+    + (r.trophy?`<div class="oRow"><span class="oIt">${r.trophy.emoji} <small>${r.trophy.name}</small></span></div>
+       <div class="oSay">${r.trophy.desc}</div>`:'')
+    + (r.next?`<div class="oSay">🔓 Открылась новая тема: <b>${r.next}</b> — загляни в киоск</div>`:'');
+  $('talkGive').style.display='none'; $('talkPrize').style.display='none';
+  $('talkSay').style.display='none'; $('talkWrite').style.display='none';
+  $('talkItem').textContent='🎉'; $('talkPhrase').textContent='';
+  $('talkAsk').textContent='Спасибо! Отличная работа.';
+  $('talkRu').textContent = r.next?`Дальше — тема «${r.next}»`:'';
+  toast(`🏆 Заказ выполнен! +${r.prize} 🪙`);
 }
 // ── портал: экран полёта со списком живых миров ──
 let flyOpen=false, flyHint='';
@@ -3547,7 +3792,8 @@ function doInteract(){
     toast(`🚀 Улетаем на занятие: ${who.join(', ')}`);
     sendWS({t:'party', x0:partyZone.x0, z0:partyZone.z0, x1:partyZone.x1, z1:partyZone.z1});
   }
-  else if(a.act==='phrase') openTalk();
+  else if(a.act==='phrase') openTalk(a.kind);
+  else if(a.act==='pixi') pixiAsk();
   else if(a.act==='garden') openFly('GARDEN');
   else if(a.act==='exitGarden') openFly('LOBBY');
   else if(a.act==='shop') openNpc('shop');
@@ -3746,12 +3992,20 @@ function say(text){
     const u=new SpeechSynthesisUtterance(text);
     u.lang='en-US'; u.rate=.9;
     sayUntil=Date.now()+900+String(text).length*70;
-    u.onend=()=>{ sayUntil=Date.now()+450; };     // эхо в колонках стихает не мгновенно
+    u.onend=()=>{ sayUntil=Date.now()+250; };     // эхо в колонках стихает не мгновенно
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }catch(e){}
 }
 const gameTalking=()=>Date.now()<sayUntil;
+// Микрофон открываем ТОЛЬКО когда игра договорила. Раньше он открывался через 380 мс,
+// а распознанное во время подсказки молча выбрасывалось: ребёнок говорил сразу за игрой —
+// и «плод не определялся». Теперь сперва тишина, потом «Говори!».
+function waitQuiet(fn){
+  const left=sayUntil-Date.now();
+  if(left<=0) return fn();
+  setTimeout(()=>waitQuiet(fn), Math.min(400, left+60));
+}
 function applyWords(stations){
   for(const s of wordStations) if(s.tag) s.tag.remove();
   wordStations=(stations||[]).map(s=>({...s}));
@@ -4074,7 +4328,7 @@ function startListen(cont){
     askFail(); toast('Не расслышал — попробуй ещё раз'); };
   r.onend=()=>{ listening=false; recog=null; sayBtnState='';
     $('sayBtn').textContent='🎙 Сказать слово'+SAY_KEY; micHold(false);
-    if(cont && holdFruit) setTimeout(()=>{ if(holdFruit && !listening) startListen(true); },120); };
+    if(cont && holdFruit) waitQuiet(()=>{ if(holdFruit && !listening) startListen(true); }); };
   try{ r.start(); }catch(e){ listening=false; recog=null; micHold(false); }
 }
 function stopListen(){ if(recog){ try{ recog.stop(); }catch(e){} } }
@@ -4133,6 +4387,8 @@ document.querySelectorAll('#gardenNav button[data-go]').forEach(b=>{
 });
 $('sellClose').onclick=e=>{ e.stopPropagation(); resumeGame(); };
 $('sellGo').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'sell'}); resumeGame(); };
+$('talkGive').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'orderGive',kind:talkKindNow}); };
+$('talkPrize').onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'orderTake',kind:talkKindNow}); };
 $('menuBtn').onclick=e=>{ e.stopPropagation(); openMenu(); };
 $('pmResume').onclick=e=>{ e.stopPropagation(); resumeGame(); };
 $('pmLobby').onclick=e=>{ e.stopPropagation(); resumeGame(); goLobby(); };
@@ -4750,7 +5006,7 @@ showView('mSplash');
 // Ребёнок собирает своего, а не выбирает из готовых.
 let avaDraft=null, avaTab='skin';
 const AVA_TABS=[['skin','Кожа'],['hair','Волосы'],['hairStyle','Причёска'],
-                ['shirt','Футболка'],['pants','Штаны'],['hat','Шляпа']];
+                ['shirt','Футболка'],['pants','Штаны'],['hat','Шляпа'],['pet','🐲 Спутник']];
 const avaCombos=()=>AVA_SKIN.length*AVA_HAIR.length*AVA_HAIRSTYLE.length*AVA_SHIRT.length*AVA_PANTS.length*AVA_HAT.length;
 function drawAvaPreview(cv, a){
   const g=cv.getContext('2d'), W=cv.width, H=cv.height;
@@ -4808,6 +5064,7 @@ function avaSwatches(){
   if(avaTab==='pants') AVA_PANTS.forEach((c,i)=>mk(c, avaDraft.pants===i, ()=>set('pants',i)));
   if(avaTab==='hairStyle') AVA_HAIRSTYLE.forEach((n,i)=>mkTxt(n, avaDraft.hairStyle===i, ()=>set('hairStyle',i)));
   if(avaTab==='hat')   AVA_HAT.forEach((n,i)=>mkTxt(n, avaDraft.hat===i, ()=>set('hat',i)));
+  if(avaTab==='pet')   PETS_LIST.forEach((p,i)=>mkTxt(`${p.emoji} ${p.n}`, (avaDraft.pet|0)===i, ()=>set('pet',i)));
 }
 function avaRender(){
   const tabs=$('avaTabs'); tabs.innerHTML='';
@@ -4831,7 +5088,8 @@ function openAva(){
 function avaRandom(){
   const r=n=>Math.floor(Math.random()*n);
   avaDraft={ skin:r(AVA_SKIN.length), hair:r(AVA_HAIR.length), hairStyle:r(AVA_HAIRSTYLE.length),
-             shirt:r(AVA_SHIRT.length), pants:r(AVA_PANTS.length), hat:r(AVA_HAT.length) };
+             shirt:r(AVA_SHIRT.length), pants:r(AVA_PANTS.length), hat:r(AVA_HAT.length),
+             pet:r(PETS_LIST.length) };
   avaRender();
 }
 // ── цвета с фотографии: снимок не покидает устройство ──
@@ -4954,7 +5212,9 @@ $('pmPixi').onclick=e=>{ e.stopPropagation();
   if(pixiOn && !pixiDone) pixiDismiss(); else pixiCall();
   pixiMenuLabel(); resumeGame(); };
 function pixiMenuLabel(){ const b=$('pmPixi'); if(!b) return;
-  b.textContent=(pixiOn&&!pixiDone)?'🧚 Пикси рядом — попросить уйти':'🧚 Позвать помощника Пикси'; }
+  b.textContent=(pixiOn&&!pixiDone)
+    ? `${petNow().emoji} ${petNow().n} рядом — попросить уйти`
+    : `${petNow().emoji} Позвать спутника`; }
 $('talkClose').onclick=e=>{ e.stopPropagation(); closeTalk(); };
 $('talkSay').onclick=e=>{ e.stopPropagation(); talkRec?talkRecStop():talkRecStart(); };
 $('talkWrite').onclick=e=>{ e.stopPropagation(); $('talkRow').classList.add('on'); $('talkInput').focus(); };
@@ -5247,6 +5507,13 @@ function update(dt){
       const d=Math.hypot(P.x-a.x, P.z-a.z);
       if(d<a.r && Math.abs(P.y-a.y)<3 && d<bd2){ bd2=d; hintNear=a; }
     }
+    // со спутником тоже можно поговорить: он скажет, что делать сейчас и что дальше
+    if(pixiHere()){
+      const dp=Math.hypot(P.x-pixiX, P.z-pixiZ);
+      if(dp<3.6 && dp<bd2){ bd2=dp;
+        hintNear={act:'pixi', x:pixiX, y:P.y, z:pixiZ, r:3.6,
+                  label:`спросить спутника — что делать`}; }
+    }
     const hb=document.getElementById('hintBar');
     if(hintNear && !holdFruit){
       worddayNear=hintNear.act==='wordday';
@@ -5394,7 +5661,7 @@ function render(){
       });
     }
   }
-  pixiTick();
+  pixiTick(); beltTick();
   pushPixi(PV);          // спутник-помощник ходит рядом с новичком
   pushGuideArrows(PV);   // дорожка-подсказка от ног игрока до цели
   for(const n of npcs) // торговцы: стоят на месте, но чуть покачиваются — не манекены
@@ -5434,6 +5701,7 @@ function render(){
 
   // таблички лобби (зоны, порталы, стойки)
   for(const w of worldTags){
+    if(w.near && Math.hypot(P.x-w.x,P.z-w.z)>w.near){ w.el.style.display='none'; continue; }
     const pt=project(mvp,w.x,w.y,w.z);
     if(pt && pt[0]>-150 && pt[0]<innerWidth+150 && pt[1]>-80 && pt[1]<innerHeight+80){
       w.el.style.display='block';

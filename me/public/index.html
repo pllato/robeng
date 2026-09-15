@@ -2060,7 +2060,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-14-40';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-41';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2083,14 +2083,16 @@ function drawPlotFence(i){ // забор рисуем заново после к
   const c=plotPos(i), H=c.y-1, lv=plotLevel(i);
   const put=(x,z,id)=>{ if(x>0&&x<WX&&z>0&&z<WZ) world[idx(x,H+1,z)]=id; };
   const put2=(x,y,z,id)=>{ if(x>0&&x<WX&&y>0&&y<WY&&z>0&&z<WZ) world[idx(x,y,z)]=id; };
+  const putG=(x,z,id)=>{ if(x>0&&x<WX&&z>0&&z<WZ) world[idx(x,H,z)]=id; };   // покрытие земли
   const F=PLOT_FENCE[lv];
   for(let x=c.x-PLOT_RX;x<=c.x+PLOT_RX;x++){ put(x,c.z-PLOT_RZ,F); put(x,c.z+PLOT_RZ,F); }
   for(let z=c.z-PLOT_RZ;z<=c.z+PLOT_RZ;z++){ put(c.x-PLOT_RX,z,F); put(c.x+PLOT_RX,z,F); }
   // ① пять разных растений — дорожка между грядками, ходить и видно, что огород обжитой
   if(lv>=1){
-    // дорожки идут ровно в промежутках между грядками (грядки 9×9 с шагом 9)
-    for(let x=c.x-PLOT_RX+1;x<=c.x+PLOT_RX-1;x++) for(const dz of [-5,-4,4,5]) put(x,c.z+dz,PLANK);
-    for(let z=c.z-PLOT_RZ+1;z<=c.z+PLOT_RZ-1;z++) for(const dx of [-10,-9,0,9,10]) put(c.x+dx,z,PLANK);
+    // дорожки лежат НА земле, в промежутках между грядками. Класть их на блок выше
+    // нельзя: получаются перегородки в рост ребёнка, и по участку не пройти.
+    for(let x=c.x-PLOT_RX+1;x<=c.x+PLOT_RX-1;x++) for(const dz of [-5,-4,4,5]) putG(x,c.z+dz,PLANK);
+    for(let z=c.z-PLOT_RZ+1;z<=c.z+PLOT_RZ-1;z++) for(const dx of [-10,-9,0,9,10]) putG(c.x+dx,z,PLANK);
   }
   // ② десять — клумбы по углам и фонари на столбах
   if(lv>=2){
@@ -2132,18 +2134,20 @@ function buildGardenWorld(){
   fillBox(sx-5,H,sz-57,sx+5,H,sz+57,PLANK); // сама улица посередине
   spawnPt.y=H+1; P.y=H+1;
   addWorldTag(sx+.5,H+12,sz+.5,'🌱 УЛИЦА ОГОРОДОВ<br><small>у каждого свой участок · семена в киоске</small>','big');
-  // ── торговые палатки: прилавок, столбы, полосатый навес и вывеска ──
-  marketStall(sx-5,sz+6,H,C_LIME,C_WHT,C_DGRN);   // киоск семян — зелёный
-  addWorldTag(sx-5,H+7.2,sz+7.5,'🏪 КИОСК СЕМЯН');
-  npcFigure(sx-5,H,sz+9,{skin:2,hair:3,hairStyle:0,shirt:4,pants:1,hat:1});   // дядя Сеня у киоска
-  addWorldTag(sx-5,H+3.1,sz+9.5,`🧑‍🌾 <b>${NPC_SEED.tag}</b><br><small>E — поговорить</small>`);
-  interactables.push({x:sx-5,y:H+1,z:sz+9.6,r:3.4,label:'поговорить с '+NPC_SEED.short,act:'shop'});
-  // лавка плодов напротив — красная
-  marketStall(sx+5,sz+6,H,C_RED,C_WHT,C_ORG);
-  addWorldTag(sx+5,H+7.2,sz+7.5,'🧺 ЛАВКА ПЛОДОВ');
-  npcFigure(sx+5,H,sz+9,{skin:1,hair:5,hairStyle:1,shirt:10,pants:3,hat:2});  // тётушка Груша в лавке
-  addWorldTag(sx+5,H+3.1,sz+9.5,`🧺 <b>${NPC_FRUIT.tag}</b><br><small>E — поговорить</small>`);
-  interactables.push({x:sx+5,y:H+1,z:sz+9.6,r:3.4,label:'поговорить с '+NPC_FRUIT.short,act:'sell'});
+  // ── торговые палатки ──────────────────────────────────────────────────────
+  // Стоят В НАЧАЛЕ улицы, по разные стороны и со сдвигом друг от друга: раньше они
+  // упирались в кухню разговорного квартала, и дед Семён оказывался внутри павильона.
+  marketStall(sx-3,sz-4,H,C_LIME,C_WHT,C_DGRN);   // киоск семян — зелёный, левая сторона
+  addWorldTag(sx-3,H+7.2,sz-2.5,'🏪 КИОСК СЕМЯН');
+  npcFigure(sx-3,H,sz-1,{skin:2,hair:3,hairStyle:0,shirt:4,pants:1,hat:1});   // дед Семён у киоска
+  addWorldTag(sx-3,H+3.1,sz-0.5,`🧑‍🌾 <b>${NPC_SEED.tag}</b><br><small>E — поговорить</small>`);
+  interactables.push({x:sx-3,y:H+1,z:sz-0.4,r:3.4,label:'поговорить с '+NPC_SEED.short,act:'shop'});
+  // лавка плодов — красная, правая сторона и дальше по улице
+  marketStall(sx+3,sz+2,H,C_RED,C_WHT,C_ORG);
+  addWorldTag(sx+3,H+7.2,sz+3.5,'🧺 ЛАВКА ПЛОДОВ');
+  npcFigure(sx+3,H,sz+5,{skin:1,hair:5,hairStyle:1,shirt:10,pants:3,hat:2});  // тётушка Груша в лавке
+  addWorldTag(sx+3,H+3.1,sz+5.5,`🧺 <b>${NPC_FRUIT.tag}</b><br><small>E — поговорить</small>`);
+  interactables.push({x:sx+3,y:H+1,z:sz+5.6,r:3.4,label:'поговорить с '+NPC_FRUIT.short,act:'sell'});
   // участки по обе стороны улицы
   for(let i=0;i<PLOT_MAX;i++){
     const c=plotPos(i);
@@ -2343,8 +2347,8 @@ function wordColor(word){ // самый частый цвет картинки �
 const TIER_H=[2.4,3.0,3.8,4.6];           // высота дерева в блоках по редкости
 const tierH=t=>TIER_H[Math.min(TIER_H.length-1,Math.max(0,t|0))];
 const tierScale=t=>tierH(t)*0.032;        // размер кубика, из которого собран плод
-const BED_R=4;   // грядка 9×9: кусты стоят в четыре ряда, тесно, как в саду
-const BED_STEP=[-3.6,-1.2,1.2,3.6];
+const BED_R=3;   // грядка 7×7: кусты в четыре ряда, между грядками остаётся проход
+const BED_STEP=[-3,-1,1,3];
 const BED_SLOTS=[];
 for(const dz of BED_STEP) for(const dx of BED_STEP) BED_SLOTS.push([dx,dz]);   // 16 мест
 const FRUIT_SPOTS=[[.24,.54,.13],[-.23,.68,-.14],[.03,.86,.21]]; // до трёх плодов в кроне
@@ -3164,7 +3168,7 @@ const seedsCount=()=>Object.values(myGarden.seeds||{}).reduce((a,b)=>a+(b|0),0);
 function onbSpot(which){
   if(roomKind!=='garden') return null;
   const {sx,sz,H}=gardenOrigin();
-  return which==='shop' ? {x:sx-5, z:sz+11.5} : {x:sx+5, z:sz+11.5};
+  return which==='shop' ? {x:sx-3, z:sz+1.5} : {x:sx+3, z:sz+7.5};
 }
 function onbBedPos(){
   const mine=myPlotIndex(); if(mine<0) return null;
@@ -3533,8 +3537,8 @@ function gardenGo(where){ // быстрый переход: детям бега�
   if(roomKind!=='garden') return;
   const {sx,sz,H}=gardenOrigin();
   const at=(x,z,y)=>{ P.x=x; P.z=z; P.y=(y===undefined?H+1:y); P.vx=P.vy=P.vz=0; };
-  if(where==='shop'){ at(sx-5,sz+11.5); toast('🏪 Киоск семян'); }
-  else if(where==='sell'){ at(sx+5,sz+11.5); toast('🧺 Лавка плодов'); }
+  if(where==='shop'){ at(sx-3,sz+1.5); toast('🏪 Киоск семян'); }
+  else if(where==='sell'){ at(sx+3,sz+7.5); toast('🧺 Лавка плодов'); }
   else { if(!goToMyPlot(true)) return toast('Участок ещё не выдан — подожди секунду'); toast('🌱 Твой участок'); }
   gardenRedraw();
 }

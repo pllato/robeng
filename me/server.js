@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-14-40';
+const BUILD = '2026-09-15-41';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));

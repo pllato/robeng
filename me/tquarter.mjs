@@ -31,6 +31,14 @@ ok(new Set(deco).size===4, `оформление у всех разное: ${dec
 const sides=new Set(st.map(s=>s.x>o.sx?'право':'лево'));
 ok(sides.size===2, 'павильоны чередуются по сторонам улицы — проход остаётся');
 
+// прилавки стоят отдельно и не наезжают на павильоны квартала
+const shops=await p.evaluate(()=>interactables.filter(x=>x.act==='shop'||x.act==='sell')
+  .map(x=>({act:x.act,x:Math.round(x.x),z:Math.round(x.z)})));
+ok(shops.length===2, `прилавков на улице: ${shops.length}`);
+const minGap=Math.min(...shops.map(sh=>Math.min(...st.map(a=>Math.abs(a.z-sh.z)))));
+ok(minGap>=8, `между прилавками и станциями просторно: ближайшие ${minGap} блоков по улице`);
+ok(shops[0].z!==shops[1].z, `дед Семён и тётушка Груша стоят порознь: z ${shops.map(x=>x.z).join(' и ')}`);
+
 // у каждой станции свой житель и своя вывеска
 const tags=await p.evaluate(()=>worldTags.filter(w=>w.el.className.includes('st')).map(w=>w.el.textContent));
 ok(tags.length===4, `вывески: ${tags.map(t=>t.split('\n')[0].trim()).join(' · ')}`);

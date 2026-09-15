@@ -38,9 +38,10 @@ const shot=async (n,name)=>{
   return lv;
 };
 const l1=await shot(6);   ok(l1===1, `6 растений → уровень ${l1}: дорожки между грядками`);
-const path=await p.evaluate(()=>{ const c=plotPos(myPlotIndex());
-  return getB(c.x, c.y-1+1, c.z-4)===PLANK || getB(c.x, c.y, c.z-4)===PLANK; });
-ok(path, 'дорожка появилась на участке');
+const path=await p.evaluate(()=>{ const c=plotPos(myPlotIndex()), H=c.y-1;
+  return {onGround:getB(c.x,H,c.z-4)===PLANK, above:getB(c.x,H+1,c.z-4)}; });
+ok(path.onGround, 'дорожка появилась на участке');
+ok(path.above===0, 'и это именно дорожка по земле, а не перегородка в рост ребёнка');
 const l2=await shot(12);  ok(l2===2, `12 растений → уровень ${l2}: клумбы и фонари`);
 const lamp=await p.evaluate(()=>{ const c=plotPos(myPlotIndex()), H=c.y-1;
   return getB(c.x-PLOT_RX, H+4, c.z-PLOT_RZ)===C_YEL || getB(c.x+PLOT_RX,H+4,c.z+PLOT_RZ)===C_YEL; });

@@ -37,7 +37,7 @@ ok(Object.keys(g.seeds).length===0 && g.coins===0,'старт: сумка пус
 ok((await p.evaluate(()=>eval('PLOT_BEDS')))>=12,'грядок на участке: '+await p.evaluate(()=>eval('PLOT_BEDS')));
 
 // киоск: редкие заперты
-await p.evaluate(()=>{ const {sx,sz,H}=gardenOrigin(), P=window.game.P; P.x=sx-5; P.z=sz+11; P.y=H+1; P.vx=P.vy=P.vz=0; });
+await p.evaluate(()=>{ const a=interactables.find(x=>x.act==='shop'), P=window.game.P; P.x=a.x; P.z=a.z; P.y=a.y; P.vx=P.vy=P.vz=0; });
 await p.waitForTimeout(700);
 await p.evaluate(()=>window.game.doInteract());
 await p.waitForTimeout(1400);

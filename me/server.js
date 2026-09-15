@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-41';
+const BUILD = '2026-09-15-44';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -262,9 +262,15 @@ const seedPrice  = les => Math.round(TIERS[les.tier].seed  * lessonMul(lessonNum
 const WSEED = /^([a-z0-9-]{3,24})#([a-z]{2,20})$/;
 const parseSeed = id => { const m = WSEED.exec(String(id || '')); return m ? { lesson: m[1], word: m[2] } : null; };
 function wordIndex(les, word) { return (les.words || []).findIndex(w => w.word === word); }
-function wordSeedPrice(les, word) {          // внутри темы слова дорожают по нарастающей
+// Кривая цен внутри темы. На первом уровне начало мягкое: проданного урожая всегда
+// хватает на следующее семя — новичок не должен застревать. К концу темы и на старших
+// уровнях семя стоит дороже одного урожая: приходится собрать несколько раз, и это уже
+// осмысленное накопление, а не тупик.
+function wordSeedPrice(les, word) {
   const i = Math.max(0, wordIndex(les, word));
-  return Math.max(1, Math.round(TIERS[les.tier].seed * lessonMul(lessonNum(les.id)) * (0.22 + 0.16 * i)));
+  const t = les.tier | 0;
+  const curve = t === 0 ? 0.10 + 0.085 * i : 0.22 + 0.16 * i;
+  return Math.max(1, Math.round(TIERS[t].seed * lessonMul(lessonNum(les.id)) * curve));
 }
 const WORD_FRUITS = [3, 2, 2];         // новый куст сразу даёт 3 плода, на повторении — по 2               // первый урожай — один плод, дальше больше
 // грядка из отдельных слов растёт мягко: сперва по одному плоду, потом больше.
@@ -662,6 +668,18 @@ const TALK = {
   stage: { pay: 7, title: 'Сцена',        ask: 'Say your line'       },  // реплика из ролевой сценки
 };
 const talkKind = k => (TALK[k] ? String(k) : 'cook');
+// Распознавание слышит «pair» вместо «pear» — на слух это одно и то же слово.
+// Сравниваем звучание, а не буквы: гласные не различаем, диграфы сводим к одному звуку.
+function phon(w) {
+  w = String(w || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return '';
+  w = w.replace(/ph/g, 'f').replace(/ck/g, 'k').replace(/qu/g, 'kw')
+       .replace(/sh/g, 'S').replace(/ch/g, 'C').replace(/th/g, 'T').replace(/wh/g, 'w').replace(/gh/g, '');
+  if (w.endsWith('s') && w.length > 2) w = w.slice(0, -1);
+  const head = /[aeiou]/.test(w[0]) ? 'A' : w[0];
+  const rest = w.slice(1).replace(/[aeiouyhw]/g, '').replace(/(.)\1+/g, '$1');
+  return head + rest;
+}
 // Шаблон фразы для станции: где слот под слово ребёнка и из каких частей собрать фразу.
 function phraseTemplate(les, kind) {
   const k = talkKind(kind);
@@ -1549,11 +1567,10 @@ wss.on('connection', (ws, req) => {
         const parts = tpl.parts.slice();
         if (tpl.slot >= 0) parts[tpl.slot] = ws.word;
         const said = String(m.said || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
-        const strip = w => w.endsWith('s') ? w.slice(0, -1) : w;
-        const toks = said.map(strip);
+        const toks = said.map(phon);
         // фраза принимается, когда все слова шаблона прозвучали в правильном порядке
         let pos = 0, ok = true;
-        for (const need of parts.map(x => strip(String(x).toLowerCase()))) {
+        for (const need of parts.map(phon)) {
           const i = toks.indexOf(need, pos);
           if (i < 0) { ok = false; break; }
           pos = i + 1;
@@ -1578,17 +1595,31 @@ wss.on('connection', (ws, req) => {
                                    reply: tpl.reply || '' }, order: card, phrase: more });
       }
       if (m.act === 'sell') { // лавка плодов: корзина превращается в монеты
-        let coins = 0, fruits = 0;
+        // Плоды, которые нужны для заказа, тётушка Груша не берёт: иначе ребёнок продаёт
+        // всё подряд, а кусты уходят на 15 минут повторения — и заказ встаёт намертво.
+        const keep = {};
+        const o = g.order;
+        if (o) {
+          const left = Object.keys(o.need || {}).reduce(
+            (n, w) => n + Math.max(0, (o.need[w] | 0) - ((o.gave && o.gave[w]) | 0)), 0);
+          if (left > 0) keep[o.lesson] = left;
+        }
+        let coins = 0, fruits = 0, held = 0;
+        const rest = {};
         for (const [id, n] of Object.entries(g.basket)) {
           const lesson = loadLesson(id);
           if (!lesson || !(n > 0)) continue;
-          coins += fruitPrice(lesson) * n; fruits += n;
+          const back = Math.min(n, keep[id] | 0), sellN = n - back;
+          if (back) { held += back; rest[id] = back; }
+          if (sellN > 0) { coins += fruitPrice(lesson) * sellN; fruits += sellN; }
         }
-        if (!fruits) return deny('Корзина пуста — сначала собери урожай');
-        g.basket = {}; g.coins += coins; g.soldOnce = 1;   // первый круг замкнут — с этого дня возможны боссы
-        console.log(`продано плодов: ${u ? u.name : 'гость'} — ${fruits} шт. за ${coins} монет`);
+        if (!fruits) return deny(held
+          ? `Эти ${held} плодов нужны для заказа — отнеси их на станцию, а не сюда`
+          : 'Корзина пуста — сначала собери урожай');
+        g.basket = rest; g.coins += coins; g.soldOnce = 1;   // первый круг замкнут — с этого дня возможны боссы
+        console.log(`продано плодов: ${u ? u.name : 'гость'} — ${fruits} шт. за ${coins} монет${held ? `, отложено ${held}` : ''}`);
         logAct(room, me, `продал ${fruits} плодов за ${coins} 🪙`, 'sell');
-        return reply({ sold: { fruits, coins } });
+        return reply({ sold: { fruits, coins, held } });
       }
       const bed = String(m.bed | 0);
       if (+bed < 0 || +bed >= BEDS_MAX) return deny(`Грядка №${bed} вне участка`);
@@ -1641,7 +1672,7 @@ wss.on('connection', (ws, req) => {
         if (bossCanCome(g)) { bossCame = bossSpawn(g); g.sinceBoss = 0;
           console.log(`пришёл босс: ${u ? u.name : 'гость'} — ${bossCame.name}`); }
         return reply({ planted: raw,
-          opened: opened.map(x => ({ id: x.id, theme: x.theme, level: x.level })),
+          opened: opened.map(x => ({ id: x.id, theme: x.theme, level: x.level, order: !!x.order, kind: x.kind })),
           bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null });
       } else if (m.act === 'uproot') { // выкорчевать куст: место освобождается под новое слово
         if (!b) return deny('На этой грядке ничего не растёт');
@@ -1686,14 +1717,10 @@ wss.on('connection', (ws, req) => {
           g.done[String(b.tier)] = (g.done[String(b.tier)] | 0) + 1;
           const wordSeed = parseSeed(String(b.seed || ''));
           const sid = wordSeed ? wordSeedId(b.lesson, word) : null;
-          let spare = null;
-          if (sid) {
-            g.cropsW[sid] = (g.cropsW[sid] | 0) + 1;
-            if (g.cropsW[sid] % 3 === 0) {          // каждый третий сбор — запасное семя
-              g.seeds[sid] = (g.seeds[sid] | 0) + 1;
-              spare = { id: sid, word };
-            }
-          }
+          // Семена больше не выдаём даром: вырастил → продал → купил следующее.
+          // Иначе экономика ломается, и покупать в киоске становится незачем.
+          const spare = null;
+          if (sid) g.cropsW[sid] = (g.cropsW[sid] | 0) + 1;
           else g.crops[b.lesson] = (g.crops[b.lesson] | 0) + 1;
           const opened = sid ? unlockAfterWord(g, b.lesson, word) : unlockAfter(g, b.lesson);
           g.sinceBoss = (g.sinceBoss | 0) + 1;
@@ -1707,7 +1734,7 @@ wss.on('connection', (ws, req) => {
           logAct(room, me, `собрал куст «${word}» целиком`, 'done');
           return reply({ harvested: { lesson: b.lesson, theme: word, count: 1, cycle: pst.c }, spare,
             bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null,
-            opened: opened.map(x => ({ id: x.id, theme: x.theme || x.title, level: x.level })) });
+            opened: opened.map(x => ({ id: x.id, theme: x.theme || x.title, level: x.level, order: !!x.order, kind: x.kind })) });
         }
       } else if (m.act === 'clear') { // выкорчевать, чтобы посадить другое
         if (!b) return deny('Грядка и так пустая');

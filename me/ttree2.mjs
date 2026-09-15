@@ -28,6 +28,18 @@ ok(grown===1, 'вырос — дерево взрослое');
 const hi=await p.evaluate(()=>{ const b=bedAt(0); return tierH(b.tier)*plantGrow(b,'apple'); });
 ok(hi>=2.2, `дерево крупное: ${hi.toFixed(1)} блока в высоту`);
 
+// плод должен висеть СНАРУЖИ кроны, иначе его не видно и не нажать
+const outside=await p.evaluate(()=>{
+  const bd=bedAt(0), q=bedPos(myPlotIndex(),0), list=[];
+  bedPlants(bd,q,list,true);
+  const tree=list.find(o=>o.kind==='plant');
+  const crown=0.20*tree.h;                         // самая широкая часть кроны
+  return list.filter(o=>o.kind==='fruit')
+             .map(f=>+(Math.hypot(f.x-tree.x,f.z-tree.z)/crown).toFixed(2));
+});
+ok(outside.length>0 && outside.every(r=>r>1),
+   `каждый плод вынесен за крону: ${outside.join(', ')} ширины кроны`);
+
 // обираем целиком
 for(let i=0;i<6;i++){
   const left=await p.evaluate(()=>ripeWords(bedAt(0)));
@@ -41,6 +53,7 @@ ok(after===1, `куст обобран, но дерево осталось бо�
 const fruits=await p.evaluate(()=>{ const out=[]; bedPlants(bedAt(0),bedPos(myPlotIndex(),0),out,true);
   return out.filter(o=>o.kind==='fruit').length; });
 ok(fruits===0, 'плодов на нём нет — растут заново только они');
+
 
 // подпись говорит, через сколько плоды
 await p.evaluate(()=>{ const q=bedPos(myPlotIndex(),0), P=window.game.P; P.x=q.x+.5; P.z=q.z+4; });

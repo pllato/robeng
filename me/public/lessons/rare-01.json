@@ -1,0 +1,77 @@
+{
+ "id": "rare-01",
+ "num": 1,
+ "level": "Starter",
+ "age": "5-11",
+ "title": "Диковинки (Rare fruits)",
+ "theme": "Диковинки",
+ "vocabulary": [
+  {
+   "word": "dragonfruit",
+   "emoji": "🐉",
+   "ru": "питайя"
+  },
+  {
+   "word": "starfruit",
+   "emoji": "⭐",
+   "ru": "карамбола"
+  },
+  {
+   "word": "pomegranate",
+   "emoji": "🔴",
+   "ru": "гранат"
+  },
+  {
+   "word": "coconut",
+   "emoji": "🥥",
+   "ru": "кокос"
+  },
+  {
+   "word": "pineapple",
+   "emoji": "🍍",
+   "ru": "ананас"
+  },
+  {
+   "word": "mango",
+   "emoji": "🥭",
+   "ru": "манго"
+  },
+  {
+   "word": "kiwi",
+   "emoji": "🥝",
+   "ru": "киви"
+  },
+  {
+   "word": "papaya",
+   "emoji": "🧡",
+   "ru": "папайя"
+  },
+  {
+   "word": "avocado",
+   "emoji": "🥑",
+   "ru": "авокадо"
+  },
+  {
+   "word": "fig",
+   "emoji": "🟣",
+   "ru": "инжир"
+  }
+ ],
+ "sentence": [
+  "i",
+  "have",
+  "dragonfruit"
+ ],
+ "roleplay": {
+  "title": "Show your rare fruit",
+  "a": "Look! I have a dragonfruit.",
+  "b": "Wow! It is rare."
+ },
+ "phraseFinale": [
+  "my",
+  "garden",
+  "is",
+  "rare"
+ ],
+ "stages": []
+}

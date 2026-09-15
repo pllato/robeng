@@ -1704,6 +1704,12 @@ function handleNet(m){
     }
     if(m.uprooted){ toast(`✂️ Убрал «${m.uprooted.word}» — место освободилось`);
       snd(280,.1,'sine',.13); if(!$('mBed').hidden) renderBed(); gardenRedraw(); }
+    if(m.rare){
+      toast(`💎 ДИКОВИНКА! Нашёл ${m.rare.emoji} ${m.rare.word}${m.rare.ru?` (${m.rare.ru})`:''} — таких почти ни у кого нет`);
+      snd(700,.12,'triangle',.18); setTimeout(()=>snd(1050,.12,'triangle',.18),120);
+      setTimeout(()=>snd(1400,.3,'triangle',.18),250);
+      setTimeout(()=>toast('🌱 Семя диковинки уже в сумке — посади его на грядке'),1800);
+    }
     if(m.sold){ toast(`🪙 Сдал ${fruitsWord(m.sold.fruits)} за ${coinsWord(m.sold.coins)}`);
       coinRain(m.sold.coins);
       if(m.sold.held) setTimeout(()=>toast(
@@ -2001,12 +2007,22 @@ let TIERS=[{level:'Starter',name:'обычное',emoji:'🌱',seed:14,fruit:2},
            {level:'A1',name:'необычное',emoji:'🌿',seed:60,fruit:7},
            {level:'A2',name:'редкое',emoji:'🍀',seed:240,fruit:25},
            {level:'B1',name:'легендарное',emoji:'✨',seed:900,fruit:85}];
-let priceStep=0.12;   // внутри уровня каждая следующая тема дороже — цену задаёт сервер
+let priceStep=0.12;   // осталось от старой линейной кривой; цены считает lessonMulC
 const lessonNum=id=>{ const m=/-(\d+)$/.exec(String(id||'')); return m?+m[1]:1; }; // номер внутри уровня
-const lessonMul=num=>1+priceStep*Math.max(0,(num|0)-1);
 const tierIdx=it=>{ const i=TIERS.findIndex(t=>t.level===(it&&it.level)); return i<0?0:i; };
-const seedPrice=it=>Math.round(TIERS[tierIdx(it)].seed*lessonMul(lessonNum(it&&it.id)));
-const fruitPrice=it=>Math.round(TIERS[tierIdx(it)].fruit*lessonMul(lessonNum(it&&it.id)));
+// та же кривая, что на сервере: каждая следующая тема дороже и щедрее на 20%
+const LESSON_STEP=1.20, LESSONS_PER_TIER=25;
+const lessonMulC=it=>Math.pow(LESSON_STEP, tierIdx(it)*LESSONS_PER_TIER+Math.max(0,lessonNum(it&&it.id)-1));
+const seedPrice=it=>Math.max(1,Math.round(TIERS[0].seed*lessonMulC(it)));
+const fruitPrice=it=>Math.max(1,Math.round(TIERS[0].fruit*lessonMulC(it)));
+// К середине курса счёт идёт на миллионы — «1268495 монет» ребёнок не прочитает.
+const nfmt=n=>{ n=Math.round(+n||0);
+  if(n<10000) return String(n);
+  if(n<1e6)   return (n/1e3).toFixed(n<1e5?1:0).replace(/\.0$/,'')+' тыс.';
+  if(n<1e9)   return (n/1e6).toFixed(n<1e7?1:0).replace(/\.0$/,'')+' млн';
+  if(n<1e12)  return (n/1e9).toFixed(1).replace(/\.0$/,'')+' млрд';
+  return (n/1e12).toFixed(1).replace(/\.0$/,'')+' трлн';
+};
 const bedAt=i=>{ const g=myGarden.beds||{}; return g[i]||g[String(i)]||null; };
 const isMyPlot=pi=>pi===myPlotIndex();
 const nowMs=()=>Date.now();
@@ -2067,7 +2083,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-44';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-46';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2334,7 +2350,7 @@ const plural=(n,f)=>{ // 1 монета, 2 монеты, 5 монет — дет
   const a=Math.abs(n)%100, b=a%10;
   return f[a>10&&a<20?2:b===1?0:b>=2&&b<=4?1:2];
 };
-const coinsWord=n=>`${n} ${plural(n,['монета','монеты','монет'])}`;
+const coinsWord=n=>(n<10000 ? `${n} ${plural(n,['монета','монеты','монет'])}` : `${nfmt(n)} 🪙`);
 const fruitsWord=n=>`${n} ${plural(n,['плод','плода','плодов'])}`;
 // ---- жители улицы: с ними разговаривают, а не «нажимают на ящик» ----
 const NPC_SEED={face:'🧑‍🌾', tag:'Дед Семён', name:'Дед Семён, семенных дел мастер', short:'дедом Семёном'};
@@ -2380,7 +2396,7 @@ for(const dz of BED_STEP) for(const dx of BED_STEP) BED_SLOTS.push([dx,dz]);   /
 // Плоды висят СНАРУЖИ кроны: внутри их съедала листва, ребёнок не понимал, что сорвать.
 // Радиус берём заведомо больше самой широкой части кроны (0.20·h).
 const FRUIT_SPOTS=[[.30,.52,.11],[-.28,.68,-.15],[.05,.82,.31]];
-const bedTop=b=>tierH(b.tier)*(bedBundle(b)?2.1:1)+0.5;
+const bedTop=b=>tierH(b.tier)*(bedBundle(b)?2.1:(bedRare(b)?1.6:1))+0.5;
 function plantSpot(b,q,i){                        // где стоит кустик слова №i
   const sl=BED_SLOTS[i%BED_SLOTS.length];
   return {x:q.x+sl[0]+.5, y:q.y, z:q.z+sl[1]+.5};
@@ -2389,12 +2405,19 @@ function plantSpot(b,q,i){                        // где стоит куст�
 // Раньше он рассыпался на восемь одинаковых кустиков, и покупка набора выглядела
 // как восемь обычных семян, а не как что-то особенное.
 const bedBundle=b=>!!b && !isWordSeed(b.seed);
+// 💎 Диковинки. Их не купить — только найти, поэтому и выглядеть они должны иначе:
+// дерево выше в полтора раза, крона своего цвета, ствол светится, плод крупный.
+const RARE_LESSON='rare-01';
+const bedRare=b=>!!b && String(b.lesson||'')===RARE_LESSON;
+const RARE_LEAF=[C_PINK,C_CYAN,C_PUR,C_YEL,C_ORG,C_LIME,C_RED,C_WHT,C_BLU,C_DGRN];
+const rareLeaf=w=>RARE_LEAF[wordHash(String(w||''))%RARE_LEAF.length];
 function bundleGrow(b){                         // общий рост: по самому взрослому слову темы
   let g=0; for(const w of bedKinds(b)) g=Math.max(g, plantGrow(b,w));
   return g;
 }
 function bedPlants(b,q,out,withFruit){
-  const h=tierH(b.tier), s=tierH(b.tier)*0.045;   // плод соразмерен дереву, но хорошо заметен
+  const rare=bedRare(b);
+  const h=tierH(b.tier)*(rare?1.6:1), s=tierH(b.tier)*(rare?0.07:0.045);   // диковинка крупнее
   if(bedBundle(b)){
     const hh=h*2.1*bundleGrow(b);                 // большое дерево темы
     const c={x:q.x+.5, y:q.y, z:q.z+.5};
@@ -2415,7 +2438,7 @@ function bedPlants(b,q,out,withFruit){
   b.words.forEach((w,i)=>{
     const c=plantSpot(b,q,i);
     const hh=h*plantGrow(b,w.word);             // сорванный куст начинает расти заново
-    out.push({kind:'plant', x:c.x, y:c.y, z:c.z, h:hh});
+    out.push({kind:'plant', x:c.x, y:c.y, z:c.z, h:hh, rare:rare?w.word:0});
     if(!withFruit) return;
     // плоды слова делим между его кустами: два куста apple — плоды висят на обоих
     const same=b.words.filter(x=>x.word===w.word).length||1;
@@ -2430,16 +2453,22 @@ function bedPlants(b,q,out,withFruit){
 }
 // Настоящее дерево: ствол из брёвен и крона в три яруса. Раньше это была палка
 // с зелёным колпачком — ребёнок не узнавал в ней дерево, на котором растут плоды.
-function pushPlant(V,x,y,z,h,big){
+function pushPlant(V,x,y,z,h,big,rare){
   const t=(big?0.085:0.065)*h;
-  pushBox(V,x-t,y,z-t,x+t,y+h*0.58,z+t,LOG);                              // ствол
+  pushBox(V,x-t,y,z-t,x+t,y+h*0.58,z+t, rare?C_WHT:LOG);                  // у диковинки ствол светлый
+  if(rare){                                                               // и светящиеся кольца
+    for(let k=1;k<=3;k++){ const yy=y+h*0.12*k, r=t*1.5;
+      pushBox(V,x-r,yy,z-r,x+r,yy+h*0.03,z+r, rareLeaf(rare)); }
+  }
   const c=y+h*0.46;
   // крона узкая: широкая смыкалась в сплошную стену — ребёнок оказывался внутри листвы
   const k=big?1.35:1;                       // дерево темы — раскидистое, его видно издалека
   const w1=0.15*h*k, w2=0.20*h*k, w3=0.11*h*k;
-  pushBox(V,x-w1,c,           z-w1,x+w1,c+0.16*h,z+w1,LEAF);              // нижний ярус кроны
-  pushBox(V,x-w2,c+0.15*h,    z-w2,x+w2,c+0.34*h,z+w2,LEAF);              // самый широкий
-  pushBox(V,x-w3,c+0.33*h,    z-w3,x+w3,c+0.47*h,z+w3,LEAF);              // макушка
+  const LF = rare ? rareLeaf(rare) : LEAF;                                // крона диковинки цветная
+  pushBox(V,x-w1,c,           z-w1,x+w1,c+0.16*h,z+w1,LF);                // нижний ярус кроны
+  pushBox(V,x-w2,c+0.15*h,    z-w2,x+w2,c+0.34*h,z+w2,LF);                // самый широкий
+  pushBox(V,x-w3,c+0.33*h,    z-w3,x+w3,c+0.47*h,z+w3,LF);                // макушка
+  if(rare) pushBox(V,x-w3*0.5,c+0.46*h,z-w3*0.5,x+w3*0.5,c+0.58*h,z+w3*0.5,C_YEL);  // золотая макушка
 }
 let gCache=null,gCacheT=0,gCacheX=0,gCacheZ=0;
 const gardenDirty=()=>{ gCache=null; };   // данные сада пришли — пересобрать немедленно
@@ -2465,12 +2494,15 @@ function gardenMesh(V){                   // собираем растения �
   }
   for(const pl of plants){
     if(V.length/24>=MAXQ-140) break;
-    if(pl.kind==='plant') pushPlant(V,pl.x,pl.y,pl.z,pl.h,pl.big);
+    if(pl.kind==='plant') pushPlant(V,pl.x,pl.y,pl.z,pl.h,pl.big,pl.rare);
     else pushObjPanel(V,pl.x,pl.y,pl.z,pl.word,pl.s);
   }
 }
 function bedLabel(b,mine,near){ // вблизи — подробно, издалека — значок, иначе подписи налезают друг на друга
   const t=tierInfo(b.tier), left=ripeWords(b);
+  if(bedRare(b)) return near
+    ? `💎 <b>ДИКОВИНКА</b><br><small>${ripeUniq(b).map(w=>`${emojiOf(b,w)} ${w}`).join(' · ')||(b.words||[]).map(w=>w.word).join(' · ')}${left.length?` — созрело ${left.length}`:` · ${waitText(b)}`}</small>`
+    : '💎';
   if(!near) return left.length ? `🧺 ${left.length}` : `${t.emoji} <small>${waitText(b)}</small>`;
   if(!left.length) return `${t.emoji} <b>${b.theme||b.title}</b><br><small>⏳ следующий урожай ${waitText(b)}</small>`;
   if(!mine) return `${t.emoji} <b>${b.theme||b.title}</b><br><small>созрело ${left.length}</small>`;
@@ -2606,7 +2638,7 @@ function gardenHud(){ // всегда на виду: монеты, корзин�
   nav.style.display=free?'flex':'none';
   if(!on) return;
   const seeds=Object.entries(myGarden.seeds||{}).filter(([,n])=>n>0);
-  $('ghTop').innerHTML=`🪙 <b>${myGarden.coins|0}</b> · 🧺 ${basketCount()}${basketCount()?` <small>(${basketWorth()} 🪙)</small>`:''}`;
+  $('ghTop').innerHTML=`🪙 <b>${nfmt(myGarden.coins)}</b> · 🧺 ${basketCount()}${basketCount()?` <small>(${nfmt(basketWorth())} 🪙)</small>`:''}`;
   $('ghSeeds').innerHTML = seeds.length
     ? '🎒 ' + seeds.map(([id,n])=>{
         const w=(shopWords||[]).find(x=>x.id===id);
@@ -3672,7 +3704,7 @@ function coinRain(total){
     i++;
     const part=Math.round(shown+total*i/n);
     const e=el();
-    if(e) e.innerHTML=`🪙 <b>${part}</b> · 🧺 ${basketCount()}`;
+    if(e) e.innerHTML=`🪙 <b>${nfmt(part)}</b> · 🧺 ${basketCount()}`;
     // звон: каждая монета чуть выше предыдущей
     snd(720+i*46,.07,'triangle',.13);
     if(i>=n){ clearInterval(coinAnim); coinAnim=null;
@@ -3682,7 +3714,7 @@ function coinRain(total){
 function renderShop(level){
   const ti=TIERS.findIndex(t=>t.level===level), t=tierInfo(ti<0?0:ti);
   const open=myGarden.open||{}, coins=myGarden.coins|0;
-  $('shopCoins').innerHTML=`🪙 <b>${coins}</b> ${plural(coins,['монета','монеты','монет'])} · 🧺 в корзине: <b>${fruitsWord(basketCount())}</b>`;
+  $('shopCoins').innerHTML=`🪙 <b>${nfmt(coins)}</b> · 🧺 в корзине: <b>${fruitsWord(basketCount())}</b>`;
   $('shopLevels').innerHTML=TIERS.map((x)=>{
     const any=(shopWords||[]).some(y=>y.level===x.level)||(shopIndex||[]).some(y=>y.level===x.level&&open[y.id]);
     return `<button class="task${x.level===level?'':' ghost'}" data-l="${x.level}">${x.emoji} ${x.name}${any?'':' 🔒'}</button>`;
@@ -3701,25 +3733,25 @@ function renderShop(level){
     const poor=!o.free && coins<o.price;
     // семя уже есть: карточка берёт его в руку, а плюсом можно докупить ещё такое же
     if(have) return `<div class="seedCard own" data-take="${o.id}"><div class="badge">×${have}</div>
-      ${poor?'':`<button class="seedMore" data-more="${o.id}">+ ${o.free?'ещё':o.price+' 🪙'}</button>`}
+      ${poor?'':`<button class="seedMore" data-more="${o.id}">+ ${o.free?'ещё':nfmt(o.price)+' 🪙'}</button>`}
       <div class="em">${o.em}</div><div class="nm">${o.name}</div>
       <div class="pr">в рюкзаке</div><div class="sub">нажми — возьмёшь в руку</div></div>`;
     return `<div class="seedCard${poor?' poor':''}${o.free?' own':''}${o.planted?' planted':''}" data-buy="${o.id}">
       ${o.planted?'<div class="badge" style="background:#2f7d4f;left:-5px;right:auto">посажено</div>':''}
       <div class="em">${growing?'🌿':o.em}</div><div class="nm">${o.name}</div>
-      <div class="pr">${o.free?'бесплатно':o.price+' 🪙'}</div>
-      <div class="sub">${poor?`не хватает ${o.price-coins} 🪙`:(growing?'уже растёт — можно ещё':o.sub)}</div></div>`;
+      <div class="pr">${o.free?'бесплатно':nfmt(o.price)+' 🪙'}</div>
+      <div class="sub">${poor?`не хватает ${nfmt(o.price-coins)} 🪙`:(growing?'уже растёт — можно ещё':o.sub)}</div></div>`;
   };
 
   // 1) отдельные слова — то, с чего начинают
   const mineW=(shopWords||[]).filter(w=>w.level===level);
   const wordCards=mineW.map(w=>card({ id:w.id, name:w.word, em:w.free?'🎁':emojiFor(w.lesson,w.word),
     price:w.price, free:w.free, planted:w.planted,
-    sub:w.free?'первое — в подарок':(w.planted?'растёт на грядке':`урожай ~${w.fruit*2} 🪙`) })).join('');
+    sub:w.free?'первое — в подарок':(w.planted?'растёт на грядке':`урожай ~${nfmt(w.fruit*3)} 🪙`) })).join('');
   // 2) наборы «вся тема» — открываются, когда тема собрана по словам
   const mineT=(shopIndex||[]).filter(x=>x.level===level&&open[x.id]);
   const themeCards=mineT.map(x=>card({ id:x.id, name:'вся тема: '+(x.theme||x.title), em:'📦',
-    price:seedPrice(x), sub:`сразу все слова · ~${fruitPrice(x)*19} 🪙` })).join('');
+    price:seedPrice(x), sub:`сразу все слова · ~${nfmt(fruitPrice(x)*19)} 🪙` })).join('');
   // 3) закрытые — видно, но без цен
   const openIds=new Set(mineW.map(w=>w.id));
   const lockedThemes=(shopIndex||[]).filter(x=>x.level===level&&!open[x.id]
@@ -3832,12 +3864,12 @@ function openSell(){
 }
 function renderSell(){
   const rows=Object.entries(myGarden.basket||{}).filter(([,n])=>n>0);
-  $('sellCoins').innerHTML=`🪙 <b>${myGarden.coins|0}</b> ${plural(myGarden.coins|0,['монета','монеты','монет'])}`;
+  $('sellCoins').innerHTML=`🪙 <b>${nfmt(myGarden.coins)}</b>`;
   $('sellList').innerHTML = rows.length ? rows.map(([id,n])=>{
     const it=(shopIndex||[]).find(x=>x.id===id)||{}, t=tierInfo(tierIdx(it));
     return `<div class="shopRow"><span>${t.emoji} <b>${it.theme||id}</b> × ${n}
-      <small style="color:#9fb6d4"> · по ${fruitPrice(it)} 🪙</small></span>
-      <span>${fruitPrice(it)*n} 🪙</span></div>`;
+      <small style="color:#9fb6d4"> · по ${nfmt(fruitPrice(it))} 🪙</small></span>
+      <span>${nfmt(fruitPrice(it)*n)} 🪙</span></div>`;
   }).join('') : '<div class="hint">корзина пуста — собери урожай на своей грядке</div>';
   $('sellGo').style.display=rows.length?'block':'none';
   const ord=myGarden.order;
@@ -3891,7 +3923,7 @@ function talkShow(t){
   $('talkItem').textContent = t.emoji || '🌱';
   $('talkItem').style.animation='none'; void $('talkItem').offsetWidth; $('talkItem').style.animation='';
   $('talkPhrase').innerHTML = t.parts.map((w,i)=> i===t.slot?`<i>${t.word}</i>`:w).join(' ');
-  $('talkRu').textContent = (t.ru?`${t.emoji} ${t.ru} · `:'') + `за фразу заплатят ${t.pay} 🪙`;
+  $('talkRu').textContent = (t.ru?`${t.emoji} ${t.ru} · `:'') + `за фразу заплатят ${nfmt(t.pay)} 🪙`;
   say(t.text);
 }
 function talkRecStart(){
@@ -3911,7 +3943,7 @@ function talkHeard(text){                 // сюда приходит расп�
 }
 function talkOk(r){
   talkRecStop();
-  toast(`🗣 «${r.text}» — отлично! +${r.pay} 🪙`);
+  toast(`🗣 «${r.text}» — отлично! +${nfmt(r.pay)} 🪙`);
   coinRain(r.pay);
   snd(760,.1,'triangle',.16); setTimeout(()=>snd(1040,.18,'triangle',.16),110);
   $('talkScore').innerHTML=`фраз сказано: <b>${r.total}</b>`;
@@ -3993,7 +4025,7 @@ function talkPrizeGot(r){
   $('talkItem').textContent='🎉'; $('talkPhrase').textContent='';
   $('talkAsk').textContent='Спасибо! Отличная работа.';
   $('talkRu').textContent = r.next?`Дальше — тема «${r.next}»`:'';
-  toast(`🏆 Заказ выполнен! +${r.prize} 🪙`);
+  toast(`🏆 Заказ выполнен! +${nfmt(r.prize)} 🪙`);
 }
 // ── портал: экран полёта со списком живых миров ──
 let flyOpen=false, flyHint='';

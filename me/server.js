@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-44';
+const BUILD = '2026-09-15-46';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -251,11 +251,18 @@ const TIERS = [
 // вкладываться: чем дольше держишь грядку, тем больше она принесла.
 // номер берём внутри уровня (starter-07 → 7), иначе редкие темы улетают в космос
 const lessonNum = id => { const m = /-(\d+)$/.exec(String(id || '')); return m ? +m[1] : 1; };
-const lessonMul = num => 1 + 0.12 * Math.max(0, (num | 0) - 1);
+// Кривая роста. Первые деревья стоят копейки, но каждая следующая тема дороже и щедрее
+// на 20%: к середине курса счёт идёт на сотни тысяч и миллионы. Так у ребёнка есть на что
+// копить весь курс, а старое слово перестаёт быть источником дохода само собой.
+const LESSON_STEP = 1.20;
+const LESSONS_PER_TIER = 25;
+// сквозной номер темы: 0 — «starter-01», 25 — «a1-01», 50 — «a2-01», 75 — «b1-01»
+const lessonIdx = les => (les.tier | 0) * LESSONS_PER_TIER + Math.max(0, lessonNum(les.id) - 1);
+const lessonMul = les => Math.pow(LESSON_STEP, lessonIdx(les));
 // на одном кусте вызревает 2 или 3 плода — у каждого слова своё число, но всегда одно и то же
 const wordHash = w => { let h = 0; for (let i = 0; i < w.length; i++) h = (h * 31 + w.charCodeAt(i)) >>> 0; return h; };
 const fruitsOf = w => 2 + wordHash(String(w)) % 2;
-const seedPrice  = les => Math.round(TIERS[les.tier].seed  * lessonMul(lessonNum(les.id)));
+const seedPrice  = les => Math.max(1, Math.round(TIERS[0].seed  * lessonMul(les)));
 // Начинающему тяжело сразу собрать всю тему, поэтому первые семена — по одному слову.
 // «starter-01#apple» — семя одного куста. Каждое следующее слово темы заметно дороже,
 // а первый урожай с куста — всего один плод; со второго круга их становится больше.
@@ -266,11 +273,47 @@ function wordIndex(les, word) { return (les.words || []).findIndex(w => w.word =
 // хватает на следующее семя — новичок не должен застревать. К концу темы и на старших
 // уровнях семя стоит дороже одного урожая: приходится собрать несколько раз, и это уже
 // осмысленное накопление, а не тупик.
+// ── 💎 ДИКОВИНКИ: параллельная линия редких растений ───────────────────────────
+// Их не купить в киоске. Они выпадают сами, редко, при сборе урожая — и потому
+// на огороде видно сразу: у кого растёт диковинка, тот играет давно и много.
+const RARE_LESSON = 'rare-01';
+const isRare = id => String(id || '').split('#')[0] === RARE_LESSON;
+// Один плод из пятидесяти приносит семя диковинки. Частоту можно менять на сервере
+// переменной RARE_CHANCE — тесты выкручивают её в единицу, чтобы не ловить случайность.
+const RARE_CHANCE = Math.min(1, Math.max(0, +process.env.RARE_CHANCE || 0.02));
+const RARE_MULT = 8;                   // диковинка стоит как восемь лучших обычных плодов
+// Цена диковинки растёт вместе с игроком: иначе к середине курса она превращается в мелочь.
+function bestFruit(g) {
+  let best = TIERS[0].fruit;
+  for (const id of Object.keys(g.openW || {})) {
+    const ws = parseSeed(id); if (!ws || isRare(ws.lesson)) continue;
+    const les = loadLesson(ws.lesson); if (!les) continue;
+    best = Math.max(best, fruitPrice(les));
+  }
+  for (const id of Object.keys(g.open || {})) {
+    if (isRare(id)) continue;
+    const les = loadLesson(id); if (les) best = Math.max(best, fruitPrice(les));
+  }
+  return best;
+}
+const rareFruitPrice = g => Math.max(20, Math.round(bestFruit(g) * RARE_MULT));
+function rareDrop(g) {                 // что именно выпало — выбираем из ещё не найденных
+  const les = loadLesson(RARE_LESSON); if (!les) return null;
+  const all = (les.words || []).map(w => w.word);
+  const have = new Set(Object.keys(g.openW || {})
+    .map(id => parseSeed(id)).filter(x => x && isRare(x.lesson)).map(x => x.word));
+  const fresh = all.filter(w => !have.has(w));
+  const pool = fresh.length ? fresh : all;     // все найдены — выпадают повторы
+  const word = pool[Math.floor(Math.random() * pool.length)];
+  const v = (les.words || []).find(w => w.word === word) || {};
+  return { id: wordSeedId(RARE_LESSON, word), word, emoji: v.emoji || '💎', ru: v.ru || '',
+           first: fresh.length > 0 };
+}
 function wordSeedPrice(les, word) {
   const i = Math.max(0, wordIndex(les, word));
   const t = les.tier | 0;
   const curve = t === 0 ? 0.10 + 0.085 * i : 0.22 + 0.16 * i;
-  return Math.max(1, Math.round(TIERS[t].seed * lessonMul(lessonNum(les.id)) * curve));
+  return Math.max(1, Math.round(TIERS[0].seed * lessonMul(les) * curve));
 }
 const WORD_FRUITS = [3, 2, 2];         // новый куст сразу даёт 3 плода, на повторении — по 2               // первый урожай — один плод, дальше больше
 // грядка из отдельных слов растёт мягко: сперва по одному плоду, потом больше.
@@ -278,7 +321,7 @@ const WORD_FRUITS = [3, 2, 2];         // новый куст сразу даё�
 const bedFruits = (b, w, cyc) => parseSeed(String(b.seed || ''))
   ? WORD_FRUITS[Math.min(WORD_FRUITS.length - 1, (cyc === undefined ? b.cycle : cyc) | 0)]
   : fruitsOf(w);
-const fruitPrice = les => Math.round(TIERS[les.tier].fruit * lessonMul(lessonNum(les.id)));
+const fruitPrice = les => Math.max(1, Math.round(TIERS[0].fruit * lessonMul(les)));
 const tierOf = level => Math.max(0, TIERS.findIndex(t => t.level === level));
 const lessonCache = new Map();
 function loadLesson(id) {              // словарь урока берём из каталога, магазин семян = список уроков
@@ -824,7 +867,7 @@ function shopWords(g) {                 // что лежит на прилавк
   helpingHand(g);
   const out = [];
   for (const id of Object.keys(g.openW || {})) {
-    const ws = parseSeed(id); if (!ws) continue;
+    const ws = parseSeed(id); if (!ws || isRare(ws.lesson)) continue;   // диковинки не продаются
     const les = loadLesson(ws.lesson); if (!les) continue;
     out.push({ id, lesson: les.id, level: les.level, theme: les.theme || les.title,
       word: ws.word, price: (g.freeSeed === id) ? 0 : wordSeedPrice(les, ws.word), free: g.freeSeed === id,
@@ -878,7 +921,7 @@ function migrateTrees(u) {             // сады старой версии: д
   delete u.trees;
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
-function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0,
+function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0, rares: 0,
   bossDone: 0, weapon: 0, pets: [], sinceBoss: 0, boss: null, items: {} }; }
 function sanitizeBed(b) {              // грядка из чужих рук (браузер гостя) — доверяем только структуре
   if (!b || typeof b !== 'object') return null;
@@ -917,7 +960,7 @@ function sanitizeGarden(src) {
     const i = parseInt(k, 10), b = sanitizeBed(src.beds[k]);
     if (i >= 0 && i < BEDS_MAX && b) g.beds[String(i)] = b;
   }
-  g.coins = Math.min(Math.max(src.coins | 0, 0), 1e9);
+  g.coins = Math.min(Math.max(+src.coins || 0, 0), 1e15);   // к концу курса счёт идёт на миллиарды
   // в сумке лежат и семена-слова («starter-01#apple»), и наборы «вся тема»
   const seedOk = id => { const ws = parseSeed(id); return ws ? !!loadLesson(ws.lesson) : !!loadLesson(id); };
   for (const [id, n] of Object.entries(src.seeds || {})) if (seedOk(id)) g.seeds[id] = Math.min(Math.max(n | 0, 0), 99);
@@ -943,6 +986,7 @@ function sanitizeGarden(src) {
   }
   g.phrases = Math.min(999999, Math.max(0, src.phrases | 0));
   g.orders = Math.min(9999, Math.max(0, src.orders | 0));
+  g.rares = Math.min(9999, Math.max(0, src.rares | 0));
   const so = src.order;                       // заказ станции переносим целиком, но с проверкой
   if (so && ORDER_KINDS.includes(so.kind) && loadLesson(so.lesson)) {
     const need = {}, gave = {};
@@ -1611,7 +1655,8 @@ wss.on('connection', (ws, req) => {
           if (!lesson || !(n > 0)) continue;
           const back = Math.min(n, keep[id] | 0), sellN = n - back;
           if (back) { held += back; rest[id] = back; }
-          if (sellN > 0) { coins += fruitPrice(lesson) * sellN; fruits += sellN; }
+          const price = isRare(id) ? rareFruitPrice(g) : fruitPrice(lesson);
+          if (sellN > 0) { coins += price * sellN; fruits += sellN; }
         }
         if (!fruits) return deny(held
           ? `Эти ${held} плодов нужны для заказа — отнеси их на станцию, а не сюда`
@@ -1706,6 +1751,18 @@ wss.on('connection', (ws, req) => {
         b.ripe.splice(at, 1);
         logAct(room, me, `сказал «${word}» ✅`, 'say');
         markDay(g);
+        // редкая находка: ради неё и стоит собирать урожай дальше
+        let rare = null;
+        if (!isRare(b.lesson) && Math.random() < RARE_CHANCE) {
+          rare = rareDrop(g);
+          if (rare) {
+            g.seeds[rare.id] = (g.seeds[rare.id] | 0) + 1;
+            g.openW[rare.id] = 1;                       // найденное можно сажать
+            g.rares = (g.rares | 0) + 1;
+            console.log(`диковинка: ${u ? u.name : 'гость'} — ${rare.word}`);
+            logAct(room, me, `нашёл диковинку ${rare.emoji} ${rare.word}!`, 'win');
+          }
+        }
         const pst = plantState(b, word);
         pst.n = Math.max(0, (pst.n | 0) - 1);
         g.basket[b.lesson] = (g.basket[b.lesson] | 0) + 1;
@@ -1732,10 +1789,11 @@ wss.on('connection', (ws, req) => {
           }
           console.log(`куст собран: ${u ? u.name : 'гость'} — ${b.lesson}/${word}, круг ${pst.c}`);
           logAct(room, me, `собрал куст «${word}» целиком`, 'done');
-          return reply({ harvested: { lesson: b.lesson, theme: word, count: 1, cycle: pst.c }, spare,
+          return reply({ rare, harvested: { lesson: b.lesson, theme: word, count: 1, cycle: pst.c }, spare,
             bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null,
             opened: opened.map(x => ({ id: x.id, theme: x.theme || x.title, level: x.level, order: !!x.order, kind: x.kind })) });
         }
+        return reply({ rare });          // куст ещё плодоносит, но находку показать надо
       } else if (m.act === 'clear') { // выкорчевать, чтобы посадить другое
         if (!b) return deny('Грядка и так пустая');
         delete g.beds[bed];

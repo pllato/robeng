@@ -5,3 +5,9 @@ data/
 *.old-econ
 *.old-ui
 sweep.txt
+
+# архивы для сервера и скриншоты тестов
+*.tgz
+*.zip
+*.png
+package-lock.json

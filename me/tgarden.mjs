@@ -29,7 +29,7 @@ await p.waitForTimeout(2000);
 await p.evaluate(()=>{ window.game.setPaused(false); window.game.setDrag(true); });
 ok(true,'телепорт в сад сработал, мир: '+await p.evaluate(()=>window.game.code()));
 
-const toBed=async i=>{ await p.evaluate(n=>{ const b=gardenBedPos(n), P=window.game.P;
+const toBed=async i=>{ await p.evaluate(n=>{ const b=bedPos(myPlotIndex(),n), P=window.game.P;
   P.x=b.x+2.2; P.z=b.z+2.2; P.y=b.y; P.vy=0; }, i); await p.waitForTimeout(700); };
 await toBed(0);
 ok((await p.evaluate(()=>{const h=eval('hintNear'); return h&&h.act;}))==='bed','стою у грядки');
@@ -46,13 +46,13 @@ for(let i=1;i<=3;i++){
   ok(pl&&pl.stage===i, `полил произношением ${i} раз → стадия ${pl&&pl.stage}`);
 }
 await p.waitForTimeout(600);
-await p.evaluate(()=>{ const b=gardenBedPos(0), P=window.game.P;
+await p.evaluate(()=>{ const b=bedPos(myPlotIndex(),0), P=window.game.P;
   P.x=b.x+5.5; P.z=b.z+5.5; P.y=b.y+2; P.yaw=Math.atan2(b.x-P.x,-(b.z-P.z)); P.pitch=0.1; });
 await p.waitForTimeout(1500);
 await p.screenshot({path:'g-ripe.png'});
 
 const starsBefore=await p.evaluate(()=>window.game.taskState().stars);
-await p.evaluate(()=>{ const b=gardenBedPos(0), P=window.game.P; P.x=b.x+2.2; P.z=b.z+2.2; P.y=b.y; });
+await p.evaluate(()=>{ const b=bedPos(myPlotIndex(),0), P=window.game.P; P.x=b.x+2.2; P.z=b.z+2.2; P.y=b.y; });
 await p.waitForTimeout(700);
 await p.evaluate(()=>window.game.doInteract());
 await p.waitForTimeout(900);

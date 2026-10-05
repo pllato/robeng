@@ -32,7 +32,7 @@ const seed=await p.evaluate(()=>eval('seedInHand'));
 ok(seed&&seed.id==='starter-01','взял семя: '+JSON.stringify(seed&&seed.theme));
 
 // сажаем
-await p.evaluate(()=>{ const q=gardenBedPos(4), P=window.game.P; P.x=q.x+2.4; P.z=q.z+2.4; P.y=q.y; P.vx=P.vy=P.vz=0; });
+await p.evaluate(()=>{ const q=bedPos(myPlotIndex(),4), P=window.game.P; P.x=q.x+2.4; P.z=q.z+2.4; P.y=q.y; P.vx=P.vy=P.vz=0; });
 await p.waitForTimeout(800);
 await p.evaluate(()=>window.game.doInteract());
 await p.waitForTimeout(900);
@@ -53,14 +53,14 @@ ok(tr.learned.length===total, `назвал все слова: ${tr.learned.leng
 ok(await p.evaluate(()=>treeStage(treeAt(4)))===4, 'дерево выросло до последней стадии');
 ok(!!tr.fruit, 'на выросшем дереве завязался плод: '+(tr.fruit&&tr.fruit.word));
 
-await p.evaluate(()=>{ const q=gardenBedPos(4), P=window.game.P;
+await p.evaluate(()=>{ const q=bedPos(myPlotIndex(),4), P=window.game.P;
   P.x=q.x+7; P.z=q.z+7; P.y=q.y+3; P.yaw=Math.atan2(q.x-P.x,-(q.z-P.z)); P.pitch=0.05; P.vx=P.vy=P.vz=0; });
 await p.waitForTimeout(1500);
 await p.screenshot({path:'g-tree.png'});
 
 // срываем плод
 const s0=await p.evaluate(()=>window.game.taskState().stars);
-await p.evaluate(()=>{ const q=gardenBedPos(4), P=window.game.P; P.x=q.x+2.4; P.z=q.z+2.4; P.y=q.y; P.vx=P.vy=P.vz=0; });
+await p.evaluate(()=>{ const q=bedPos(myPlotIndex(),4), P=window.game.P; P.x=q.x+2.4; P.z=q.z+2.4; P.y=q.y; P.vx=P.vy=P.vz=0; });
 await p.waitForTimeout(800);
 await p.evaluate(w=>window.game.checkWord(w), tr.fruit.word);
 await p.waitForTimeout(900);

@@ -20,7 +20,7 @@ const enter = async () => {
 };
 await enter();
 // вырастить и собрать
-await p.evaluate(()=>{ const q=gardenBedPos(0), P=window.game.P; P.x=q.x+2.2; P.z=q.z+2.2; P.y=q.y; P.vx=P.vy=P.vz=0; });
+await p.evaluate(()=>{ const q=bedPos(myPlotIndex(),0), P=window.game.P; P.x=q.x+2.2; P.z=q.z+2.2; P.y=q.y; P.vx=P.vy=P.vz=0; });
 await p.waitForTimeout(700);
 await p.evaluate(()=>window.game.doInteract());
 await p.waitForTimeout(800);

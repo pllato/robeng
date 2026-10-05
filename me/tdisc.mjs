@@ -20,7 +20,7 @@ await p.waitForTimeout(1500);
 await p.evaluate(()=>{ window.game.setPaused(false); window.game.setDrag(true);
   const w=eval('ws'); w.addEventListener('close',e=>{ window.__closed={code:e.code,reason:e.reason,wasClean:e.wasClean}; }); });
 for(let i=0;i<9;i++){
-  await p.evaluate(n=>{ const b=gardenBedPos(n), P=window.game.P; P.x=b.x+2.2; P.z=b.z+2.2; P.y=b.y; P.vy=0; }, i);
+  await p.evaluate(n=>{ const b=bedPos(myPlotIndex(),n), P=window.game.P; P.x=b.x+2.2; P.z=b.z+2.2; P.y=b.y; P.vy=0; }, i);
   await p.waitForTimeout(450);
   await p.evaluate(()=>window.game.doInteract());
   await p.waitForTimeout(450);

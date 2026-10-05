@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-46';
+const BUILD = '2026-09-15-47';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -922,7 +922,27 @@ function migrateTrees(u) {             // сады старой версии: д
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
 function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0, rares: 0,
-  bossDone: 0, weapon: 0, pets: [], sinceBoss: 0, boss: null, items: {} }; }
+  bossDone: 0, weapon: 0, pets: [], sinceBoss: 0, boss: null, items: {}, seen: [] }; }
+// ── Гарантия доставки действий ──
+// Телефон умеет держать «живой» сокет, через который уже ничего не ходит: send()
+// не падает, а до сервера не доходит ничего. Раньше нажатие просто исчезало молча —
+// ребёнок сдавал урожай и не получал монет. Теперь клиент повторяет неподтверждённое,
+// а значит сервер обязан, во-первых, подтверждать каждое действие его номером,
+// во-вторых, не применять одно и то же действие дважды: повтор не должен продать
+// корзину второй раз.
+const ACT_ONCE = new Set(['buy', 'sell', 'plant', 'pick', 'uproot', 'clear', 'gift', 'reset',
+                          'orderGive', 'orderTake', 'phraseSaid', 'buyWeapon']);
+const SEEN_KEEP = 64;                  // помним последние номера — больше для повтора не нужно
+const aidOf = m => { const s = String((m && m.aid) || ''); return /^[a-z0-9]{1,24}:\d{1,16}$/.test(s) ? s : ''; };
+function actSeen(g, aid) { return Array.isArray(g.seen) && g.seen.includes(aid); }
+function actMark(g, aid) {
+  g.seen = Array.isArray(g.seen) ? g.seen : [];
+  g.seen.push(aid);
+  if (g.seen.length > SEEN_KEEP) g.seen = g.seen.slice(-SEEN_KEEP);
+}
+// список номеров — наше внутреннее дело, в браузер его гонять незачем
+const wireGarden = g => { const o = Object.assign({}, g); delete o.seen; return o; };
+
 function sanitizeBed(b) {              // грядка из чужих рук (браузер гостя) — доверяем только структуре
   if (!b || typeof b !== 'object') return null;
   const lesson = loadLesson(String(b.lesson || ''));
@@ -976,6 +996,8 @@ function sanitizeGarden(src) {
   g.sinceBoss = Math.min(99, Math.max(0, src.sinceBoss | 0));
   if (Array.isArray(src.pets)) g.pets = src.pets.filter(x => PETS.includes(x)).slice(0, PETS.length);
   for (const [id, n] of Object.entries(src.items || {})) if (artById(id)) g.items[id] = Math.min(999, Math.max(0, n | 0));
+  if (Array.isArray(src.seen))   // номера применённых действий: без них повтор применится дважды
+    g.seen = src.seen.filter(x => typeof x === 'string' && x.length <= 42).slice(-SEEN_KEEP);
   g.gifted = !!src.gifted;
   g.soldOnce = src.soldOnce ? 1 : 0;
   for (const k of Object.keys(src.days || {}).slice(-400)) if (/^\d{4}-\d{2}-\d{2}$/.test(k)) g.days[k] = 1;
@@ -1060,7 +1082,7 @@ function initPayload(room, me) {
   const race = room.race
     ? { words: room.race.words, progress: [...room.clients.values()].map(c => [c.id, (c.raceGot || new Set()).size]) }
     : null;
-  const p = { t: 'init', build: BUILD, id: me.id, name: me.name, code: room.code, kind: room.kind || null, seed: room.seed, role: me.role, ava: me.ava, players, edits, task: room.task, dones: [...room.dones.values()], words: room.words, race, lesson: room.lesson || null };
+  const p = { t: 'init', build: BUILD, ack: 1, id: me.id, name: me.name, code: room.code, kind: room.kind || null, seed: room.seed, role: me.role, ava: me.ava, players, edits, task: room.task, dones: [...room.dones.values()], words: room.words, race, lesson: room.lesson || null };
   if (room.kind === 'garden') p.plots = plotsOf(room); // чьи грядки где — чтобы нарисовать всю улицу
   if (room.code === 'LOBBY') p.lobby = lobbyPayload();
   return p;
@@ -1395,7 +1417,7 @@ wss.on('connection', (ws, req) => {
         ripenGarden(g);
         const bev = bossTick(g);      // босс топчет грядки, пока идёт бой
         if (bev && bev.length) extra = Object.assign({ bossEvents: bev }, extra || {});
-        send(ws, Object.assign({ t: 'gardenData', garden: g, tiers: TIERS, priceStep: 0.12, nextUp: hintNext(g),
+        send(ws, Object.assign({ t: 'gardenData', garden: wireGarden(g), tiers: TIERS, priceStep: 0.12, nextUp: hintNext(g),
           shopWords: shopWords(g), bosses: BOSSES, weapons: WEAPONS, bossWords: g.boss ? bossWords(g) : null,
           bossNeed: { have: distinctPlanted(g), need: bossNeedPlants(g.bossDone), next: g.bossDone,
                       days: activeDays(g), needDays: bossNeedDays(g.bossDone) },
@@ -1407,6 +1429,14 @@ wss.on('connection', (ws, req) => {
         if (u) saveSoon();
         bcastPlots(room); // соседи по улице видят чужие грядки
       };
+      // Подтверждаем получение сразу: дальше действие либо применится, либо получит
+      // отказ — и то и другое окончательно, повторять его клиенту уже не нужно.
+      const aid = aidOf(m);
+      if (aid) send(ws, { t: 'ack', aid });
+      if (aid && ACT_ONCE.has(String(m.act || ''))) {
+        if (actSeen(g, aid)) return reply({ dup: 1 });   // это повтор — состояние отдаём, второй раз не применяем
+        actMark(g, aid);
+      }
       if (m.act === 'get') return reply();
       if (m.act === 'restore') { // гость вернулся — поднимаем сад из его браузера
         if (u) return reply();

@@ -1476,6 +1476,38 @@ function flushWS(){
   for(const s of wsQueue) ws.send(s);
   wsQueue.length=0;
 }
+// Гарантия доставки. Отправить и забыть нельзя: мобильный браузер оставляет сокет
+// в состоянии «открыт», через который уже ничего не ходит — send() не падает, а до
+// сервера не доходит ничего. Поэтому важное действие живёт в «исходящих», пока сервер
+// не подтвердит его номером. Не подтвердил за ACK_WAIT — сокет мёртвый: рвём его сами
+// и после переподключения отправляем всё неподтверждённое заново.
+const ACT_SURE=new Set(['buy','sell','plant','pick','uproot','clear','gift','reset',
+                        'orderGive','orderTake','phraseSaid','buyWeapon']);
+// «restore» в исходящие не кладём намеренно: его отправляет сама сборка сеанса при
+// каждом переподключении. Иначе повтор старого снимка сада догонит уже применённую
+// продажу и затрёт её — ровно это и съедало монеты.
+let needResend=false;
+const outbox=new Map();           // номер → {s:строка, at:когда отправили}
+const ACK_WAIT=3500;              // столько ждём подтверждения, прежде чем счесть сокет мёртвым
+const LEGACY_DROP=12000;          // сервер старой сборки подтверждений не присылает — не зацикливаемся
+let ackSeen=false;                // сервер умеет подтверждать (он says так в init)
+let cid=''; try{ cid=localStorage.getItem('me_cid')||''; }catch(e){}
+if(!/^[a-z0-9]{1,24}$/.test(cid)){ cid=Math.random().toString(36).slice(2,10);
+  try{ localStorage.setItem('me_cid',cid); }catch(e){} }
+let actN=0; try{ actN=+(localStorage.getItem('me_actn')||0)||0; }catch(e){}
+// номер не повторяется даже после перезагрузки страницы — иначе сервер
+// примет новое действие за повтор уже применённого и тихо его отбросит
+function nextAid(){ actN=Math.max(actN+1, Date.now());
+  try{ localStorage.setItem('me_actn',String(actN)); }catch(e){}
+  return cid+':'+actN; }
+function wsRaw(str){
+  if(ws && ws.readyState===1 && !rejoining){ try{ ws.send(str); return true; }catch(e){} }
+  return false;
+}
+function outResend(){ for(const e of outbox.values()) if(wsRaw(e.s)) e.at=Date.now(); }
+function outDone(aid){
+  if(outbox.delete(aid) && !outbox.size && ws && ws.readyState===1 && !rejoining) netShow(false);
+}
 function netRetry(){
   if(netTimer) return;
   const wait=Math.min(8000, 700*Math.pow(2, Math.min(4, netTries)));
@@ -1517,9 +1549,17 @@ addEventListener('visibilitychange',()=>{
   openWS();
 });
 const sendWS=o=>{
+  // важное действие — под расписку; остальное (ходьба, голос) можно и потерять
+  if(o && o.t==='garden' && ACT_SURE.has(String(o.act||''))){
+    const aid=nextAid();
+    const s=JSON.stringify(Object.assign({}, o, {aid}));
+    outbox.set(aid,{s, at:Date.now()});
+    if(!wsRaw(s)){ if(worldReady) netShow(true); openWS(); }
+    return;
+  }
   const s=JSON.stringify(o);
-  if(ws && ws.readyState===1 && !rejoining) ws.send(s);
-  else { wsQueue.push(s); if(worldReady) netShow(true); openWS(); }
+  if(wsRaw(s)) return;
+  wsQueue.push(s); if(worldReady) netShow(true); openWS();
 };
 // Мобильный браузер умеет оставлять «живой» сокет, через который уже ничего не ходит.
 // Поэтому раз в 20 с окликаем сервер, а если полминуты тишины в ответ — рвём сами и переподключаемся.
@@ -1527,11 +1567,28 @@ let lastNetAt=Date.now();
 setInterval(()=>{
   if(!worldReady) return;
   if(!ws || ws.readyState!==1){ if(!netTimer) openWS(); return; }
-  if(Date.now()-lastNetAt>50000){ netShow(true); try{ ws.close(); }catch(e){} return; }
+  if(Date.now()-lastNetAt>24000){ netShow(true); try{ ws.close(); }catch(e){} return; }
   try{ ws.send(JSON.stringify({t:'ping'})); }catch(e){}
-},20000);
+},8000);
+// Сторож исходящих: он и есть гарантия. Молчание сервера дольше ACK_WAIT значит,
+// что нажатие не дошло — рвём сокет и переподключаемся, а не ждём, пока оклик
+// заметит тишину через полминуты потерянных действий.
+setInterval(()=>{
+  if(!worldReady || !outbox.size) return;
+  const now=Date.now(); let stuck=0;
+  for(const [aid,e] of outbox){
+    if(now-e.at < (ackSeen?ACK_WAIT:LEGACY_DROP)) continue;
+    if(!ackSeen){ outbox.delete(aid); continue; }   // сервер подтверждений не умеет — не зацикливаемся
+    stuck++;
+  }
+  if(!stuck) return;
+  netShow(true);
+  if(ws && ws.readyState===1){ try{ ws.close(); }catch(e){} }  // сокет-зомби: обрыв запустит переподключение
+  else if(!netTimer) openWS();
+},1200);
 
 function handleNet(m){
+  if(m.t==='ack'){ ackSeen=true; outDone(String(m.aid||'')); return; }
   if(m.t==='err'){ setMsg(m.msg); if(worldReady && !paused) toast('⚠️ '+m.msg); return; }
   if(m.t==='authok'){
     if(m.user && (m.user.role==='teacher'||m.user.role==='owner')){ let sv=null;
@@ -1561,6 +1618,7 @@ function handleNet(m){
     const wasRejoin=rejoining; rejoining=false;
     if(worldReady) resetWorld(); // переход между мирами (лобби ↔ класс)
     myId=m.id; myName=m.name||myName; roomCode=m.code; myRole=m.role; serverBuild=m.build||null;
+    if(m.ack) ackSeen=true;   // гарантия доставки работает с первого же нажатия, а не со второго
     // роль в комнате может быть общей, поэтому смотрим на аккаунт: учителю лента нужна сразу
     if(USER && (USER.role==='teacher'||USER.role==='owner')){ let sv=null;
       try{ sv=localStorage.getItem('me_actlog'); }catch(e){}
@@ -1585,6 +1643,10 @@ function handleNet(m){
     if(roomCode==='LOBBY' && IS_STUDENT && !window.__codeShown){ window.__codeShown=true; showView('mGuest'); } // /start: сразу окно кода
     if(wasRejoin){            // сеанс собран заново — только теперь отдаём накопленные нажатия
       netShow(false); flushWS();
+      // порядок важен: сперва сервер должен поднять сад, иначе продажа применится
+      // к пустой корзине. Повторяем неподтверждённое, когда сад вернулся (см. gardenData).
+      needResend=true;
+      setTimeout(()=>{ if(needResend){ needResend=false; outResend(); } },2500); // мы не в саду — ждать нечего
       toast('📡 Связь восстановлена');
     }
   }
@@ -1618,6 +1680,7 @@ function handleNet(m){
   }
   else if(m.t==='gardenData'){
     myGarden=m.garden||myGarden;
+    if(needResend){ needResend=false; outResend(); }   // сад на месте — теперь можно повторять действия
     if(m.tiers&&m.tiers.length) TIERS=m.tiers;
     if(typeof m.priceStep==='number') priceStep=m.priceStep;
     nextUp=m.nextUp||null;
@@ -2083,7 +2146,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-46';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-47';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);

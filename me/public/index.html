@@ -221,66 +221,9 @@
     background:#2f7d4f;color:#fff;font-size:11px;font-weight:700;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .seedCard .seedMore:active{background:#3f9d67}
-  /* ── бой с боссом ── */
-  #bossBar{position:fixed;left:0;right:0;margin:0 auto;top:44px;z-index:9;display:none;
-    width:min(560px,94vw);background:rgba(10,14,26,.9);border:1px solid #6b2f4a;border-radius:14px;
-    padding:9px 12px;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.5)}
-  #bossTop{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700}
-  #bossTop .em{font-size:22px}
-  #bossHp{height:12px;border-radius:6px;background:rgba(255,255,255,.14);margin-top:6px;overflow:hidden}
-  #bossHp i{display:block;height:100%;background:linear-gradient(90deg,#e74c3c,#ff9f43);
-    border-radius:6px;transition:width .25s ease}
-  #bossHint{font-size:12px;color:#ffd0a0;margin-top:5px;min-height:15px;line-height:1.3}
-  #bossActs{display:flex;gap:7px;margin-top:8px;justify-content:center;flex-wrap:wrap}
-  #bossActs button{padding:11px 18px;border-radius:11px;border:0;font-size:15px;font-weight:700;
-    background:#2c3e50;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  #bossActs button.hit{background:#c0392b}
-  #bossActs button.say{background:#2f7d4f}
-  #bossActs button.say.rec{background:#c0392b}
-  #bossActs button.flee{background:rgba(255,255,255,.12);font-size:13px;font-weight:400;padding:9px 12px}
-  #bossActs button:disabled{opacity:.45}
-  #storm{position:fixed;inset:0;z-index:2;pointer-events:none;display:none;
-    background:rgba(10,14,30,.45);transition:background .4s}
-  /* ── заставка перед боем ── */
-  #bossIntro{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:14px;padding:22px;text-align:center;
-    background:radial-gradient(120% 90% at 50% 0%,#2a1230 0%,#0a0e1a 70%);color:#fff}
-  #bossIntro.on{display:flex}
-  #bossIntro .flash{position:absolute;inset:0;background:rgba(220,235,255,0);pointer-events:none;
-    transition:background .12s}
-  #bossIntro.lit .flash{background:rgba(220,235,255,.5)}
-  #biEm{font-size:88px;line-height:1;filter:drop-shadow(0 8px 22px rgba(0,0,0,.6));
-    animation:biIn .9s cubic-bezier(.2,1.5,.4,1) both}
   @keyframes biIn{from{transform:scale(.25) translateY(40px);opacity:0}to{transform:scale(1);opacity:1}}
-  #biTitle{font-size:14px;letter-spacing:.22em;color:#ff9f43;font-weight:700}
-  #biName{font-size:26px;font-weight:800;text-shadow:0 3px 14px rgba(0,0,0,.6)}
-  #biRules{max-width:420px;display:flex;flex-direction:column;gap:9px;margin-top:2px}
-  #biRules div{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:14px;
-    line-height:1.35;background:rgba(255,255,255,.07);border-radius:12px;padding:10px 12px}
-  #biRules b{font-size:20px;line-height:1.1}
-  #biGo{margin-top:6px;padding:15px 40px;border:0;border-radius:14px;font-size:18px;font-weight:800;
-    background:linear-gradient(180deg,#e74c3c,#b02a1c);color:#fff;cursor:pointer;
-    box-shadow:0 8px 22px rgba(180,40,30,.5);-webkit-tap-highlight-color:transparent;
-    touch-action:manipulation}
-  #biGo:active{transform:translateY(1px)}
-  html.touch #biEm{font-size:70px}
-  html.touch #biName{font-size:22px}
-  html.touch #biRules div{font-size:13px;padding:9px 11px}
-  #storm.flash{background:rgba(220,235,255,.55)}
-  html.weak #bossBar{border-color:#f1c40f;box-shadow:0 0 0 2px rgba(241,196,15,.5),0 8px 28px rgba(0,0,0,.5)}
-  html.weak #bossHint{color:#ffe38a;font-weight:700}
-  #bossWeak{position:fixed;left:0;right:0;margin:0 auto;top:92px;z-index:9;display:none;
-    width:min(300px,80vw);padding:10px 14px;border-radius:16px;background:rgba(241,196,15,.95);
-    color:#3a2a00;text-align:center;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-  html.weak #bossWeak{display:block}
-  #bwTop{font-size:13px;font-weight:700;opacity:.85}
-  /* нажал на босса — плашка краснеет и мигает: «нажалось, говори» */
-  html.rec #bossWeak{background:rgba(220,60,40,.96);color:#fff;
-    box-shadow:0 0 0 3px rgba(255,255,255,.5),0 8px 26px rgba(0,0,0,.45);
-    animation:recPulse .8s ease-in-out infinite}
   @keyframes recPulse{0%,100%{box-shadow:0 0 0 3px rgba(255,255,255,.5),0 8px 26px rgba(0,0,0,.45)}
                       50%{box-shadow:0 0 0 8px rgba(255,255,255,.22),0 8px 26px rgba(0,0,0,.45)}}
-  html.rec #bwBar i{background:#fff}
   /* «голоса нет» — крупно и поперёк экрана: иначе никто не замечает, что его не слышно */
   #voiceOff{position:fixed;left:0;right:0;margin:0 auto;top:8px;z-index:12;display:none;
     width:min(420px,92vw);padding:11px 14px;border-radius:14px;cursor:pointer;
@@ -291,7 +234,7 @@
   #voiceOff b{color:#ffe066}
   @keyframes vOff{0%,100%{box-shadow:0 8px 24px rgba(0,0,0,.45)}
                   50%{box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 0 6px rgba(176,42,28,.25)}}
-  html.menu #voiceOff, html.fight #voiceOff{display:none!important}
+  html.menu #voiceOff{display:none!important}
   /* ящик на конвейере: предмет крупно, под ним слово — видно с улицы */
   .wtag.belt{background:rgba(18,26,42,.86);border:2px solid rgba(255,214,102,.75);
     border-radius:10px;padding:2px 7px 3px;line-height:1.05;text-align:center;white-space:nowrap;
@@ -330,8 +273,6 @@
   #netOff b{color:#ffd166}
   html.netoff #netOff{display:flex}
   html.netoff #voiceOff{top:64px}
-  #pmBoss{line-height:1.5;opacity:.85}
-  #pmBoss b{color:#ffd166}
   /* ── разговорная станция ── */
   #talk{position:fixed;inset:0;z-index:26;display:none;align-items:center;justify-content:center;
     background:rgba(6,12,22,.88)}
@@ -399,7 +340,7 @@
   #pixiTag.pin{left:50%!important;top:auto!important;bottom:150px;transform:translate(-50%,0);
     max-width:min(320px,88vw);text-align:center}
   html.touch #pixiTag.pin{bottom:215px}
-  html.menu #pixiTag, html.fight #pixiTag{display:none!important}
+  html.menu #pixiTag{display:none!important}
   /* говорит Пикси — строка-подсказка молчит: одно и то же сообщение дважды только мешает */
   html.pixiTalk #onbLine{display:none!important}
   #mvBox{margin:12px auto 0;max-width:280px;text-align:center}
@@ -412,63 +353,8 @@
   #vrTop b{color:#8ef58e}
   #vrRange{display:block;width:100%;margin:0;padding:0;accent-color:#3fa34d;height:26px}
   #vrBox .hint{font-size:11.5px;opacity:.65;margin-top:4px}
-  .dmgPop{position:fixed;z-index:10;transform:translate(-50%,-50%);pointer-events:none;
-    font-size:30px;font-weight:900;color:#ffe066;text-shadow:0 0 8px #b8420f,0 3px 8px rgba(0,0,0,.7);
-    animation:dmgUp .9s ease-out forwards}
-  .dmgPop.crit{font-size:42px;color:#fff;text-shadow:0 0 12px #ff8c1a,0 0 26px #ff3b1a,0 3px 8px rgba(0,0,0,.8)}
-  @keyframes dmgUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
-                   25%{opacity:1;transform:translate(-50%,-70%) scale(1.25)}
-                   100%{opacity:0;transform:translate(-50%,-150%) scale(1)}}
-  #bwDot{display:none;width:11px;height:11px;border-radius:50%;background:#fff;
-    vertical-align:-1px;margin-right:6px;animation:recDot .7s ease-in-out infinite}
-  html.rec #bwDot{display:inline-block}
   @keyframes recDot{0%,100%{opacity:1}50%{opacity:.25}}
-  #bwWord{font-size:30px;font-weight:900;line-height:1.1;letter-spacing:.02em;margin:2px 0 5px;
-    text-transform:lowercase;animation:wkPulse .9s ease-in-out infinite}
-  @keyframes wkPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-  #bwBar{height:8px;border-radius:5px;background:rgba(0,0,0,.18);overflow:hidden}
-  #bwBar i{display:block;height:100%;width:100%;background:#c0392b;border-radius:5px;transition:width .2s linear}
-  #bwSec{font-size:12px;font-weight:700;margin-top:3px;opacity:.8}
-  #bwFast{font-size:12px;font-weight:800;margin-top:2px;color:#7a2f00}
-  html.rec #bwFast{color:#fff}
-  /* что делать, пока он в ярости */
-  #bossTodo{position:fixed;left:0;right:0;margin:0 auto;top:92px;z-index:9;display:none;
-    width:min(320px,84vw);padding:9px 13px;border-radius:14px;background:rgba(10,18,34,.86);
-    color:#fff;text-align:center;font-size:14px;font-weight:600;pointer-events:none;
-    box-shadow:0 6px 20px rgba(0,0,0,.4)}
-  html.fight #bossTodo{display:block}
-  html.weak #bossTodo{display:none}
-  #bossTodo small{display:block;font-size:11.5px;font-weight:400;opacity:.7;margin-top:3px}
-
   /* на телефоне: сверху — только тонкая полоска здоровья, кнопки уходят под правый большой палец */
-  html.touch #bossBar{top:8px;padding:6px 9px;width:min(300px,72vw);border-radius:11px}
-  html.touch #bossTop{font-size:13px}
-  html.touch #bossTop .em{font-size:18px}
-  html.touch #bossHpTxt{font-size:11px}
-  html.touch #bossHp{height:9px;margin-top:4px}
-  html.touch #bossHint{display:none}
-  html.touch #bossDist{font-size:11px}
-  html.touch #bossActs{position:fixed;right:14px;bottom:196px;margin:0;z-index:6;
-    display:flex;flex-direction:column;gap:9px;align-items:flex-end;justify-content:flex-end;
-    flex-wrap:nowrap;width:auto}
-  html.touch #bossActs button{width:64px;height:64px;padding:0;border-radius:50%;font-size:24px;
-    box-shadow:0 4px 14px rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.35);touch-action:none}
-  html.touch #bossActs button.flee{width:50px;height:50px;font-size:19px}
-  html.touch #bossActs button i{display:none}
-  #bossActs button i{font-style:normal;font-weight:inherit}
-  #bossActs button b{font-weight:inherit}
-  #armsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;
-    max-height:48vh;overflow:auto;padding:2px}
-  .armCard{border-radius:11px;padding:9px 8px;text-align:center;border:2px solid #3d5a8f;
-    background:linear-gradient(180deg,#2a3f66,#1b2b4a);color:#fff;cursor:pointer}
-  .armCard.own{border-color:#4caf50;background:linear-gradient(180deg,#24503a,#17352a)}
-  .armCard.now{border-color:#ffd166;box-shadow:0 0 0 2px rgba(255,209,102,.4)}
-  .armCard.lock{opacity:.5;border-style:dashed;cursor:not-allowed}
-  .armCard .em{font-size:22px}
-  .armCard .nm{font-size:12px;font-weight:700;margin-top:2px;line-height:1.15}
-  .armCard .pw{font-size:11px;color:#9fb6d4;margin-top:2px}
-  .armCard .pr{font-size:13px;font-weight:700;color:#ffd166;margin-top:3px}
-  html.touch #armsGrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
   /* ── ярлык над плодом вместо нижней плашки ── */
   #pickTag{position:fixed;z-index:9;display:none;transform:translate(-50%,-100%);pointer-events:none;
     background:rgba(10,18,34,.9);border:1px solid #3d5a8f;border-radius:12px;padding:5px 12px;
@@ -512,25 +398,11 @@
   #actLog div.say{border-left-color:#4caf50}
   #actLog div.done{border-left-color:#ffd166}
   #actLog div.sell{border-left-color:#7ec7f0}
-  #actLog div.boss{border-left-color:#c0392b}
   #actLog div.win{border-left-color:#ffd166;background:rgba(60,44,8,.5)}
   #actLog div.old{opacity:.45}
   @keyframes actIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
   html.touch #actLog{width:52vw;font-size:11.5px;bottom:120px}
   @media (orientation:landscape) and (max-height:560px){ html.touch #actLog{bottom:70px;width:36vw} }
-  #bFight{line-height:1.1;text-align:center}
-  #bFight.rec{background:rgba(220,60,40,.92)!important;border-color:#fff}
-  #bossHearts{font-size:16px;letter-spacing:1px}
-  #bossDist{font-size:12px;color:#ffd0a0}
-  #bFight{display:none}
-  html.fight #bFight{display:flex!important}
-  html.touch.fight #bJump{display:none!important}
-  /* во время боя экран должен быть про бой: меню сада, монеты и подсказки — прочь */
-  html.fight #gardenNav, html.fight #gardenHud, html.fight #onbLine, html.fight #hintBar,
-  html.fight #micBtn, html.fight #sayBtn, html.fight #bTalk, html.fight #bAct,
-  html.fight #bMine, html.fight #bBuild, html.fight #hotbar{display:none!important}
-  html.touch.fight #bossSay{display:none}   /* на телефоне слово говорит большая кнопка «БЕЙ» */
-  html.touch #bossWeak{top:92px;font-size:14px;padding:8px 13px}
 </style>
 </head>
 <body>
@@ -560,42 +432,6 @@
 <div id="lessonPanel"></div>
 <button id="sayBtn">🎙 Сказать слово</button>
 <div id="hintBar"></div>
-<div id="storm"></div>
-<div id="bossWeak">
-  <div id="bwTop"><i id="bwDot"></i><span id="bwTopTxt">😵 Он ослаб! Скажи слово:</span></div>
-  <div id="bwWord">apple</div>
-  <div id="bwBar"><i></i></div>
-  <div id="bwSec">10 с</div>
-  <div id="bwFast">⚡ скажи сразу — удар вдвое сильнее</div>
-</div>
-<div id="bossTodo"></div>
-<div id="bossIntro"><div class="flash"></div>
-  <div id="biTitle">⚡ БОСС ИДЁТ ⚡</div>
-  <div id="biEm">👾</div>
-  <div id="biName">Босс</div>
-  <div id="biRules">
-    <div><b>⛏</b><span>Подойди и <b style="font-size:14px">бей киркой</b> — от ударов он вязнет и слабеет.</span></div>
-    <div><b>😵</b><span>Когда ослаб — сверху появится <b style="font-size:14px">слово и таймер</b>. Просто <b style="font-size:14px">скажи это слово вслух</b>, пока идёт время — плод полетит в него. Нажимать никуда не надо.</span></div>
-    <div><b>🏃</b><span>Пока он злой — бежит за тобой и бьёт. Отходи, чтобы не достал.</span></div>
-    <div><b>⚡</b><span>Успеешь сказать в <b style="font-size:14px">первые секунды</b> — супер-удар вдвое сильнее. Одного слова хватит.</span></div>
-    <div><b>🏆</b><span>Победишь — <b style="font-size:14px">приз</b>: оружие, артефакт или питомец.</span></div>
-    <div><b>💔</b><span>Проиграешь — потеряешь <b style="font-size:14px">одно растение</b> с грядки. Посадишь заново — босс вернётся.</span></div>
-  </div>
-  <button id="biGo">Я готов!</button>
-</div>
-<div id="bossBar">
-  <div id="bossTop"><span class="em" id="bossEm">👾</span><span id="bossName">Босс</span>
-    <span style="margin-left:auto;font-size:13px;opacity:.8" id="bossHpTxt"></span></div>
-  <div style="display:flex;align-items:center;gap:10px;margin-top:3px">
-    <span id="bossHearts"></span><span id="bossDist"></span></div>
-  <div id="bossHp"><i style="width:100%"></i></div>
-  <div id="bossHint"></div>
-  <div id="bossActs">
-    <button class="hit" id="bossHit"><b>⛏</b><i> Ударить</i></button>
-    <button class="say" id="bossSay"><b>🎙</b><i> Сказать слово</i></button>
-    <button class="flee" id="bossFlee"><b>🏃</b><i> убежать</i></button>
-  </div>
-</div>
 <audio id="bgm" loop preload="none"></audio>
 <div id="pixiTag"></div>
 <div id="talk">
@@ -637,7 +473,6 @@
 <div id="raceList"></div>
 <div id="joy"><div id="joyKnob"></div></div>
 <button class="mbtn" id="bJump" style="right:22px;bottom:100px">▲</button>
-<button class="mbtn" id="bFight" style="right:18px;bottom:92px;background:rgba(192,57,43,.62);width:88px;height:88px;font-size:14px;font-weight:700">⚔️<br>БЕЙ</button>
 <button class="mbtn" id="bMine" style="right:22px;bottom:184px">⛏</button>
 <button class="mbtn" id="bBuild" style="right:100px;bottom:142px">🧱</button>
 <button class="mbtn" id="bView" style="right:16px;top:52px;width:46px;height:46px;font-size:18px">👁</button>
@@ -659,13 +494,11 @@
       <button id="pmMyPlot" class="ghost">📍 К своему участку</button>
       <button id="pmBag" class="ghost">🎒 Рюкзак</button>
       <button id="pmAct" class="ghost">📋 Лента занятий</button>
-      <button id="pmArms" class="ghost">⚔️ Оружейная</button>
       <button id="pmSave" class="ghost">💾 Чтобы сад не потерялся</button>
       <button id="pmReset" class="ghost">♻️ Начать сад заново</button>
       <button id="pmAva" class="ghost">🎨 Мой персонаж</button>
       <button id="pmOnb" class="ghost">🧭 Показать подсказки заново</button>
       <button id="pmPixi" class="ghost">🐲 Спутник</button>
-      <p class="hint" id="pmBoss" style="margin-top:10px;font-size:12.5px"></p>
       <div id="mvBox">
         <button class="ghost" id="mvBtn">🎵 Музыка включена</button>
         <div id="mvTop">громкость музыки: <b id="mvVal">28%</b></div>
@@ -776,13 +609,6 @@
       <button class="ghost mBack">Назад</button>
     </div>
 
-    <div id="mArms" class="mview" hidden>
-      <p class="hint">⚔️ Оружейная — чем крепче кирка, тем быстрее оглушишь босса</p>
-      <p class="hint" id="armsCoins" style="margin:2px 0"></p>
-      <div id="armsGrid"></div>
-      <p class="sub" style="margin-top:8px;opacity:.75">Оружие также выдают за победу над боссом</p>
-      <button class="ghost mBack">Назад</button>
-    </div>
 
     <div id="mSave" class="mview" hidden>
       <p class="hint">💾 Чтобы сад не потерялся</p>
@@ -1201,7 +1027,7 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([
 const MAXP=24;
 const pVbo=gl.createBuffer(), pIbo=gl.createBuffer();
 const PQUADS=132;                       // причёска, рукава и шляпа — коробок стало больше, чем было
-const PEXTRA=1100;                      // стрелки-подсказки и целый босс из десятков коробок
+const PEXTRA=1100;                      // стрелки-подсказки и спутник из десятков коробок
 { const pi=[]; for(let q=0;q<PQUADS*MAXP+PEXTRA;q++){ const b=q*4; pi.push(b,b+1,b+2,b+2,b+1,b+3); }
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,pIbo);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(pi),gl.STATIC_DRAW); }
@@ -1685,9 +1511,6 @@ function handleNet(m){
     if(typeof m.priceStep==='number') priceStep=m.priceStep;
     nextUp=m.nextUp||null;
     if(m.shopWords) shopWords=m.shopWords;
-    if(m.bosses) BOSSES=m.bosses;
-    if(m.weapons) WEAPONS=m.weapons;
-    if(m.bossWords) bossWordList=m.bossWords;
     if(talkOn && 'order' in m && !m.order && !m.orderDone) talkNoOrder(m);
     if(m.order) talkOrderShow(m.order);
     if(m.orderGave) { toast(`📦 Сдал ${fruitsWord(m.orderGave)} в заказ`); snd(680,.1,'triangle',.15); }
@@ -1695,52 +1518,11 @@ function handleNet(m){
     if(m.phrase) talkShow(m.phrase);
     if(m.phraseOk) talkOk(m.phraseOk);
     if(m.phraseMiss) talkMissed(m.phraseMiss);
-    if(m.bossNeed) bossNeed=m.bossNeed;
     if(m.bag){ bagItems=m.bag; if(!$('mBag').hidden) renderBag(); }
     if(m.near){ bagNear=m.near; if(!$('mBag').hidden) renderBag(); }
     if(m.spare) toast(`🌱 За усердие — лишнее семя «${m.spare.word}». Можно подарить другу!`);
     if(m.gaveTo) toast(`🎁 Подарил «${m.gave}» игроку ${m.gaveTo}`);
     if(m.planted && !$('mShop').hidden) renderShop(TIERS[0]?TIERS[0].level:'Starter');
-    if(m.bossCame){ bossArrives(m.bossCame); }
-    if(m.bossEvents) for(const ev of m.bossEvents){
-      if(ev.t==='stomp'){ toast(`💥 Босс растоптал грядку «${ev.theme||''}»!`); bossShake=1;
-        snd(90,.3,'sawtooth',.16); gardenRedraw(); }
-      if(ev.t==='gone'){ toast('😞 Топтать больше нечего — босс ушёл. Сад придётся начинать заново.');
-        $('storm').style.display='none'; }
-    }
-    if(m.bossHit && m.bossHit.tooFar){ toast(`⛏ Далеко — подойди к нему вплотную (${m.bossHit.d} шагов)`); }
-    if(m.bossHit && m.bossHit.dmg){
-      bossFlash=.6;
-      if(m.bossHit.stage==='stun'){ toast('😵 Он ослаб — говори слово!');
-        snd(320,.14,'triangle',.18); setTimeout(()=>snd(430,.2,'triangle',.16),150);
-        const w=bossPick(); if(w) setTimeout(()=>say(w),420); }   // проговариваем слово вслух
-      else if(m.bossHit.left) toast(`⛏ Ещё ${m.bossHit.left} — и он ослабнет`);
-    }
-    if(m.bossDmg && m.bossDmg.weak){
-      const live=bossShots.filter(x=>x.t<1);
-      if(live.length){ const sh=live[live.length-1]; sh.dmg=m.bossDmg.dmg; sh.crit=!!m.bossDmg.crit; }
-      else bossHitNum(m.bossDmg.dmg, m.bossDmg.crit);
-      if(m.bossDmg.crit){ toast('⚡ Точно в момент! Супер-удар ×2');
-        snd(980,.1,'triangle',.2); setTimeout(()=>snd(1320,.18,'triangle',.18),100); }
-    }
-    if(m.bossDmg){ toast(m.bossDmg.weak
-      ? `💥 «${m.bossDmg.word}» — ${m.bossDmg.dmg} урона!`
-      : `💢 «${m.bossDmg.word}» — всего ${m.bossDmg.dmg}: он в ярости, сперва оглуши киркой`); }
-    if(m.bossAt){ bossServer=m.bossAt;
-      bossStunEnd = m.bossAt.stunLeft>0 ? Date.now()+m.bossAt.stunLeft : 0; }
-    if(m.bossEv) for(const ev of m.bossEv) if(ev.t==='hit') bossHurtFx(ev.how);
-    if(m.bossLost){ bossDefeat(m.bossLost); }
-    if(m.bossWin && m.bossDmg && m.bossDmg.weak){
-      // добивающий: снаряд уже летит, цифра всплывёт при попадании
-      const live=bossShots.filter(x=>x.t<1);
-      if(live.length){ const sh=live[live.length-1]; sh.dmg=m.bossDmg.dmg; sh.crit=!!m.bossDmg.crit; }
-      else bossHitNum(m.bossDmg.dmg, m.bossDmg.crit);
-      if(m.bossDmg.crit){ toast('⚡ Точно в момент! Супер-удар ×2');
-        snd(980,.1,'triangle',.2); setTimeout(()=>snd(1320,.18,'triangle',.18),100); }
-    }
-    if(m.bossWin){ bossVictory(m.bossWin); }
-    if(m.bossFled){ toast('Ты убежал. Босс ушёл, но грядки уже потоптаны.'); $('storm').style.display='none'; }
-    if(m.gotWeapon){ toast(`${m.gotWeapon.emoji} Куплено: ${m.gotWeapon.name}`); if(!$('mArms').hidden) renderArms(); }
     if(m.opened&&m.opened.length){       // новая тема — заметное событие, а не строчка в списке
       for(const o of m.opened){
         toast(o.order
@@ -2146,7 +1928,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-47';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-48';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -2737,7 +2519,7 @@ function actToggle(on){
   toast(actOn?'📋 Лента занятий включена':'Лента занятий выключена');
 }
 // ================= РЮКЗАК =================
-// Всё, что нажито: семена, трофеи с боссов, питомцы. Семя из рюкзака берут в руку
+// Всё, что нажито: семена, трофеи со станций, питомцы. Семя из рюкзака берут в руку
 // и сажают на грядку. Вещь можно подарить соседу — так старшие подтягивают новичков.
 let bagItems=[], bagNear=[];
 function openBag(){ overlayView('mBag'); renderBag(); }
@@ -2784,188 +2566,6 @@ function giftItem(it){
   const pick=prompt(`Кому подарить «${it.name}»?\n${names}`,'1');
   const k=parseInt(pick,10);
   if(k>=1&&k<=bagNear.length) sendWS({t:'garden',act:'gift',to:bagNear[k-1].id,item:it.id});
-}
-function openArms(){
-  overlayView('mArms');
-  renderArms();
-}
-function renderArms(){
-  const have=myGarden.weapon|0, coins=myGarden.coins|0;
-  $('armsCoins').innerHTML=`🪙 <b>${coins}</b> · сейчас в руках: <b>${(WEAPONS[have]||{}).emoji||''} ${(WEAPONS[have]||{}).name||'—'}</b>`;
-  $('armsGrid').innerHTML=(WEAPONS||[]).map((w,i)=>{
-    if(i<=have) return `<div class="armCard own${i===have?' now':''}">
-      <div class="em">${w.emoji}</div><div class="nm">${w.name}</div>
-      <div class="pw">сила ${w.power}</div><div class="pr">${i===have?'в руках':'есть'}</div></div>`;
-    if(i>have+1) return `<div class="armCard lock"><div class="em">🔒</div><div class="nm">${w.name}</div>
-      <div class="pw">сила ${w.power}</div><div class="pr" style="color:#6d7994">— — —</div></div>`;
-    const poor=coins<w.price;
-    return `<div class="armCard" data-arm="${i}" style="${poor?'opacity:.7':''}">
-      <div class="em">${w.emoji}</div><div class="nm">${w.name}</div>
-      <div class="pw">сила ${w.power}</div>
-      <div class="pr">${poor?`не хватает ${w.price-coins} 🪙`:w.price+' 🪙'}</div></div>`;
-  }).join('');
-  $('armsGrid').querySelectorAll('[data-arm]').forEach(c=>c.onclick=()=>{
-    const i=+c.dataset.arm, w=WEAPONS[i];
-    if((myGarden.coins|0)<w.price) return toast(`Не хватает ${w.price-(myGarden.coins|0)} 🪙 — продай урожай`);
-    sendWS({t:'garden',act:'buyWeapon',id:i});
-  });
-  $('armsGrid').querySelectorAll('.armCard.lock').forEach(c=>c.onclick=()=>
-    toast('🔒 Сначала возьми предыдущее оружие — или выиграй его у босса'));
-}
-// ================= БОЙ С БОССОМ =================
-// Киркой оглушаем, словами бьём. Слова — только те, что игрок вырастил сам.
-let bossPos=null, bossWordList=[], bossSayWord='', bossRec=false, bossNeed=null;
-function bossHere(){ return !!(myGarden && myGarden.boss); }
-function bossSpot(){                          // босс топчется в центре участка
-  const mine=myPlotIndex(); if(mine<0) return null;
-  const q=bedPos(mine,0), q2=bedPos(mine,Math.min(3,PLOT_BEDS-1));
-  return {x:(q.x+q2.x)/2, z:(q.z+q2.z)/2};
-}
-function bossPick(){                          // какое слово предлагаем сказать
-  if(!bossWordList.length) return '';
-  if(bossSayWord && bossWordList.includes(bossSayWord)) return bossSayWord;
-  bossSayWord=bossWordList[Math.floor(Math.random()*bossWordList.length)];
-  return bossSayWord;
-}
-function bossRender(){
-  const bar=$('bossBar'), st=myGarden.boss;
-  if(!st || roomKind!=='garden' || paused){ bar.style.display='none'; $('storm').style.display='none';
-    document.documentElement.classList.remove('fight');
-    document.documentElement.classList.remove('weak');   // иначе жёлтая плашка висела и после боя
-    if(bossTapOn) bossTapStop();
-    return; }
-  const B=BOSSES[st.i]||{};
-  if(bossIntroOn){ bar.style.display='none'; return; }
-  bar.style.display='block';
-  $('storm').style.display='block';
-  $('bossEm').textContent=B.emoji||'👾';
-  $('bossName').textContent=B.name||'Босс';
-  const pc=Math.max(0,Math.min(100,Math.round(st.hp/st.max*100)));
-  $('bossHp').firstElementChild.style.width=pc+'%';
-  $('bossHpTxt').textContent=`${st.hp} / ${st.max}`;
-  const php=bossServer?bossServer.php:(st.php|0), pmax=bossServer?bossServer.pmax:(st.pmax|0);
-  $('bossHearts').textContent='❤️'.repeat(Math.max(0,php))+'🖤'.repeat(Math.max(0,pmax-php));
-  const d=bossServer?bossServer.d:null;
-  $('bossDist').textContent = d===null?'' : (d<=(bossServer.reach||3)?'он рядом — отходи!':`до него ${d} шагов`);
-  document.documentElement.classList.add('fight');
-  const w=bossPick();
-  $('bossSay').innerHTML=`<b>🎙</b><i> ${w||'слово'}</i>`;
-  $('bossSay').disabled=false;
-  $('bossHit').disabled=false;
-  const weak=bossWeak();
-  const left=bossServer&&bossServer.left!==undefined?bossServer.left:Math.max(0,(st.need|0)-(st.meter|0));
-  const far=bossServer&&bossServer.d!==undefined&&bossServer.d>(bossServer.reach||3)+1.6;
-  $('bossHint').textContent = weak
-    ? '😵 Он ослаб! Нажми прямо на него и скажи слово — это сильный удар'
-    : `⛏ Бей киркой вблизи: ещё ${left||1} — и он ослабнет. Издалека слово только царапает.`;
-  document.documentElement.classList.toggle('weak', weak);
-  if(weak && !bossTapOn) bossListenOn();         // ослаб — слушаем сразу, нажимать на него не надо
-  if(!weak && bossTapOn) bossTapStop();          // он очнулся — распознавание больше не нужно
-  if(weak){
-    const w=bossPick()||'…';
-    if($('bwWord').textContent!==w) $('bwWord').textContent=w;
-    bossWeakTxt();
-    bossTimerTick();
-  } else {
-    $('bossTodo').innerHTML = far
-      ? `🏃 Подбеги к нему — киркой достанешь только вплотную<small>до него ${bossServer?bossServer.d:'?'} шагов</small>`
-      : `⛏ Бей киркой — ещё ${left||1}, и он ослабнет<small>твои слова: ${(bossWordList||[]).slice(0,6).join(', ')||'—'}</small>`;
-  }
-}
-function bossTimerTick(){                      // сколько ещё он лежит — считаем по своим часам, плавно
-  if(!document.documentElement.classList.contains('weak')) return;
-  const ms=Math.max(0, bossStunEnd?bossStunEnd-Date.now():0);
-  const k=Math.max(0,Math.min(1,ms/12000));
-  const bar=$('bwBar'); if(bar&&bar.firstElementChild) bar.firstElementChild.style.width=(k*100).toFixed(1)+'%';
-  const fast=$('bwFast');
-  if(fast) fast.textContent = ms>12000-3000 ? '⚡ СЕЙЧАС — удар вдвое сильнее!' : '⚡ момент супер-удара упущен';
-  const sec=$('bwSec'); if(sec) sec.textContent=`осталось ${Math.max(0,Math.ceil(ms/1000))} с`;
-}
-setInterval(bossTimerTick,120);
-function bossFx(dt){                           // гроза: тучи и вспышки молний
-  if(bossShake>0) bossShake=Math.max(0,bossShake-dt*3);
-  if(bossFlash>0) bossFlash=Math.max(0,bossFlash-dt*4);
-  if(!bossHere()) return;
-  if(Math.random()<dt*0.35){
-    const el=$('storm'); el.classList.add('flash');
-    snd(70,.35,'sawtooth',.12); setTimeout(()=>snd(52,.5,'sawtooth',.1),140);
-    setTimeout(()=>el.classList.remove('flash'),110);
-  }
-}
-let bossIntroOn=false;
-function bossIntroShow(info){          // заставка: пока она открыта, босс стоит и не бьёт
-  const el=$('bossIntro');
-  bossIntroOn=true;
-  $('biEm').textContent=info.emoji||'👾';
-  $('biName').textContent=info.name||'Босс';
-  el.classList.add('on');
-  // гром и три молнии — чтобы было понятно: началось что-то большое
-  snd(60,.7,'sawtooth',.2); setTimeout(()=>snd(46,.8,'sawtooth',.17),280);
-  for(let i=0;i<3;i++) setTimeout(()=>{ el.classList.add('lit');
-    setTimeout(()=>el.classList.remove('lit'),110); }, 260+i*420);
-  clearTimeout(bossIntroShow.t);
-  bossIntroShow.t=setTimeout(bossIntroGo, 30000);   // никто не должен застрять на заставке
-}
-function bossIntroGo(){
-  clearTimeout(bossIntroShow.t);
-  if(!bossIntroOn) return;
-  bossIntroOn=false;
-  $('bossIntro').classList.remove('on');
-  $('storm').style.display='block';
-  bossShake=1.4;
-  toast('⛏ Бей киркой, пока он не ослабнет!');
-}
-function bossArrives(info){
-  bossIntroShow(info);
-}
-function bossDefeat(r){
-  bossServer=null; $('storm').style.display='none';
-  document.documentElement.classList.remove('fight');
-  toast(`💀 ${r.emoji} ${r.boss} тебя одолел. Потеряно растение${r.plant?` «${r.plant}»`:''}. Посади заново — и он вернётся.`);
-  snd(150,.5,'sawtooth',.18);
-  if(goToMyPlot(true)) gardenRedraw();        // очнулся на своём огороде
-}
-function bossVictory(r){
-  $('storm').style.display='none';
-  bossServer=null; document.documentElement.classList.remove('fight');
-  let msg=`🏆 ${r.emoji} ${r.boss} побеждён! +${r.coins} 🪙`;
-  if(r.weapon) msg+=` · новое оружие: ${r.weapon.emoji} ${r.weapon.name}`;
-  if(r.pet) msg+=` · питомец: ${r.pet}`;
-  if(r.art) msg+=` · трофей: ${r.art.emoji} ${r.art.name} (${r.art.desc})`;
-  toast(msg);
-  if(r.opened&&r.opened.length) setTimeout(()=>toast(`🔓 Открылось новое семя: «${r.opened[0].theme}»`),1400);
-  snd(660,.14,'triangle',.18); setTimeout(()=>snd(880,.14,'triangle',.18),150);
-  setTimeout(()=>snd(1180,.34,'triangle',.18),320);
-}
-function bossHitNow(){
-  if(!bossHere()) return;
-  sendWS({t:'garden',act:'bossHit'});
-  bossShake=1; snd(180,.09,'square',.15);
-}
-function bossSayStart(e){
-  if(e){ e.preventDefault(); e.stopPropagation(); }
-  if(!bossHere() || myGarden.boss.stage!=='stun' || listening) return;
-  const w=bossPick(); if(!w) return;
-  bossRec=true; $('bossSay').classList.add('rec');
-  say(w);
-  setTimeout(()=>{ if(bossRec && !listening) startListen(); }, 400);
-}
-function bossSayEnd(e){
-  if(e){ e.preventDefault(); e.stopPropagation(); }
-  bossRec=false; $('bossSay').classList.remove('rec');
-  setTimeout(stopListen,250);
-}
-function bossOnWord(said){                     // распознали слово во время боя
-  const w=(said||'').toLowerCase().trim();
-  if(!bossHere()) return false;
-  const hit=bossWordList.find(x=>w===x || w.split(/\s+/).includes(x));
-  if(!hit){ toast(`Я услышал «${said}». Скажи: ${bossPick()}`); return true; }
-  sendWS({t:'garden',act:'bossWord',word:hit});
-  bossShot(hit);
-  bossTapStop();
-  bossSayWord=''; bossFlash=1; bossShake=1;
-  snd(880,.1,'triangle',.16); setTimeout(()=>snd(1180,.16,'triangle',.16),110);
-  return true;
 }
 // ================= СБОР: НАЖАТЬ НА САМ ПЛОД =================
 // Нижняя плашка убрана. Ребёнок жмёт пальцем прямо на плод, держит и говорит
@@ -3019,50 +2619,8 @@ function pickTagShow(f,state){
       :(state==='wait'?'<i>слушай и повтори</i>'
       :(state==='miss'?`<i>не расслышал${heard?': '+heard:''}</i>`:'')));
 }
-function bossAtPoint(px,py){             // палец попал в самого босса?
-  if(!lastMVP||!bossServer||!bossHere()) return null;
-  const g=gardenOrigin();
-  const pt=project(lastMVP, bossServer.x, g.H+2.6, bossServer.z);
-  if(!pt) return null;
-  const d=Math.hypot(pt[0]-px, pt[1]-py);
-  return d<150 ? {sx:pt[0], sy:pt[1]} : null;
-}
-function bossTapStart(px,py){           // нажимать на него не обязательно — это просто «повтори слово»
-  if(!bossHere()||!bossAtPoint(px,py)) return false;
-  if(!bossWeak()){
-    toast('⛏ Сначала оглуши его киркой — бей, пока он не ослабнет');
-    snd(180,.12,'square',.1);
-    return true;                        // палец приняли, чтобы тап не улетел в поворот камеры
-  }
-  if(bossTapOn){ say(bossPick()); return true; }   // уже слушаем — по нажатию просто повторим слово
-  bossListenOn();
-  return true;
-}
-function bossWeakTxt(){                 // подпись над словом
-  const el=$('bwTopTxt'); if(!el) return;
-  const rec=document.documentElement.classList.contains('rec');
-  const top=rec?'🎙 Слушаю — говори!':'😵 Он ослаб! Скажи слово:';
-  if(el.textContent!==top) el.textContent=top;
-}
-function bossListenOn(){               // распознавание включается само, без нажатия на босса
-  if(bossTapOn || !bossHere()) return;
-  bossTapOn=true;
-  document.documentElement.classList.add('rec');
-  bossWeakTxt();
-  if(navigator.vibrate) try{ navigator.vibrate(35); }catch(e){}
-  snd(660,.08,'triangle',.16); setTimeout(()=>snd(880,.12,'triangle',.14),90);
-  fightStart();
-}
-function bossTapStop(){                 // микрофон выключаем: слово сказано, время вышло или отменили
-  if(!bossTapOn) return;
-  bossTapOn=false;
-  document.documentElement.classList.remove('rec');
-  bossWeakTxt();
-  fightEnd();
-}
 function pickStart(px,py){
   if(roomKind!=='garden'||paused) return false;
-  if(bossTapStart(px,py)) return true;
   const f=fruitAtPoint(px,py); if(!f) return false;
   holdFruit=f;
   askBed=f.bed; askWord=f.word; askOn=true;   // совместимость с проверкой слова
@@ -3073,7 +2631,6 @@ function pickStart(px,py){
   return true;
 }
 function pickEnd(){
-  if(bossTapOn) return;                 // по боссу держать палец не надо: нажал — и говори
   if(!holdFruit) return;
   const f=holdFruit;
   setTimeout(()=>{ stopListen(); }, 200);
@@ -3093,97 +2650,36 @@ function pickDone(){                     // плод сорван
   $('pickWrite').style.display='none';
   $('pickRow').style.display='none';
 }
-// ── бой: босс бежит за игроком, слово летит в него плодом ──
-let bossServer=null, bossEvQ=[], bossShots=[], bossLastSend=0, bossFightOn=false, bossTapOn=false, bossStunEnd=0;
-const bossWeak=()=>!!(bossServer&&bossServer.stage==='stun') || !!(myGarden.boss&&myGarden.boss.stage==='stun');
-function bossTickSend(){                     // сообщаем серверу, где мы; он водит босса
-  if(!bossHere() || roomKind!=='garden' || bossIntroOn) return;
-  const now=performance.now();
-  if(now-bossLastSend<330) return;
-  bossLastSend=now;
-  sendWS({t:'garden',act:'bossMove',x:+P.x.toFixed(2),z:+P.z.toFixed(2)});
-}
-function bossShot(word){                     // плод летит от игрока к боссу
-  if(!bossServer) return;
-  const pal=[[1,.28,.24],[1,.72,.2],[.55,.85,.3],[.95,.45,.75],[.6,.5,.95]];
-  const col=pal[Math.abs(hashStr(word))%pal.length];
-  bossShots.push({x:P.x, z:P.z, y:P.y+1.2, tx:bossServer.x, tz:bossServer.z, t:0, word, col});
-}
 const hashStr=t=>{ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return h; };
-let bossSplash=[];                       // брызги в месте попадания
-function pushBossShots(V,dt){
-  const g=gardenOrigin();
-  for(const s of bossShots){
-    const was=s.t;
-    s.t+=dt*1.7;                         // помедленнее — глазом видно, как летит
-    const k=Math.min(1,s.t);
-    const x=s.x+(s.tx-s.x)*k, z=s.z+(s.tz-s.z)*k;
-    const y=s.y+Math.sin(k*Math.PI)*2.2;
-    const sz=0.42;                       // и покрупнее — это целый плод, а не крошка
-    const spin=performance.now()/140;
-    pushTintBox(V,-sz,y,-sz, sz,y+sz*2,sz, T_BODY, s.col||[1,.35,.28], spin, x, z);
-    if(was<1 && s.t>=1) bossImpact(s);   // долетел — удар
-  }
-  bossShots=bossShots.filter(s=>s.t<1);
-  for(const b of bossSplash){
-    b.t+=dt*2.2;
-    const k=Math.min(1,b.t), sz=0.2*(1-k*0.6);
-    const x=b.x+b.vx*k*1.6, z=b.z+b.vz*k*1.6, y=b.y+b.vy*k*1.6-k*k*1.4;
-    pushTintBox(V,-sz,y,-sz, sz,y+sz*2,sz, T_BODY, b.col, k*6, x, z);
-  }
-  bossSplash=bossSplash.filter(b=>b.t<1);
-}
-function bossImpact(s){                  // попадание: брызги, тряска, вспышка, звук и число урона
-  for(let i=0;i<10;i++){
-    const a=Math.random()*Math.PI*2, r=0.6+Math.random()*0.9;
-    bossSplash.push({ x:s.tx, y:(gardenOrigin().H+1)+1.4, z:s.tz,
-      vx:Math.cos(a)*r, vz:Math.sin(a)*r, vy:0.7+Math.random()*0.8, t:0, col:s.col||[1,.35,.28] });
-  }
-  bossFlash=1; bossShake=1.3;
-  snd(140,.16,'square',.22); setTimeout(()=>snd(90,.24,'sawtooth',.18),70);
-  if(s.dmg) bossHitNum(s.dmg, s.crit);
-}
-function fightWord(){                         // какое слово предлагаем сказать
-  return bossPick();
-}
-function fightStart(e){
-  if(e){ e.preventDefault(); e.stopPropagation(); }
-  if(!bossHere()||listening) return;
-  const w=fightWord(); if(!w) return;
-  bossRec=true; $('bFight').classList.add('rec');
-  say(w);
-  setTimeout(()=>{ if(bossRec && !listening) startListen(true); }, 380);
-}
-function fightEnd(e){
-  if(e){ e.preventDefault(); e.stopPropagation(); }
-  bossRec=false; $('bFight').classList.remove('rec');
-  setTimeout(stopListen,220);
-}
-function bossHitNum(dmg,crit){           // «−30» всплывает над боссом: попадание видно сразу
-  const el=document.createElement('div');
-  el.className='dmgPop'+(crit?' crit':''); el.textContent=(crit?'⚡ −':'−')+dmg;
-  const pt=(bossServer&&lastMVP)?project(lastMVP,bossServer.x,gardenOrigin().H+3.4,bossServer.z):null;
-  el.style.left=(pt?pt[0]:innerWidth/2)+'px';
-  el.style.top=(pt?pt[1]:innerHeight*0.4)+'px';
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),900);
-}
-function bossHurtFx(how){
-  bossShake=1.4; screenRed(0.55);
-  toast(`💥 ${how}!`);
-  snd(120,.22,'sawtooth',.18);
-}
-function screenRed(a){
-  const el=$('storm'); if(!el) return;
-  el.style.background=`rgba(150,20,20,${a})`;
-  setTimeout(()=>{ el.style.background=''; },260);
-}
-// ================= БОССЫ: отрисовка =================
+// ================= ВОЛШЕБНЫЕ ЖИВОТНЫЕ: отрисовка =================
 // Тело собирается из коробок теми же средствами, что и персонажи, поэтому
-// каждый босс получается своим силуэтом: кто ходит, кто ползёт, кто летает.
-let BOSSES=[], WEAPONS=[], bossState=null, bossPhase=0, bossShake=0, bossFlash=0;
+// каждое животное получается своим силуэтом: кто ходит, кто ползёт, кто летает.
+// Этот же список — выбор спутника в настройках персонажа: индекс в нём и есть
+// myAva.pet, поэтому порядок менять нельзя, иначе у детей сменятся питомцы.
+const CREATURES=[
+  {n:'Кротёнок',       emoji:'🐹',  body:'mole',    move:'burrow', col:['#6b4a2f','#8a6340','#f0d9a0']},
+  {n:'Лозовичок',      emoji:'🌿',  body:'vine',    move:'crawl',  col:['#3f7a2e','#61a844','#c9e07a']},
+  {n:'Светлячок',      emoji:'✨',  body:'swarm',   move:'fly',    col:['#7d8f34','#a8bd4a','#e6f0a0']},
+  {n:'Камешек',        emoji:'🪨',  body:'golem',   move:'walk',   col:['#6e6e73','#8d8d94','#b9b9c0']},
+  {n:'Головастик',     emoji:'🐸',  body:'toad',    move:'hop',    col:['#2f7f8f','#4fb3c7','#d6f4ff']},
+  {n:'Лисёнок-Искра',  emoji:'🦊',  body:'fox',     move:'walk',   col:['#c0392b','#e8622f','#ffd07a']},
+  {n:'Тенекот',        emoji:'🐈‍⬛', body:'wolf',    move:'walk',   col:['#2c2f45','#454b70','#8f6ad8']},
+  {n:'Воронёнок',      emoji:'🐦‍⬛', body:'raven',   move:'fly',    col:['#1d2030','#3a3f5c','#7ec7f0']},
+  {n:'Скорпиончик',    emoji:'🦂',  body:'scorp',   move:'crawl',  col:['#b08a45','#d8b269','#f2e2b0']},
+  {n:'Слизнячок',      emoji:'🟢',  body:'slug',    move:'crawl',  col:['#4a7a2c','#7fbf3f','#c8f06a']},
+  {n:'Паучок',         emoji:'🕷',  body:'spider',  move:'walk',   col:['#5b3f8f','#8f6ad8','#d6c4ff']},
+  {n:'Совёнок',        emoji:'🦉',  body:'owl',     move:'fly',    col:['#3b4d6e','#6f86b8','#e8eeff']},
+  {n:'Тролленок',      emoji:'👹',  body:'troll',   move:'walk',   col:['#4c6b3a','#6f9a52','#c2d98a']},
+  {n:'Жучок-Броневик', emoji:'🪲',  body:'beetle',  move:'crawl',  col:['#3a4450','#6b7787','#9fd8ff']},
+  {n:'Птенец Феникса', emoji:'🔥',  body:'phoenix', move:'fly',    col:['#8e2f14','#e8622f','#ffd07a']},
+  {n:'Мамонтёнок',     emoji:'🦣',  body:'mammoth', move:'walk',   col:['#4a6d8f','#7fb0d8','#eaf7ff']},
+  {n:'Змейка-Молния',  emoji:'⚡',  body:'serpent', move:'crawl',  col:['#2a6b5a','#3fbf8f','#f1f4a0']},
+  {n:'Дракончик',      emoji:'🐲',  body:'dragon',  move:'fly',    col:['#3a2a5a','#6b4fbf','#d84fa0']},
+  {n:'Голем-Малыш',    emoji:'🗿',  body:'guard',   move:'walk',   col:['#5a4a2f','#8f7a45','#f0d9a0']},
+  {n:'Титанёнок',      emoji:'💠',  body:'titan',   move:'walk',   col:['#6b2f4a','#bf4f7a','#ffd070']},
+];
 const bc=(B,i)=>HEXC(B.col[Math.min(2,Math.max(0,i))]);
-function bossParts(B){                       // силуэт по названию телосложения
+function petParts(B){                        // силуэт по названию телосложения
   const P=[];
   const put=(x0,y0,z0,x1,y1,z1,c,anim)=>P.push({b:[x0,y0,z0,x1,y1,z1],c,anim:anim||0});
   const legs=(n,w,h,z0,z1,c)=>{ for(let i=0;i<n;i++){ const t=(i/(n-1||1))-0.5;
@@ -3275,20 +2771,19 @@ function bossParts(B){                       // силуэт по названи
   }
   return P;
 }
-function pushBossMesh(V, st){
-  const B=BOSSES[st.i]||BOSSES[0]; if(!B) return;
+function pushPetMesh(V, st){
+  const B=CREATURES[st.i]||CREATURES[0]; if(!B) return;
   const sc=st.sc||1;
   const t=performance.now()/1000;
-  const parts=bossParts(B);
+  const parts=petParts(B);
   const yaw=st.yaw||0;
-  const hurt=bossFlash>0 ? 1 : 0;
   const bob = B.move==='fly' ? Math.sin(t*2.2)*0.35
             : B.move==='hop' ? Math.abs(Math.sin(t*2.6))*0.5
             : Math.sin(t*3.2)*0.06;
   // спутник должен стоять на земле рядом с ребёнком, а не парить над головой,
   // поэтому у него подъём и «подкоп» выключены
   const lift = st.noLift ? 0 : (B.move==='fly' ? 1.6 : (B.move==='crawl'||B.move==='burrow' ? -0.2 : 0));
-  const shake = bossShake>0 ? (Math.random()-0.5)*0.18*bossShake : 0;
+  const shake = 0;
   for(const pt of parts){
     let [x0,y0,z0,x1,y1,z1]=pt.b;
     let sw=0;
@@ -3297,9 +2792,9 @@ function pushBossMesh(V, st){
     if(pt.anim===4) sw=Math.sin(t*3+z0)*0.2;                          // хвост
     if(pt.anim===1) sw=Math.sin(t*2.4+y0)*0.12;                       // покачивание
     const c=bc(B,pt.c);
-    const tint = hurt ? [Math.min(1,c[0]+.55), c[1]*.45, c[2]*.45] : c;
+    const tint = c;
     const dy=(pt.anim===3?Math.sin(t*7)*0.25:0);
-    const oy=bob+lift+dy+shake, base=st.y||0;   // st.y — уровень земли, иначе босс уйдёт под участок
+    const oy=bob+lift+dy+shake, base=st.y||0;   // st.y — уровень земли, иначе зверёк уйдёт под участок
     pushTintBox(V, x0*sc,base+(y0+oy)*sc,z0*sc, x1*sc,base+(y1+oy)*sc,z1*sc,
                 pt.anim===3?T_CLOTH:T_BODY, tint, yaw+sw*0.35, st.x, st.z);
   }
@@ -3433,17 +2928,11 @@ setInterval(()=>{ if(!onbOff && roomKind==='garden' && !paused) onbDirPoint(); }
 // Уходит, когда на грядках выросло 10 разных растений — дальше ребёнок справляется сам.
 const PIXI_LS='me_pixi';
 const PIXI_GOAL=10;                       // сколько разных растений помогаем посадить
-// Спутник — магическое животное. Модели те же, что у боссов, только маленькие и дружелюбные:
+// Спутник — магическое животное, маленькое и дружелюбное:
 // ребёнок выбирает своего в конструкторе персонажа, и он ходит с ним по саду.
-const PETS_LIST=[
-  {n:'Кротёнок',emoji:'🐹'},        {n:'Лозовичок',emoji:'🌿'},     {n:'Светлячок',emoji:'✨'},
-  {n:'Камешек',emoji:'🪨'},         {n:'Головастик',emoji:'🐸'},    {n:'Лисёнок-Искра',emoji:'🦊'},
-  {n:'Тенекот',emoji:'🐈‍⬛'},        {n:'Воронёнок',emoji:'🐦‍⬛'},     {n:'Скорпиончик',emoji:'🦂'},
-  {n:'Слизнячок',emoji:'🟢'},       {n:'Паучок',emoji:'🕷'},        {n:'Совёнок',emoji:'🦉'},
-  {n:'Тролленок',emoji:'👹'},       {n:'Жучок-Броневик',emoji:'🪲'},{n:'Птенец Феникса',emoji:'🔥'},
-  {n:'Мамонтёнок',emoji:'🦣'},      {n:'Змейка-Молния',emoji:'⚡'}, {n:'Дракончик',emoji:'🐲'},
-  {n:'Голем-Малыш',emoji:'🗿'},     {n:'Титанёнок',emoji:'💠'},
-];
+// Спутника выбирают в настройках персонажа; его облик берётся из CREATURES
+// по тому же индексу, поэтому списки — один и тот же.
+const PETS_LIST=CREATURES;
 const petIdx=()=>Math.max(0,Math.min(PETS_LIST.length-1,(myAva&&myAva.pet|0)||0));
 const petNow=()=>PETS_LIST[petIdx()];
 let pixiOn=true, pixiDone=false, pixiForced=false, pixiX=0, pixiZ=0, pixiYaw=0, pixiPhase=0,
@@ -3458,7 +2947,7 @@ let pixiMode='idle', pixiPend='', pixiLastCome=0, pixiStepAt=0,
 try{ const v=JSON.parse(localStorage.getItem(PIXI_LS)||'null');
      if(v){ pixiOn=v.on!==false; pixiDone=!!v.done; } }catch(e){}
 function pixiSave(){ try{ localStorage.setItem(PIXI_LS,JSON.stringify({on:pixiOn,done:pixiDone})); }catch(e){} }
-// сколько разных растений уже растёт — тот же счёт, что и у сервера для босса
+// сколько разных растений уже растёт
 function pixiGrown(){
   const set=new Set();
   for(const b of Object.values(myGarden.beds||{})) for(const w of (b.words||[])) set.add(b.lesson+'#'+w.word);
@@ -3590,7 +3079,7 @@ function pushPixi(V){
   if(!pixiHere()) return;
   const g=gardenOrigin();
   const bob=Math.sin(performance.now()/380)*0.12;       // зверёк парит и покачивается
-  pushBossMesh(V,{i:petIdx(), sc:0.42, noLift:1, x:pixiX, y:g.H+1+bob, z:pixiZ, yaw:pixiYaw+Math.PI});
+  pushPetMesh(V,{i:petIdx(), sc:0.42, noLift:1, x:pixiX, y:g.H+1+bob, z:pixiZ, yaw:pixiYaw+Math.PI});
 }
 function pixiEscort(){                     // зовём спутника провожать к станции заказа
   pixiOn=true; pixiDone=false; pixiForced=true; pixiSave();
@@ -3651,7 +3140,6 @@ function pushRing(V,x,y,z,r,w,tint){       // рамка на земле — ц�
 }
 function pushGuideArrows(V){
   if(!onbTarget || roomKind!=='garden' || onbOff) return;
-  if(bossHere()) return;                 // идёт бой — под ногами не должно ничего ползать
   const dx=onbTarget.x-P.x, dz=onbTarget.z-P.z, dist=Math.hypot(dx,dz);
   if(dist<1.6 || dist>70) return;
   const ux=dx/dist, uz=dz/dist, yaw=Math.atan2(ux,uz);
@@ -3667,7 +3155,7 @@ function pushGuideArrows(V){
   const pulse=0.9+0.12*Math.sin(performance.now()/280);   // на самой цели — рамка, а не заплатка
   pushRing(V, onbTarget.x, y, onbTarget.z, 0.5*pulse, 0.07, CY);
 }
-setInterval(()=>{ syncMenuClass(); gardenHud(); mobileGarden(); updateMicBtn(); voiceBanner(); onbTick(); bossRender(); },400);
+setInterval(()=>{ syncMenuClass(); gardenHud(); mobileGarden(); updateMicBtn(); voiceBanner(); onbTick(); },400);
 setInterval(()=>{ if(holdFruit) pickTagShow(holdFruit, listening?'rec':(holdMiss?'miss':(gameTalking()?'wait':''))); },90);
 setInterval(actRender,3000);   // подсветка «свежее/старое» обновляется сама // подпись микрофона тоже держим свежей
 // ---- разговор с жителем: сначала слово, потом дело ----
@@ -3849,15 +3337,13 @@ function renderShop(level){
       <div class="pr" style="color:#6d7994">— — —</div><div class="sub">${lockWhy}</div></div>`).join('');
 
   $('shopGrid').innerHTML=(wordCards+themeCards+stCard+lockCards)||'<div class="hint">на этом уровне пока пусто</div>';
-  const bn=bossNeed;
   const ordLine = ord
     ? `📦 <b>Сейчас задание:</b> ${talkStOf(ord.kind).emoji} ${talkStOf(ord.kind).tag}, ${talkStOf(ord.kind).title} `
       + `— принеси плоды и скажи ${ord.say|0} фразы. Новая тема откроется после него.`
     : (mineW.length
         ? '🌱 Посадил семя — в киоске появляется следующее. Деньгами вперёд не перепрыгнуть.'
         : (nextUp ? `🔒 Дальше откроется <b>${nextUp.theme}</b>` : ''));
-  $('shopFoot').innerHTML = ordLine
-    + (bn && bn.next<20 ? `<br>⛈️ Босс №${bn.next+1} придёт, когда на участке будет <b>${bn.need}</b> разных растений (сейчас ${bn.have})` : '');
+  $('shopFoot').innerHTML = ordLine;
   $('shopGrid').querySelectorAll('[data-quest]').forEach(c=>c.onclick=()=>{
     const stn=talkStOf(c.dataset.quest);
     closeShop();
@@ -4130,16 +3616,6 @@ function flyRender(list){
     sendWS({t:'switch', code});
   });
 }
-function bossProgress(){        // почему босса ещё нет — ребёнку и учителю должно быть понятно
-  const el=$('pmBoss'); if(!el) return;
-  if(roomKind!=='garden' || !bossNeed){ el.textContent=''; return; }
-  if(myGarden.boss){ el.innerHTML='👹 <b>Босс уже на участке!</b>'; return; }
-  const pl=bossNeed.have|0, plN=bossNeed.need|0, d=bossNeed.days|0, dN=bossNeed.needDays|0;
-  const ok=v=>v?'✅':'⬜';
-  el.innerHTML=`👹 <b>До прихода босса №${(bossNeed.next|0)+1}</b><br>`
-    +`${ok(pl>=plN)} разных растений на грядках: <b>${pl} из ${plN}</b><br>`
-    +`${ok(d>=dN)} дней работы в огороде: <b>${d} из ${dN}</b>`;
-}
 function openMenu(){ // единый выход: работает в лобби, в классе и в саду
   if(!worldReady) return;
   overlayView('mPause');
@@ -4150,7 +3626,6 @@ function openMenu(){ // единый выход: работает в лобби,
   $('pmLobby').style.display=(ws&&roomCode!=='LOBBY')?'block':'none';
   $('pmGarden').style.display=(ws&&roomCode!=='GARDEN')?'block':'none';
   $('pmMyPlot').style.display=(roomKind==='garden'&&myPlotIndex()>=0)?'block':'none';
-  bossProgress();
   pixiMenuLabel();
   $('pmBuild').innerHTML = !serverBuild
     ? `версия игры ${BUILD} · сервер старый (сборку не сообщает)`
@@ -4645,8 +4120,6 @@ function phraseMatch(transcript, words, ordered){
 // сразу, не дожидаясь конца фразы; не совпало — молчим, ребёнок ещё договаривает.
 function checkWord(t, soft){
   if(talkOn) return soft ? false : talkHeard(t);   // фразу на станции проверяем только целиком
-  // во время боя произнесённое слово бьёт босса, а не собирает урожай
-  if(bossHere()) return soft ? false : bossOnWord(t);   // бой: слово летит в босса
   // слово дня в лобби
   if(worddayNear && lobbyData && lobbyData.wordday){
     if(wordMatch(t, lobbyData.wordday.word)){ sendWS({t:'wordday', word:lobbyData.wordday.word}); return true; }
@@ -5602,22 +5075,10 @@ try{ const sv=JSON.parse(localStorage.getItem('me_ava')||'null'); if(sv) myAva=a
 $('pmBag').onclick=e=>{ e.stopPropagation(); openBag(); };
 $('pmAct').onclick=e=>{ e.stopPropagation(); actToggle(); resumeGame(); };
 $('navBag').onclick=e=>{ e.stopPropagation(); openBag(); };
-$('pmArms').onclick=e=>{ e.stopPropagation(); openArms(); };
-$('biGo').onclick=e=>{ e.stopPropagation(); bossIntroGo(); };
-$('bossHit').onclick=e=>{ e.stopPropagation(); bossHitNow(); };
 // Safari на iPhone игнорирует user-scalable=no, поэтому глушим жесты руками
 for(const ev of ['gesturestart','gesturechange','gestureend'])
   document.addEventListener(ev, e=>e.preventDefault(), {passive:false});
 document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
-$('bFight').addEventListener('pointerdown',fightStart);
-$('bFight').addEventListener('pointerup',fightEnd);
-$('bFight').addEventListener('pointercancel',fightEnd);
-$('bFight').addEventListener('contextmenu',e=>e.preventDefault());
-$('bossSay').addEventListener('pointerdown',bossSayStart);
-$('bossSay').addEventListener('pointerup',bossSayEnd);
-$('bossSay').addEventListener('pointercancel',bossSayEnd);
-$('bossFlee').onclick=e=>{ e.stopPropagation();
-  if(confirm('Убежать от босса? Он уйдёт, но потоптанные грядки не вернутся.')) sendWS({t:'garden',act:'bossFlee'}); };
 $('pmReset').onclick=e=>{ e.stopPropagation();
   if(!confirm('Начать сад заново? Грядки, монеты и купленные семена пропадут — вернёшься к самому первому шагу.')) return;
   sendWS({t:'garden',act:'reset'});
@@ -6087,24 +5548,16 @@ function render(){
   if(viewMode>0) pushPlayerMesh(PV,{x:P.x,y:P.y,z:P.z,yaw:P.yaw,walkPhase,walkAmp,ava:myAva});
   for(const p of peers.values())
     pushPlayerMesh(PV,{x:p.x,y:p.y,z:p.z,yaw:p.yaw,walkPhase:p.walkPhase,walkAmp:p.walkAmp,ava:p.ava});
-  if(bossHere()){                         // босс бежит за игроком — позицию считает сервер
-    const st=myGarden.boss;
-    const sp=bossServer||bossSpot();
-    if(sp){
-      pushBossMesh(PV,{i:st.i, x:sp.x, y:gardenOrigin().H+1, z:sp.z,
-                       yaw:Math.atan2(P.x-sp.x,P.z-sp.z)});
-      bossPos={x:sp.x,z:sp.z};
-    }
-    pushBossShots(PV, 1/30);
-  } else bossPos=null;
-  // побеждённые боссы остаются питомцами и бродят по участку
+  // питомцы бродят по участку: кто уже их получил, тот их и видит
   const pets=(myGarden&&myGarden.pets)||[];
   if(pets.length && roomKind==='garden'){
     const mine=myPlotIndex();
     if(mine>=0){ const c=bedPos(mine,0), t=performance.now()/1000;
       pets.slice(0,6).forEach((nm,k)=>{
         const a=t*0.35+k*2.1, r=3.2+k*0.9;
-        pushBossMesh(PV,{i:k, sc:0.3, x:c.x+Math.cos(a)*r, y:gardenOrigin().H+1, z:c.z+Math.sin(a)*r, yaw:a+Math.PI/2});
+        // рисуем того зверя, как его зовут, а не k-го по списку: иначе «Совёнок» выходил кротом
+        const ci=Math.max(0, CREATURES.findIndex(cr=>cr.n===nm));
+        pushPetMesh(PV,{i:ci, sc:0.3, x:c.x+Math.cos(a)*r, y:gardenOrigin().H+1, z:c.z+Math.sin(a)*r, yaw:a+Math.PI/2});
       });
     }
   }
@@ -6219,8 +5672,6 @@ function loop(t){
   lastT=t;
   stepPeers(dt);
   if(!paused && worldReady) update(dt);
-  bossFx(dt);
-  bossTickSend();
   render();
   frames++;
   if(t-fpsT>500){ fpsEl.textContent=Math.round(frames*1000/(t-fpsT))+' fps'; frames=0; fpsT=t; }
@@ -6274,24 +5725,6 @@ window.game={P,setBlock,netBlock,getB,raycast,select,world,respawn,act,peers,set
   onb:()=>({off:onbOff, sold:onbSold, target:onbTarget,
     text:$('onbLine').textContent.replace(/скрыть$/,'').trim(),
     shown:$('onbLine').style.display==='block'}),
-  bossIntro:()=>({on:bossIntroOn, name:document.getElementById('biName').textContent}),
-  bossWeak:()=>bossWeak(),
-  bossShots:()=>bossShots.map(s=>({t:+s.t.toFixed(2), dmg:s.dmg||0, word:s.word})),
-  bossSplash:()=>bossSplash.length,
-  dmgPops:()=>[...document.querySelectorAll('.dmgPop')].map(e=>e.textContent),
-  bossNeed:()=>bossNeed,
-  bossProgressText:()=>{ bossProgress(); return document.getElementById('pmBoss').textContent; },
-  bossRecOn:()=>({ on:bossTapOn, cls:document.documentElement.classList.contains('rec'),
-                   top:document.getElementById('bwTopTxt').textContent }),
-  bossTodo:()=>({ weak:document.documentElement.classList.contains('weak'),
-                  word:document.getElementById('bwWord').textContent,
-                  sec:document.getElementById('bwSec').textContent,
-                  bar:document.getElementById('bwBar').firstElementChild.style.width,
-                  todo:document.getElementById('bossTodo').textContent,
-                  words:bossWordList.slice() }),
-  bossTapAt:()=>{ const g=gardenOrigin(); if(!bossServer||!lastMVP) return null;
-    const pt=project(lastMVP,bossServer.x,g.H+2.6,bossServer.z);
-    return pt?{x:Math.round(pt[0]),y:Math.round(pt[1])}:null; },
   onbReset:()=>{ onbOff=false; onbSold=false; onbCelebrated=false; onbSave(); onbTick(); },
   talk:()=>({on:talkOn, task:talkTask, rec:talkRec,
              phrase:document.getElementById('talkPhrase').textContent,

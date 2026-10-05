@@ -16,7 +16,7 @@ await p.waitForTimeout(2200);
 await p.evaluate(()=>{ window.__d=[]; const o=eval('toast'); eval('toast = m=>{ window.__d.push(m); return ('+o.toString()+')(m); }'); });
 
 // поднимаем сад, как у давнего игрока: грядка 0 — старая «вся тема», грядка 1 — из одного слова
-await p.evaluate(()=>eval(`sendWS({t:'garden',act:'restore',garden:{coins:300,
+await p.evaluate(()=>eval(`sendWS({t:'garden',act:'restore',garden:{coins:200000,
   seeds:{'starter-01#banana':1,'starter-02#carrot':1},
   openW:{'starter-01#apple':1,'starter-01#banana':1,'starter-02#carrot':1},
   open:{'starter-01':1},
@@ -34,11 +34,21 @@ await p.waitForTimeout(1000);
 g=await G();
 ok((g.beds['1'].words||[]).length===2, `в свою грядку досадилось: ${(g.beds['1'].words||[]).map(w=>w.word).join(', ')}`);
 
-// 2) в полную грядку — отказ с понятной причиной
+// 2) в полную грядку — отказ с понятной причиной.
+// На грядке 16 мест, поэтому сперва забиваем её под завязку бананами.
+for(let i=0;i<20;i++){
+  const n=(await G()).beds['1'].words.length;
+  if(n>=16) break;
+  await p.evaluate(()=>eval("sendWS({t:'garden',act:'buy',lesson:'starter-01#banana'})"));
+  await p.waitForTimeout(260);
+  await p.evaluate(()=>eval("sendWS({t:'garden',act:'plant',bed:1,lesson:'starter-01#banana'})"));
+  await p.waitForTimeout(300);
+}
+ok((await G()).beds['1'].words.length===16, `грядка 1 забита: ${(await G()).beds['1'].words.length} из 16`);
 await p.evaluate(()=>{ window.__d=[]; });
 await p.evaluate(()=>eval("sendWS({t:'garden',act:'buy',lesson:'starter-01#banana'})"));
 await p.waitForTimeout(800);
-await p.evaluate(()=>eval("sendWS({t:'garden',act:'plant',bed:0,lesson:'starter-01#banana'})"));
+await p.evaluate(()=>eval("sendWS({t:'garden',act:'plant',bed:1,lesson:'starter-01#banana'})"));
 await p.waitForTimeout(900);
 let M=await msgs();
 ok(M.some(m=>/полная/.test(m)), 'в полную грядку не пускает: «'+(M.find(m=>/полная/.test(m))||'—')+'»');

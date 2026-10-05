@@ -1,6 +1,6 @@
-// Рюкзак: посадка из него, трофей за босса, подарок соседу
+// Рюкзак: посадка из него, трофей со станции, подарок соседу
 import { chromium } from 'playwright';
-import { restoreBossGarden } from './bossgard.mjs';
+import { restoreBigGarden, bigGarden } from './biggard.mjs';
 const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
 const ok=(c,m)=>console.log((c?'  OK  ':' FAIL ')+m);
@@ -36,26 +36,13 @@ await A.evaluate(()=>document.querySelector('#bagGrid .bagCard').click());
 await A.waitForTimeout(1500);
 ok(!!(await A.evaluate(()=>bedAt(0))), 'нажал на семя в рюкзаке у грядки — оно посажено');
 
-// босс приходит только к большому огороду и после нескольких дней работы
-await restoreBossGarden(A);
-await A.evaluate(()=>{ const q=bedPos(myPlotIndex(),0), P=window.game.P; P.x=q.x+.5; P.z=q.z+3; });
-await A.waitForTimeout(700);
-for(let i=0;i<9;i++){
-  const left=await A.evaluate(()=>bedAt(0)?ripeWords(bedAt(0)):[]);
-  if(!left.length) break;
-  await A.evaluate(x=>window.game.checkWord(x), left[0]);
-  await A.waitForTimeout(350);
-}
-await A.waitForTimeout(1200);
-ok(!!(await G(A)).boss, 'пришёл босс');
-for(let i=0;i<60 && (await G(A)).boss;i++){
-  const st=(await G(A)).boss; if(!st) break;
-  if(st.stage!=='stun') await A.evaluate(()=>eval("sendWS({t:'garden',act:'bossHit'})"));
-  else await A.evaluate(()=>eval("sendWS({t:'garden',act:'bossWord',word:'apple'})"));
-  await A.waitForTimeout(230);
-}
+// трофей выдаёт станция за выполненный заказ (это проверяет torder).
+// Здесь важно другое: что трофей виден в рюкзаке и его можно подарить.
+await A.evaluate(g=>eval(`sendWS({t:'garden',act:'restore',garden:${g}})`),
+                 bigGarden({extra:{items:{a1:1}}}));
+await A.waitForTimeout(1300);
 let g=await G(A);
-ok(Object.keys(g.items||{}).length===1, `за победу выпал трофей: ${Object.keys(g.items||{}).join(', ')}`);
+ok((g.items&&g.items.a1)===1, `трофей со станции в саду: ${Object.keys(g.items||{}).join(', ')}`);
 await A.evaluate(()=>openBag()); await A.waitForTimeout(600);
 cards=await A.evaluate(()=>[...document.querySelectorAll('#bagGrid .bagCard .nm')].map(e=>e.textContent));
 ok(cards.some(c=>/Перчатка/.test(c)), `трофей виден в рюкзаке: ${cards.join(', ')}`);

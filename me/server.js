@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-47';
+const BUILD = '2026-09-15-48';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -352,85 +352,32 @@ function lessonIndex() {               // каталог уроков = ассо
   catch (e) { lessonIndexCache = []; }
   return lessonIndexCache;
 }
-// ─────────────────────────────────────────────────────────────
-// РЕЖИМ БОССОВ. Каждое магическое существо приходит топтать огород.
-// Киркой его оглушают, а урон наносят словами — теми, что игрок вырастил.
-// forme: тело собирается из деталей, поэтому все двадцать выглядят по-разному.
-// ─────────────────────────────────────────────────────────────
-const BOSSES = [
-  { id:1,  name:'Грязевой Крот',      emoji:'🦫', move:'burrow', hp:60,   dmg:1, body:'mole',    col:['#6b4a2f','#8a6340','#f0d9a0'], every:26 },
-  { id:2,  name:'Сорняк-Душитель',    emoji:'🌿', move:'crawl',  hp:90,   dmg:1, body:'vine',    col:['#3f7a2e','#61a844','#c9e07a'], every:24 },
-  { id:3,  name:'Саранчиная Стая',    emoji:'🦗', move:'fly',    hp:130,  dmg:1, body:'swarm',   col:['#7d8f34','#a8bd4a','#e6f0a0'], every:22 },
-  { id:4,  name:'Каменный Голем',     emoji:'🗿', move:'walk',   hp:190,  dmg:2, body:'golem',   col:['#6e6e73','#8d8d94','#b9b9c0'], every:22 },
-  { id:5,  name:'Ледяная Жаба',       emoji:'🐸', move:'hop',    hp:260,  dmg:2, body:'toad',    col:['#2f7f8f','#4fb3c7','#d6f4ff'], every:20 },
-  { id:6,  name:'Огненный Лис',       emoji:'🦊', move:'walk',   hp:340,  dmg:2, body:'fox',     col:['#c0392b','#e8622f','#ffd07a'], every:20 },
-  { id:7,  name:'Тенистый Волк',      emoji:'🐺', move:'walk',   hp:430,  dmg:3, body:'wolf',    col:['#2c2f45','#454b70','#8f6ad8'], every:19 },
-  { id:8,  name:'Грозовой Ворон',     emoji:'🐦‍⬛', move:'fly',   hp:530,  dmg:3, body:'raven',   col:['#1d2030','#3a3f5c','#7ec7f0'], every:18 },
-  { id:9,  name:'Песчаный Скорпион',  emoji:'🦂', move:'crawl',  hp:650,  dmg:3, body:'scorp',   col:['#b08a45','#d8b269','#f2e2b0'], every:18 },
-  { id:10, name:'Ядовитый Слизень',   emoji:'🐌', move:'crawl',  hp:790,  dmg:4, body:'slug',    col:['#4a7a2c','#7fbf3f','#c8f06a'], every:17 },
-  { id:11, name:'Кристальный Паук',   emoji:'🕷️', move:'walk',   hp:950,  dmg:4, body:'spider',  col:['#5b3f8f','#8f6ad8','#d6c4ff'], every:16 },
-  { id:12, name:'Лунная Сова',        emoji:'🦉', move:'fly',    hp:1130, dmg:4, body:'owl',     col:['#3b4d6e','#6f86b8','#e8eeff'], every:16 },
-  { id:13, name:'Болотный Тролль',    emoji:'👹', move:'walk',   hp:1330, dmg:5, body:'troll',   col:['#4c6b3a','#6f9a52','#c2d98a'], every:15 },
-  { id:14, name:'Железный Жук',       emoji:'🪲', move:'crawl',  hp:1560, dmg:5, body:'beetle',  col:['#3a4450','#6b7787','#9fd8ff'], every:15 },
-  { id:15, name:'Пепельный Феникс',   emoji:'🔥', move:'fly',    hp:1820, dmg:6, body:'phoenix', col:['#8e2f14','#e8622f','#ffd07a'], every:14 },
-  { id:16, name:'Ледяной Мамонт',     emoji:'🦣', move:'walk',   hp:2120, dmg:6, body:'mammoth', col:['#4a6d8f','#7fb0d8','#eaf7ff'], every:14 },
-  { id:17, name:'Молниевый Змей',     emoji:'🐍', move:'crawl',  hp:2460, dmg:7, body:'serpent', col:['#2a6b5a','#3fbf8f','#f1f4a0'], every:13 },
-  { id:18, name:'Теневой Дракончик',  emoji:'🐲', move:'fly',    hp:2850, dmg:7, body:'dragon',  col:['#3a2a5a','#6b4fbf','#d84fa0'], every:13 },
-  { id:19, name:'Голем-Страж Сада',   emoji:'🛡️', move:'walk',   hp:3300, dmg:8, body:'guard',   col:['#5a4a2f','#8f7a45','#f0d9a0'], every:12 },
-  { id:20, name:'Садовый Титан',      emoji:'👑', move:'walk',   hp:3900, dmg:9, body:'titan',   col:['#6b2f4a','#bf4f7a','#ffd070'], every:12 },
-];
-// Оружие: чем дальше, тем сильнее удар киркой (оглушение приходит быстрее)
-const WEAPONS = [
-  { id:0,  name:'Деревянная кирка', emoji:'🪵', power:1,  price:0    },
-  { id:1,  name:'Каменная кирка',   emoji:'🪨', power:2,  price:40   },
-  { id:2,  name:'Медный молот',     emoji:'🔨', power:3,  price:110  },
-  { id:3,  name:'Железная кирка',   emoji:'⛏️', power:4,  price:240  },
-  { id:4,  name:'Серебряный серп',  emoji:'🌙', power:5,  price:430  },
-  { id:5,  name:'Золотые грабли',   emoji:'🥇', power:6,  price:700  },
-  { id:6,  name:'Кристальный клинок',emoji:'💎',power:7,  price:1080 },
-  { id:7,  name:'Ледяной топор',    emoji:'🧊', power:8,  price:1580 },
-  { id:8,  name:'Огненный жезл',    emoji:'🔥', power:9,  price:2220 },
-  { id:9,  name:'Грозовой молот',   emoji:'⚡', power:10, price:3010 },
-  { id:10, name:'Лунный серп',      emoji:'🌕', power:11, price:3970 },
-  { id:11, name:'Теневой кинжал',   emoji:'🗡️', power:12, price:5110 },
-  { id:12, name:'Изумрудная коса',  emoji:'💚', power:13, price:6450 },
-  { id:13, name:'Рубиновый молот',  emoji:'❤️', power:14, price:8000 },
-  { id:14, name:'Алмазная кирка',   emoji:'💠', power:15, price:9780 },
-  { id:15, name:'Звёздный трезубец',emoji:'🔱', power:16, price:11800},
-  { id:16, name:'Радужный посох',   emoji:'🌈', power:17, price:14080},
-  { id:17, name:'Драконий клык',    emoji:'🐉', power:18, price:16630},
-  { id:18, name:'Титановый молот',  emoji:'🛠️', power:19, price:19470},
-  { id:19, name:'Клинок Садовника', emoji:'🌟', power:22, price:22610},
-];
-// Питомцы: за каждого побеждённого босса — своё существо, оно живёт на участке
-const PETS = [
-  'Кротёнок','Лозовичок','Светлячок','Камешек','Ледяной Головастик','Лисёнок-Искра',
-  'Тенекот','Воронёнок','Скорпиончик','Слизнячок','Паучок-Кристаллик','Совёнок',
-  'Тролленок','Жучок-Броневик','Птенец Феникса','Мамонтёнок','Змейка-Молния',
-  'Дракончик','Голем-Малыш','Титанёнок',
-];
-// ── Трофеи: за каждого босса своя вещь. Её носят, она даёт эффект, и ею можно поделиться ──
+// ── Трофеи станций: вещь за выполненный заказ. Её носят, и она помогает на огороде ──
+// Раньше половина трофеев усиливала бой с боссами. Боссов больше нет, поэтому каждый
+// трофей теперь делает одно из двух понятных дел: ускоряет созревание или добавляет
+// монет за плоды. Имена и номера оставлены прежними — у кого трофей уже есть,
+// тот его не теряет.
 const ARTIFACTS = [
-  { id:'a1',  name:'Перчатка Крота',      emoji:'🧤', eff:'grow',  val:0.08, desc:'растения зреют на 8% быстрее' },
-  { id:'a2',  name:'Оберег из лозы',      emoji:'🍀', eff:'stomp', val:0.15, desc:'боссы топчут грядки реже' },
-  { id:'a3',  name:'Крыло саранчи',       emoji:'🪶', eff:'grow',  val:0.10, desc:'растения зреют на 10% быстрее' },
-  { id:'a4',  name:'Осколок голема',      emoji:'🪨', eff:'hit',   val:1,    desc:'кирка бьёт на +1 сильнее' },
+  { id:'a1',  name:'Перчатка садовника',  emoji:'🧤', eff:'grow',  val:0.08, desc:'растения зреют на 8% быстрее' },
+  { id:'a2',  name:'Оберег из лозы',      emoji:'🍀', eff:'grow',  val:0.10, desc:'растения зреют на 10% быстрее' },
+  { id:'a3',  name:'Крыло-веер',          emoji:'🪶', eff:'grow',  val:0.10, desc:'растения зреют на 10% быстрее' },
+  { id:'a4',  name:'Тёплый камень',       emoji:'🪨', eff:'grow',  val:0.12, desc:'растения зреют на 12% быстрее' },
   { id:'a5',  name:'Ледяная линза',       emoji:'🔮', eff:'coin',  val:0.15, desc:'за плоды дают на 15% больше' },
-  { id:'a6',  name:'Хвост лиса',          emoji:'🦊', eff:'word',  val:0.12, desc:'слово наносит на 12% больше урона' },
-  { id:'a7',  name:'Клык волка',          emoji:'🦷', eff:'hit',   val:2,    desc:'кирка бьёт на +2 сильнее' },
-  { id:'a8',  name:'Перо ворона',         emoji:'🖋️', eff:'stomp', val:0.20, desc:'боссы топчут грядки реже' },
-  { id:'a9',  name:'Жало скорпиона',      emoji:'🗡️', eff:'word',  val:0.15, desc:'слово наносит на 15% больше урона' },
-  { id:'a10', name:'Слизь-удобрение',     emoji:'🧪', eff:'grow',  val:0.15, desc:'растения зреют на 15% быстрее' },
+  { id:'a6',  name:'Лисий хвост',         emoji:'🦊', eff:'coin',  val:0.12, desc:'за плоды дают на 12% больше' },
+  { id:'a7',  name:'Серебряный колокол',  emoji:'🔔', eff:'grow',  val:0.12, desc:'растения зреют на 12% быстрее' },
+  { id:'a8',  name:'Лёгкое перо',         emoji:'🖋️', eff:'grow',  val:0.14, desc:'растения зреют на 14% быстрее' },
+  { id:'a9',  name:'Песчаные часы',       emoji:'⏳', eff:'grow',  val:0.15, desc:'растения зреют на 15% быстрее' },
+  { id:'a10', name:'Живое удобрение',     emoji:'🧪', eff:'grow',  val:0.15, desc:'растения зреют на 15% быстрее' },
   { id:'a11', name:'Кристальная нить',    emoji:'💠', eff:'coin',  val:0.20, desc:'за плоды дают на 20% больше' },
-  { id:'a12', name:'Лунное перо',         emoji:'🌙', eff:'word',  val:0.20, desc:'слово наносит на 20% больше урона' },
-  { id:'a13', name:'Дубина тролля',       emoji:'🪵', eff:'hit',   val:3,    desc:'кирка бьёт на +3 сильнее' },
-  { id:'a14', name:'Панцирь жука',        emoji:'🛡️', eff:'life',  val:1,    desc:'+1 жизнь в бою' },
-  { id:'a15', name:'Пепел феникса',       emoji:'🔥', eff:'grow',  val:0.20, desc:'растения зреют на 20% быстрее' },
-  { id:'a16', name:'Бивень мамонта',      emoji:'🦴', eff:'hit',   val:4,    desc:'кирка бьёт на +4 сильнее' },
-  { id:'a17', name:'Чешуя змея',          emoji:'🐍', eff:'life',  val:1,    desc:'+1 жизнь в бою' },
-  { id:'a18', name:'Драконий глаз',       emoji:'👁️', eff:'word',  val:0.25, desc:'слово наносит на 25% больше урона' },
-  { id:'a19', name:'Щит стража',          emoji:'🛡️', eff:'life',  val:2,    desc:'+2 жизни в бою' },
-  { id:'a20', name:'Корона Титана',       emoji:'👑', eff:'coin',  val:0.35, desc:'за плоды дают на 35% больше' },
+  { id:'a12', name:'Лунное перо',         emoji:'🌙', eff:'coin',  val:0.18, desc:'за плоды дают на 18% больше' },
+  { id:'a13', name:'Дождевая лейка',      emoji:'🪣', eff:'grow',  val:0.16, desc:'растения зреют на 16% быстрее' },
+  { id:'a14', name:'Садовый щит',         emoji:'🛡️', eff:'grow',  val:0.16, desc:'растения зреют на 16% быстрее' },
+  { id:'a15', name:'Тёплый пепел',        emoji:'🔥', eff:'grow',  val:0.20, desc:'растения зреют на 20% быстрее' },
+  { id:'a16', name:'Костяной гребень',    emoji:'🦴', eff:'coin',  val:0.22, desc:'за плоды дают на 22% больше' },
+  { id:'a17', name:'Зелёная чешуйка',     emoji:'🐍', eff:'grow',  val:0.18, desc:'растения зреют на 18% быстрее' },
+  { id:'a18', name:'Самоцвет',            emoji:'👁️', eff:'coin',  val:0.25, desc:'за плоды дают на 25% больше' },
+  { id:'a19', name:'Солнечный диск',      emoji:'🌞', eff:'grow',  val:0.22, desc:'растения зреют на 22% быстрее' },
+  { id:'a20', name:'Корона Садовника',    emoji:'👑', eff:'coin',  val:0.35, desc:'за плоды дают на 35% больше' },
 ];
 const artById = id => ARTIFACTS.find(a => a.id === id) || null;
 function bagAdd(g, id, n) { g.items = g.items || {}; g.items[id] = Math.min(999, (g.items[id] | 0) + (n | 0 || 1)); }
@@ -478,109 +425,6 @@ function bagList(g) {
   return out;
 }
 const BED_SLOTS = 16;                  // столько кустов помещается на одну грядку
-// как босс догоняет и чем бьёт — у каждого своё
-const BOSS_MOVE = { walk:{sp:2.4,reach:2.8,every:2400}, crawl:{sp:1.9,reach:2.6,every:2600},
-                    fly:{sp:3.4,reach:3.4,every:2000},  hop:{sp:2.8,reach:3.0,every:2500},
-                    burrow:{sp:2.1,reach:2.4,every:2800} };
-const BOSS_ATTACK = ['кусает','хлещет лозой','налетает роем','бьёт кулаком','прыгает сверху',
-  'дышит огнём','рвёт когтями','пикирует','жалит хвостом','плюётся кислотой',
-  'стреляет паутиной','бьёт крылом','швыряет камень','таранит панцирем','обдаёт жаром',
-  'сбивает бивнями','бьёт молнией','дышит тьмой','обрушивает щит','топает так, что дрожит земля'];
-const BOSS_EVERY = 4;                  // после стольких собранных кустов приходит босс
-const STUN_MS = 12000;                 // окно, когда босс оглушён и слова наносят урон
-const SLOW_MS = 2600;                  // после удара киркой босс ненадолго еле ползёт
-// Урон словом по оглушённому. Первых боссов надо валить с двух точных попаданий —
-// иначе ребёнок устаёт раньше, чем понимает механику. Дальше доля падает: больше слов на босса.
-// Босс встречается редко, поэтому бой короткий и яркий: два точных слова — и он повержен.
-// А если слово сказано сразу, в первые секунды оглушения, — супер-удар вдвое сильнее,
-// и хватает одного слова.
-const wordShare = i => Math.max(0.16, 0.6 - (i | 0) * 0.022);
-const CRIT_MS = 3000;                  // «в нужный момент» — первые 3 с после оглушения
-const CRIT_X  = 2;
-const WORD_FAR  = 0.025;               // слово издалека по злому боссу — только царапина
-const boss_i = g => Math.min(BOSSES.length - 1, Math.max(0, g.bossDone | 0));
-const weaponOf = g => WEAPONS[Math.min(WEAPONS.length - 1, Math.max(0, g.weapon | 0))];
-function bossSpawn(g) {
-  const B = BOSSES[boss_i(g)];
-  const lives = 4 + Math.round(artBonus(g, 'life'));
-  g.boss = { i: boss_i(g), hp: B.hp, max: B.hp, stage: 'rage', meter: 0,
-             need: 3 + Math.floor(boss_i(g) / 3),
-             until: 0, nextStomp: Date.now() + B.every * 1000, eaten: 0, startedAt: Date.now(),
-             x: null, z: null, px: null, pz: null, slowUntil: 0,
-             php: lives, pmax: lives, cd: Date.now() + 2500, tick: Date.now() };
-  return B;
-}
-function bossWords(g) {                // урон наносят только те слова, что игрок уже вырастил
-  const out = new Set();
-  for (const id of Object.keys(g.cropsW || {})) { const w = parseSeed(id); if (w) out.add(w.word); }
-  for (const b of Object.values(g.beds || {})) for (const w of (b.words || [])) out.add(w.word);
-  return [...out];
-}
-function bossTick(g) {                 // босс топчет грядки, пока его не остановят
-  const s = g.boss; if (!s) return null;
-  const B = BOSSES[s.i], now = Date.now();
-  if (s.stage === 'stun' && now > s.until) { s.stage = 'rage'; s.meter = 0; }
-  const ev = [];
-  while (s.nextStomp && now >= s.nextStomp) {
-    const keys = Object.keys(g.beds || {});
-    if (!keys.length) { ev.push({ t: 'gone' }); g.boss = null; return ev; }   // топтать больше нечего
-    const k = keys[Math.floor(Math.random() * keys.length)];
-    const lost = g.beds[k];
-    delete g.beds[k];
-    s.eaten++;
-    ev.push({ t: 'stomp', bed: +k, theme: lost && lost.theme });
-    s.nextStomp = now + B.every * 1000;
-  }
-  return ev;
-}
-function bossLose(g) {                  // игрока сбили: одно растение потеряно, босс уходит
-  const beds = Object.keys(g.beds || {});
-  let lost = null;
-  if (beds.length) {
-    const k = beds[Math.floor(Math.random() * beds.length)], b = g.beds[k];
-    const ws = (b.words || []);
-    if (ws.length) {
-      const j = Math.floor(Math.random() * ws.length);
-      lost = ws[j].word;
-      b.words = ws.filter((_, i) => i !== j);
-      if (b.st) delete b.st[lost];
-      b.ripe = (b.ripe || []).filter(w => w !== lost);
-      if (!b.words.length) delete g.beds[k];
-    }
-  }
-  g.boss = null;
-  g.sinceBoss = 1;      // проиграл — посади растение заново, и он сразу вернётся
-  return { plant: lost };
-}
-function bossReward(g) {               // победа: оружие, питомец, монеты и новые семена
-  const idx = g.bossDone | 0;
-  const B = BOSSES[Math.min(BOSSES.length - 1, idx)];
-  g.bossDone = idx + 1;
-  g.boss = null;
-  g.sinceBoss = 0;
-  const wid = Math.min(WEAPONS.length - 1, g.bossDone);
-  const gotWeapon = wid > (g.weapon | 0);
-  if (gotWeapon) g.weapon = wid;
-  const pet = PETS[Math.min(PETS.length - 1, idx)];
-  if (!Array.isArray(g.pets)) g.pets = [];
-  if (!g.pets.includes(pet)) g.pets.push(pet);
-  const coins = 10 + idx * 12;
-  g.coins = (g.coins | 0) + coins;
-  const art = ARTIFACTS[Math.min(ARTIFACTS.length - 1, idx)];
-  if (art) bagAdd(g, art.id, 1);        // трофей в рюкзак: его можно носить и подарить
-  // открываем следующее слово — награда за босса тоже двигает программу
-  const opened = [];
-  const all = lessonIndex();
-  outer: for (const les of all) {
-    const full = loadLesson(les.id); if (!full) continue;
-    for (const w of (full.words || [])) {
-      const id = wordSeedId(les.id, w.word);
-      if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: w.word, level: les.level }); break outer; }
-    }
-  }
-  return { boss: B.name, emoji: B.emoji, weapon: gotWeapon ? WEAPONS[wid] : null, pet, coins, opened,
-    art: art ? { id: art.id, name: art.name, emoji: art.emoji, desc: art.desc } : null };
-}
 const LEVEL_GATE = 5;                  // столько тем уровня надо освоить, чтобы открылся следующий
 function levelList(level) { return lessonIndex().filter(x => x.level === level); }
 function nextLesson(id) {              // следующая тема того же уровня
@@ -620,27 +464,6 @@ function markDay(g) {
     const keys = Object.keys(g.days).sort();
     while (keys.length > 400) delete g.days[keys.shift()];   // храним последний год с хвостиком
   }
-}
-const activeDays = g => Object.keys(g.days || {}).length;
-function distinctPlanted(g) {           // сколько разных растений сейчас растёт на участке
-  const set = new Set();
-  for (const b of Object.values(g.beds || {})) for (const w of (b.words || [])) set.add(b.lesson + '#' + w.word);
-  return set.size;
-}
-// Первому боссу нужен большой огород: 10 разных растений сразу на грядках.
-// Дальше планка растёт до 20 — выше не поднимаем, иначе места не хватит.
-const bossNeedPlants = i => Math.min(20, 10 + (i | 0));
-// И время: первый босс — после 5 дней работы с огородом, каждый следующий ждёт ещё дольше.
-const bossNeedDays = i => Math.min(60, 5 + (i | 0) * 2);
-function bossCanCome(g) {
-  // Босс — редкое событие. Он приходит, только когда сошлось всё сразу:
-  // круг новичка замкнут, огород большой, ребёнок возвращался к нему несколько дней,
-  // и с прошлого боя он собрал хотя бы один куст.
-  return !g.boss && g.bossDone < BOSSES.length
-      && g.soldOnce
-      && (g.sinceBoss | 0) >= 1
-      && activeDays(g) >= bossNeedDays(g.bossDone)
-      && distinctPlanted(g) >= bossNeedPlants(g.bossDone);
 }
 function unlockNextWord(g, lessonId, word) {    // открыть следующее слово темы, не трогая счётчики
   const les = loadLesson(lessonId); if (!les) return [];
@@ -906,6 +729,24 @@ function grantStarter(g) {             // выдаём один раз — пу�
   g.gifted = true;
   return true;
 }
+// Боссов убрали: они оказались слишком сложными и расстраивающими для детей 5-11.
+// Кирку покупали за монеты, а бить ею теперь некого — возвращаем деньги. Прежние
+// цены кирок нужны только здесь, один раз на сад, поэтому и живут только здесь.
+const OLD_PICK_PRICE = [0, 40, 110, 240, 430, 700, 1080, 1580, 2220, 3010, 3970,
+                        5110, 6450, 8000, 9780, 11800, 14080, 16630, 19470, 22610];
+function migrateNoBoss(u) {
+  const g = u && u.garden; if (!g || g.noBoss) return;
+  g.noBoss = 1;                        // возврат делаем ровно один раз, даже после перезапуска
+  let back = 0;
+  const w = Math.min(OLD_PICK_PRICE.length - 1, Math.max(0, g.weapon | 0));
+  for (let i = 1; i <= w; i++) back += OLD_PICK_PRICE[i];
+  if (back > 0) {
+    g.coins = Math.min((+g.coins || 0) + back, 1e15);
+    console.log(`возврат за кирку: ${u.name} — ${back} монет`);
+  }
+  delete g.weapon; delete g.bossDone; delete g.sinceBoss; delete g.boss;
+  saveSoon();
+}
 function migrateTrees(u) {             // сады старой версии: дерево-урок → грядка-урок
   if (!u || !u.trees || u.garden) return;
   const g = newGarden();
@@ -922,7 +763,7 @@ function migrateTrees(u) {             // сады старой версии: д
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
 function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0, rares: 0,
-  bossDone: 0, weapon: 0, pets: [], sinceBoss: 0, boss: null, items: {}, seen: [] }; }
+  pets: [], items: {}, seen: [] }; }
 // ── Гарантия доставки действий ──
 // Телефон умеет держать «живой» сокет, через который уже ничего не ходит: send()
 // не падает, а до сервера не доходит ничего. Раньше нажатие просто исчезало молча —
@@ -931,7 +772,7 @@ function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done:
 // во-вторых, не применять одно и то же действие дважды: повтор не должен продать
 // корзину второй раз.
 const ACT_ONCE = new Set(['buy', 'sell', 'plant', 'pick', 'uproot', 'clear', 'gift', 'reset',
-                          'orderGive', 'orderTake', 'phraseSaid', 'buyWeapon']);
+                          'orderGive', 'orderTake', 'phraseSaid']);
 const SEEN_KEEP = 64;                  // помним последние номера — больше для повтора не нужно
 const aidOf = m => { const s = String((m && m.aid) || ''); return /^[a-z0-9]{1,24}:\d{1,16}$/.test(s) ? s : ''; };
 function actSeen(g, aid) { return Array.isArray(g.seen) && g.seen.includes(aid); }
@@ -991,10 +832,10 @@ function sanitizeGarden(src) {
   for (const id of Object.keys(src.openW || {})) if (parseSeed(id)) g.openW[id] = 1;
   for (const [id, n] of Object.entries(src.cropsW || {})) if (parseSeed(id)) g.cropsW[id] = Math.min(Math.max(n | 0, 0), 9999);
   if (parseSeed(String(src.freeSeed || ''))) g.freeSeed = String(src.freeSeed);
-  g.bossDone = Math.min(BOSSES.length, Math.max(0, src.bossDone | 0));
-  g.weapon = Math.min(WEAPONS.length - 1, Math.max(0, src.weapon | 0));
-  g.sinceBoss = Math.min(99, Math.max(0, src.sinceBoss | 0));
-  if (Array.isArray(src.pets)) g.pets = src.pets.filter(x => PETS.includes(x)).slice(0, PETS.length);
+  // Питомцев когда-то выдавали за побеждённых боссов. Боссов больше нет, но у кого
+  // питомец уже есть — тот его не теряет: имя переносим как есть.
+  if (Array.isArray(src.pets))
+    g.pets = src.pets.filter(x => typeof x === 'string' && x.length <= 40).slice(0, 24);
   for (const [id, n] of Object.entries(src.items || {})) if (artById(id)) g.items[id] = Math.min(999, Math.max(0, n | 0));
   if (Array.isArray(src.seen))   // номера применённых действий: без них повтор применится дважды
     g.seen = src.seen.filter(x => typeof x === 'string' && x.length <= 42).slice(-SEEN_KEEP);
@@ -1091,6 +932,7 @@ function gardenOf(client) { // сад игрока: у зарегистриро�
   if (client.userId && db.users[client.userId]) {
     const u = db.users[client.userId];
     migrateTrees(u);
+    migrateNoBoss(u);
     u.garden = u.garden || newGarden();
     return u.garden;
   }
@@ -1408,19 +1250,15 @@ wss.on('connection', (ws, req) => {
     else if (m.t === 'garden') { // 🌱 сад: семя-тема → грядка растёт сама → урожай собирают голосом
       const u = authed ? db.users[authed.id] : null;
       if (authed && !u) return send(ws, { t: 'err', msg: 'Твой аккаунт не найден — перезайди' });
-      if (u) { migrateTrees(u); u.garden = u.garden || newGarden(); }
+      if (u) { migrateTrees(u); u.garden = u.garden || newGarden(); migrateNoBoss(u); }
       const g = u ? u.garden : guestGarden;
       // отказ никогда не молчит: игрок должен видеть причину, а не гадать
       const deny = (why) => { send(ws, { t: 'err', msg: why }); send(ws, { t: 'gardenDeny', act: String(m.act || ''), bed: m.bed | 0, why }); };
       const reply = (extra) => {
         grantStarter(g); // пустому саду — стартовые семена; после restore, иначе подарок затрётся
         ripenGarden(g);
-        const bev = bossTick(g);      // босс топчет грядки, пока идёт бой
-        if (bev && bev.length) extra = Object.assign({ bossEvents: bev }, extra || {});
         send(ws, Object.assign({ t: 'gardenData', garden: wireGarden(g), tiers: TIERS, priceStep: 0.12, nextUp: hintNext(g),
-          shopWords: shopWords(g), bosses: BOSSES, weapons: WEAPONS, bossWords: g.boss ? bossWords(g) : null,
-          bossNeed: { have: distinctPlanted(g), need: bossNeedPlants(g.bossDone), next: g.bossDone,
-                      days: activeDays(g), needDays: bossNeedDays(g.bossDone) },
+          shopWords: shopWords(g),
           bag: bagList(g),
           near: room ? [...room.clients.values()].filter(c => c.id !== me.id
                   && Math.hypot((c.x || 0) - (me.x || 0), (c.z || 0) - (me.z || 0)) <= 12)
@@ -1445,8 +1283,7 @@ wss.on('connection', (ws, req) => {
         guestGarden.seeds = src.seeds; guestGarden.basket = src.basket; guestGarden.done = src.done;
         guestGarden.open = src.open; guestGarden.crops = src.crops; guestGarden.gifted = src.gifted;
         guestGarden.openW = src.openW; guestGarden.cropsW = src.cropsW; guestGarden.freeSeed = src.freeSeed;
-        guestGarden.bossDone = src.bossDone; guestGarden.weapon = src.weapon;
-        guestGarden.pets = src.pets; guestGarden.sinceBoss = src.sinceBoss;
+        guestGarden.pets = src.pets;
         guestGarden.items = src.items; guestGarden.soldOnce = src.soldOnce;
         guestGarden.days = src.days;
         return reply();
@@ -1475,91 +1312,6 @@ wss.on('connection', (ws, req) => {
         g.coins -= price;
         g.seeds[lesson.id] = (g.seeds[lesson.id] | 0) + 1;
         return reply({ bought: lesson.id });
-      }
-      if (m.act === 'bossMove') {       // клиент сообщает, где игрок; сервер водит босса и решает урон
-        if (!g.boss) return;
-        const st = g.boss, B = BOSSES[st.i], mv = BOSS_MOVE[B.move] || BOSS_MOVE.walk;
-        const px = +m.x || 0, pz = +m.z || 0;
-        const now = Date.now();
-        const dt = Math.min(1.5, Math.max(0, (now - (st.tick || now)) / 1000));
-        st.tick = now;
-        st.px = px; st.pz = pz;                    // помним игрока: киркой достанем только вблизи
-        if (st.stage === 'stun' && now > st.until) { st.stage = 'rage'; st.meter = 0; }
-        if (st.x === null) { st.x = px + 7; st.z = pz + 7; }          // появляется поодаль
-        const dx = px - st.x, dz = pz - st.z, d = Math.hypot(dx, dz) || 1;
-        const stunned = st.stage === 'stun';
-        const slowK = stunned ? 0 : (now < st.slowUntil ? 0.35 : 1);   // оглушён — стоит, ушиблен — ползёт
-        if (d > mv.reach * 0.8 && slowK > 0) {                         // догоняет
-          const step = Math.min(d, mv.sp * slowK * dt);
-          st.x += dx / d * step; st.z += dz / d * step;
-        }
-        const ev = [];
-        if (!stunned && d <= mv.reach && now >= st.cd) {                // достал — бьёт
-          st.cd = now + mv.every;
-          st.php = Math.max(0, (st.php | 0) - 1);
-          ev.push({ t: 'hit', how: BOSS_ATTACK[st.i] || 'бьёт', php: st.php });
-          if (!st.php) {
-            const r = bossLose(g);
-            logAct(room, me, `проиграл боссу ${B.emoji} ${B.name}`, 'boss');
-            return reply({ bossLost: { boss: B.name, emoji: B.emoji, plant: r.plant } });
-          }
-        }
-        return reply({ bossAt: { x: +st.x.toFixed(2), z: +st.z.toFixed(2), d: +d.toFixed(1),
-                                 php: st.php, pmax: st.pmax, reach: mv.reach,
-                                 stage: st.stage, left: Math.max(0, st.need - st.meter),
-                                 need: st.need, stunLeft: stunned ? Math.max(0, st.until - now) : 0,
-                                 slow: !stunned && now < st.slowUntil }, bossEv: ev });
-      }
-      if (m.act === 'bossHit') {          // кирка: урона мало, зато босс вязнет и слабеет
-        if (!g.boss) return deny('Сейчас никакого босса нет');
-        const st = g.boss, B = BOSSES[st.i], wp = weaponOf(g);
-        if (st.stage === 'stun') return reply({ bossHit: { already: true } });
-        const mv = BOSS_MOVE[B.move] || BOSS_MOVE.walk;
-        if (st.x !== null && st.px !== null) {   // киркой достаём только вплотную
-          const d = Math.hypot(st.px - st.x, st.pz - st.z);
-          if (d > mv.reach + 1.6) return reply({ bossHit: { tooFar: true, d: +d.toFixed(1) } });
-        }
-        st.meter += 1;
-        st.slowUntil = Date.now() + SLOW_MS;      // ударил — босс замедлился
-        const light = Math.max(1, Math.round(st.max * 0.004 * (wp.power + artBonus(g, 'hit'))));
-        st.hp = Math.max(0, st.hp - light);
-        if (st.meter >= st.need) { st.stage = 'stun'; st.until = Date.now() + STUN_MS; }
-        if (st.hp <= 0) return reply({ bossWin: bossReward(g) });
-        return reply({ bossHit: { dmg: light, stage: st.stage, slow: true,
-                                  left: Math.max(0, st.need - st.meter) } });
-      }
-      if (m.act === 'bossWord') {        // главный урон — произнесённое слово
-        if (!g.boss) return deny('Сейчас никакого босса нет');
-        const st = g.boss, B = BOSSES[st.i], wp = weaponOf(g);
-        const word = String(m.word || '').toLowerCase();
-        if (!bossWords(g).includes(word)) return deny(`«${word}» ты ещё не выращивал — говори свои слова`);
-        const weak = st.stage === 'stun';          // главный урон — по ослабевшему
-        const crit = weak && (st.until - Date.now()) > STUN_MS - CRIT_MS;   // успел сразу — супер-удар
-        const base = weak ? wordShare(st.i) * (crit ? CRIT_X : 1) : WORD_FAR;
-        const dmg = Math.max(1, Math.round(st.max * base * (1 + wp.power / 12) * (1 + artBonus(g, 'word'))));
-        st.hp = Math.max(0, st.hp - dmg);
-        // оглушение не тратится с первого слова: пока он лежит, можно ударить словом несколько раз —
-        // иначе на каждого босса пришлось бы по десятку подходов вплотную, и жизней не хватит
-        // добивающий удар — тоже удар: цифру урона и «супер» игрок должен увидеть,
-        // иначе самый приятный момент проходит вообще без отклика
-        const shot = { word, dmg, hp: st.hp, weak, crit };
-        if (st.hp <= 0) { const r = bossReward(g); logAct(room, me, `победил босса ${r.emoji} ${r.boss}! 🏆`, 'win');
-                          return reply({ bossWin: r, bossDmg: shot }); }
-        return reply({ bossDmg: shot });
-      }
-      if (m.act === 'bossFlee') {        // сбежать: босс уходит, но грядки уже потоптаны
-        if (!g.boss) return deny('Сейчас никакого босса нет');
-        g.boss = null; g.sinceBoss = 0;
-        return reply({ bossFled: true });
-      }
-      if (m.act === 'buyWeapon') {
-        const id = m.id | 0, w = WEAPONS[id];
-        if (!w) return deny('Такого оружия нет');
-        if (id <= (g.weapon | 0)) return deny('Это оружие у тебя уже есть');
-        if (id > (g.weapon | 0) + 1) return deny('Сначала купи или выиграй предыдущее');
-        if (g.coins < w.price) return deny(`Не хватает ${w.price - g.coins} 🪙`);
-        g.coins -= w.price; g.weapon = id;
-        return reply({ gotWeapon: w });
       }
       if (m.act === 'gift') {          // отдать вещь соседу — так старшие бустят новичков
         const toId = m.to | 0, id = String(m.item || '');
@@ -1688,10 +1440,15 @@ wss.on('connection', (ws, req) => {
           const price = isRare(id) ? rareFruitPrice(g) : fruitPrice(lesson);
           if (sellN > 0) { coins += price * sellN; fruits += sellN; }
         }
+        // Трофеи с эффектом coin обещают «за плоды дают на 15% больше» — вот эта прибавка.
+        // Считаем её от всей выручки, а не от каждого плода: на старте плод стоит 2 монеты,
+        // и +15% к двойке округление съедало без остатка — обещание оставалось пустым.
+        const bonus = Math.min(1.5, artBonus(g, 'coin'));
+        if (bonus > 0 && coins > 0) coins = Math.round(coins * (1 + bonus));
         if (!fruits) return deny(held
           ? `Эти ${held} плодов нужны для заказа — отнеси их на станцию, а не сюда`
           : 'Корзина пуста — сначала собери урожай');
-        g.basket = rest; g.coins += coins; g.soldOnce = 1;   // первый круг замкнут — с этого дня возможны боссы
+        g.basket = rest; g.coins += coins; g.soldOnce = 1;   // первый круг замкнут: вырастил → продал
         console.log(`продано плодов: ${u ? u.name : 'гость'} — ${fruits} шт. за ${coins} монет${held ? `, отложено ${held}` : ''}`);
         logAct(room, me, `продал ${fruits} плодов за ${coins} 🪙`, 'sell');
         return reply({ sold: { fruits, coins, held } });
@@ -1743,12 +1500,8 @@ wss.on('connection', (ws, req) => {
         // следующее семя появляется в киоске сразу после посадки предыдущего:
         // деньгами прыгнуть вперёд нельзя — нужно именно посадить
         const opened = ws ? unlockNextWord(g, lesson.id, ws.word) : [];
-        let bossCame = null;
-        if (bossCanCome(g)) { bossCame = bossSpawn(g); g.sinceBoss = 0;
-          console.log(`пришёл босс: ${u ? u.name : 'гость'} — ${bossCame.name}`); }
         return reply({ planted: raw,
-          opened: opened.map(x => ({ id: x.id, theme: x.theme, level: x.level, order: !!x.order, kind: x.kind })),
-          bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null });
+          opened: opened.map(x => ({ id: x.id, theme: x.theme, level: x.level, order: !!x.order, kind: x.kind })) });
       } else if (m.act === 'uproot') { // выкорчевать куст: место освобождается под новое слово
         if (!b) return deny('На этой грядке ничего не растёт');
         const word = String(m.word || '').toLowerCase();
@@ -1810,17 +1563,9 @@ wss.on('connection', (ws, req) => {
           if (sid) g.cropsW[sid] = (g.cropsW[sid] | 0) + 1;
           else g.crops[b.lesson] = (g.crops[b.lesson] | 0) + 1;
           const opened = sid ? unlockAfterWord(g, b.lesson, word) : unlockAfter(g, b.lesson);
-          g.sinceBoss = (g.sinceBoss | 0) + 1;
-          let bossCame = null;
-          if (bossCanCome(g)) {
-            bossCame = bossSpawn(g); g.sinceBoss = 0;
-            console.log(`пришёл босс: ${u ? u.name : 'гость'} — ${bossCame.name}`);
-            logAct(room, me, `бьётся с боссом ${bossCame.emoji} ${bossCame.name}`, 'boss');
-          }
           console.log(`куст собран: ${u ? u.name : 'гость'} — ${b.lesson}/${word}, круг ${pst.c}`);
           logAct(room, me, `собрал куст «${word}» целиком`, 'done');
           return reply({ rare, harvested: { lesson: b.lesson, theme: word, count: 1, cycle: pst.c }, spare,
-            bossCame: bossCame ? { i: g.boss.i, name: bossCame.name, emoji: bossCame.emoji } : null,
             opened: opened.map(x => ({ id: x.id, theme: x.theme || x.title, level: x.level, order: !!x.order, kind: x.kind })) });
         }
         return reply({ rare });          // куст ещё плодоносит, но находку показать надо

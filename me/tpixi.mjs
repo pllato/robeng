@@ -1,6 +1,6 @@
 // Пикси: спутник ходит рядом, подсказывает по шагам и уходит после десяти растений
 import { chromium, devices } from 'playwright';
-import { restoreBossGarden } from './bossgard.mjs';
+import { restoreBigGarden } from './biggard.mjs';
 const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
 const ctx=await b.newContext({...devices['iPhone 13'],viewport:{width:390,height:844},isMobile:true,hasTouch:true});
@@ -63,7 +63,7 @@ ok(/грядк|посади/i.test(x.said), `взял семя — подска�
 ok(/из 10/.test(x.said) || x.grown===0, `ведёт счёт до десяти: «${x.said}»`);
 
 // на десяти растениях прощается
-await restoreBossGarden(p,{plants:10, days:1});
+await restoreBigGarden(p,{plants:10, days:1});
 await p.waitForTimeout(2000);
 x=await X();
 ok(x.grown>=10, `на грядках ${x.grown} разных растений`);

@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-48';
+const BUILD = '2026-09-15-49';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -1030,7 +1030,7 @@ wss.on('connection', (ws, req) => {
   const onMessage = data => {
     let m; try { m = JSON.parse(data); } catch (e) { return; }
     ws.isAlive = true;
-    if (m.t === 'ping') return send(ws, { t: 'pong' }); // держим канал живым и даём клиенту проверить связь
+    if (m.t === 'ping') return send(ws, { t: 'pong', k: m.k }); // держим канал живым и даём клиенту проверить связь
     if (me && !me.moveMe) { me.moveMe = moveMe; me.guestGarden = guestGarden; } // группу может увести другой; сад гостя виден соседям
 
     // ---------- аккаунты ----------

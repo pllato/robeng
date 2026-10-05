@@ -267,11 +267,18 @@
   #netOff{position:fixed;left:0;right:0;margin:0 auto;top:8px;z-index:14;display:none;
     width:min(420px,92vw);padding:11px 14px;border-radius:14px;
     background:rgba(24,38,64,.97);color:#fff;font-size:14px;line-height:1.35;text-align:center;
-    align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.5);
+    flex-direction:column;gap:7px;box-shadow:0 8px 24px rgba(0,0,0,.5);
     border:2px solid rgba(255,214,102,.7);-webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;pointer-events:none}
+    touch-action:manipulation;pointer-events:auto}
   #netOff b{color:#ffd166}
+  #netOff .sub{font-size:12px;opacity:.8}
+  #netOff i{font-style:normal;opacity:.6;font-size:12px}
+  #netOff .btns{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+  #netOff button{padding:9px 15px;border:0;border-radius:10px;font-size:14px;font-weight:700;
+    background:#3fa34d;color:#fff;cursor:pointer;touch-action:manipulation}
+  #netOff button.hard{background:rgba(255,255,255,.16)}
   html.netoff #netOff{display:flex}
+  html.netoff.noinet #netOff{border-color:#e8622f}
   html.netoff #voiceOff{top:64px}
   /* ── разговорная станция ── */
   #talk{position:fixed;inset:0;z-index:26;display:none;align-items:center;justify-content:center;
@@ -509,7 +516,9 @@
         <input type="range" id="vrRange" min="10" max="120" step="5" value="40">
         <div class="hint" id="vrHint"></div>
       </div>
-      <p class="hint" id="pmBuild" style="margin-top:10px;opacity:.7;font-size:12px"></p>
+      <p class="hint" id="pmNet" style="margin-top:10px;font-size:12.5px"></p>
+      <button id="pmNetFix" class="ghost" hidden>📡 Переподключиться</button>
+      <p class="hint" id="pmBuild" style="margin-top:6px;opacity:.7;font-size:12px"></p>
     </div>
 
     <div id="mShop" class="mview" hidden>
@@ -1291,11 +1300,69 @@ const setMsg=s=>{ msgEl.textContent=s||''; };
 // Теперь обрыв виден, связь восстанавливается сама, и сеанс собирается заново.
 let netLost=false, netTries=0, netTimer=0, rejoining=false;
 const netUp=()=>!!ws && ws.readyState===1 && !rejoining;
+let pingMs=0, pingAt=0;            // задержка до сервера: по ней видно, связь живая или еле дышит
+let netSig='';                     // плашку перерисовываем только когда есть что менять
 function netShow(on){
   netLost=!!on;
-  document.documentElement.classList.toggle('netoff', netLost);
-  const el=$('netOff');
-  if(el) el.innerHTML = netLost ? '📡 <b>Нет связи</b> — возвращаемся в игру…' : '';
+  const root=document.documentElement;
+  root.classList.toggle('netoff', netLost);
+  root.classList.toggle('noinet', netLost && !navigator.onLine);
+  netRender();
+}
+// Плашка должна не просто сообщать о беде, а давать её исправить: кнопка «сейчас»
+// не ждёт отсчёта, а после нескольких неудач появляется и перезагрузка игры.
+// И сразу видно, сколько нажатий ждёт отправки — чтобы ребёнок не боялся, что они пропали.
+function netRender(){
+  const el=$('netOff'); if(!el) return;
+  if(!netLost){ if(netSig){ netSig=''; el.innerHTML=''; } return; }
+  const off=!navigator.onLine, wait=outbox.size, hard=netTries>=3;
+  const sig=[off, wait, hard, netTries].join('|');
+  if(sig===netSig) return;          // иначе нажатие срывалось бы перерисовкой
+  netSig=sig;
+  const head = off
+    ? '📴 <b>Нет интернета</b><div class="sub">Проверь Wi-Fi или мобильный интернет — игра вернётся сама</div>'
+    : '📡 <b>Нет связи</b> с игрой — возвращаюсь…';
+  el.innerHTML = head
+    + (netTries>1 && !off ? `<i>попытка ${netTries}</i>` : '')
+    + (wait ? `<div class="sub">🕓 Ждут отправки: ${wait} — ничего не потеряется</div>` : '')
+    + `<div class="btns"><button id="netNow">Попробовать сейчас</button>`
+    + (hard ? '<button class="hard" id="netReload">Перезагрузить игру</button>' : '')
+    + '</div>';
+  const stop=e=>e.stopPropagation();
+  for(const id of ['netNow','netReload']){
+    const b=$(id); if(!b) continue;
+    b.addEventListener('pointerdown',stop);
+    b.addEventListener('pointerup',stop);
+  }
+  const n=$('netNow');   if(n) n.onclick=e=>{ e.stopPropagation(); netNow(); };
+  const r=$('netReload'); if(r) r.onclick=e=>{ e.stopPropagation(); location.reload(); };
+}
+// Связь должна быть видна словами, а не догадками: состояние, задержка и сколько
+// нажатий ещё не доехало. Отсюда же её можно починить, не выходя из игры.
+function netMenuLine(){
+  const nEl=$('pmNet'), fix=$('pmNetFix');
+  if(!nEl) return;
+  const live = ws && ws.readyState===1 && !rejoining;
+  const quiet = Date.now()-lastNetAt;
+  const fresh = pingAt && Date.now()-pingAt < 30000;
+  let txt;
+  if(!navigator.onLine) txt='📴 <b>Нет интернета</b> — проверь Wi-Fi';
+  else if(!live)        txt='🔴 <b>Нет связи с игрой</b> — возвращаюсь…';
+  else if(quiet>12000)  txt='🟡 <b>Связь подвисла</b> — проверяю…';
+  else txt = (pingMs && fresh)
+    ? `🟢 <b>Связь есть</b> · задержка ${pingMs} мс${pingMs>400?' — медленно':''}`
+    : '🟢 <b>Связь есть</b>';
+  if(outbox.size) txt += `<br>🕓 Ждут отправки: ${outbox.size} — не потеряются`;
+  nEl.innerHTML=txt;
+  if(fix) fix.hidden = !!(live && navigator.onLine && quiet<=12000 && !outbox.size);
+}
+// «Попробовать сейчас»: не ждём отсчёта и не доверяем старому сокету — рвём и соединяемся заново
+function netNow(){
+  if(netTimer){ clearTimeout(netTimer); netTimer=0; }
+  netTries=0; netSig='';
+  if(ws){ try{ ws.onclose=null; ws.close(); }catch(e){} ws=null; }
+  openWS();
+  const el=$('netOff'); if(el) el.innerHTML='📡 Соединяюсь…';
 }
 function flushWS(){
   if(!ws || ws.readyState!==1) return;
@@ -1337,14 +1404,23 @@ function outDone(aid){
 function netRetry(){
   if(netTimer) return;
   const wait=Math.min(8000, 700*Math.pow(2, Math.min(4, netTries)));
-  netTries++;
+  netTries++; netSig='';
   netTimer=setTimeout(()=>{ netTimer=0; openWS(); }, wait);
 }
+let connTimer=0;                   // сторож самого подключения
 function openWS(){
   if(ws && (ws.readyState===0||ws.readyState===1)) return;
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);
+  // На плохой мобильной сети соединение умеет «подключаться» бесконечно: ни open,
+  // ни error. Раньше игра залипала в этом состоянии насмерть — openWS() видел
+  // readyState===0 и молча выходил, а значит новой попытки не было никогда.
+  const young=ws;
+  clearTimeout(connTimer);
+  connTimer=setTimeout(()=>{
+    if(young.readyState===0){ try{ young.close(); }catch(e){} }   // onclose запустит новую попытку
+  }, 7000);
   ws.onopen=()=>{
-    netTries=0;
+    netTries=0; clearTimeout(connTimer);
     if(netTimer){ clearTimeout(netTimer); netTimer=0; }
     if(!worldReady){ netShow(false); flushWS(); return; }
     // это переподключение: новый сокет сервер не знает — представляемся заново
@@ -1361,24 +1437,49 @@ function openWS(){
     setTimeout(()=>{ if(rejoining && ws===sock){ try{ sock.close(); }catch(e){} } },12000);
   };
   ws.onmessage=ev=>{ lastNetAt=Date.now(); let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
-    if(m.t==='pong') return; handleNet(m); };
+    if(m.t==='pong'){ if(m.k){ pingMs=Date.now()-m.k; pingAt=Date.now(); } return; }
+    handleNet(m); };
   ws.onerror=()=>{ if(!worldReady) setMsg('Сервер недоступен. Попробуйте позже.'); };
   ws.onclose=()=>{ if(worldReady){ netShow(true); netRetry(); } };
 }
-// вернулись во вкладку или сеть ожила — не ждём таймер, пробуем сразу
-addEventListener('online',()=>{ if(netLost){ if(netTimer){clearTimeout(netTimer); netTimer=0;} netTries=0; openWS(); } });
+// вернулись во вкладку или сеть ожила — не ждём отсчёта, пробуем сразу
+addEventListener('online',()=>{
+  document.documentElement.classList.remove('noinet'); netSig='';
+  if(netLost) netNow();
+});
+addEventListener('offline',()=>{
+  // интернет пропал — сказать об этом сразу и своими словами, а не «нет связи с игрой»
+  if(worldReady){ netShow(true); }
+});
 addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible') return;
-  if(ws && ws.readyState===1) return;
-  if(netTimer){ clearTimeout(netTimer); netTimer=0; }
-  netTries=0; if(worldReady) netShow(true);
-  openWS();
+  if(!ws || ws.readyState!==1){
+    if(netTimer){ clearTimeout(netTimer); netTimer=0; }
+    netTries=0; if(worldReady) netShow(true);
+    return openWS();
+  }
+  // Сокет уверяет, что открыт. После сна телефона это чаще всего неправда, поэтому
+  // не верим на слово: окликаем сервер и ждём ответа пару секунд. Молчит — рвём сами.
+  if(!worldReady) return;
+  const mark=lastNetAt;
+  try{ ws.send(JSON.stringify({t:'ping', k:Date.now()})); }catch(e){ return netNow(); }
+  setTimeout(()=>{
+    if(document.visibilityState!=='visible') return;
+    if(lastNetAt>mark) return;                       // ответил — всё хорошо, молчим
+    netShow(true);
+    if(ws && ws.readyState===1){ try{ ws.close(); }catch(e){} }
+    else openWS();
+  }, 2500);
 });
 const sendWS=o=>{
   // важное действие — под расписку; остальное (ходьба, голос) можно и потерять
   if(o && o.t==='garden' && ACT_SURE.has(String(o.act||''))){
     const aid=nextAid();
     const s=JSON.stringify(Object.assign({}, o, {aid}));
+    // в долгом обрыве ребёнок может натыкать много; память не резиновая,
+    // поэтому держим последние 200 действий и честно говорим, если старое ушло
+    if(outbox.size>=200){ const first=outbox.keys().next().value; outbox.delete(first);
+      toast('⚠️ Связи нет слишком долго — самые первые нажатия пришлось отбросить'); }
     outbox.set(aid,{s, at:Date.now()});
     if(!wsRaw(s)){ if(worldReady) netShow(true); openWS(); }
     return;
@@ -1394,7 +1495,7 @@ setInterval(()=>{
   if(!worldReady) return;
   if(!ws || ws.readyState!==1){ if(!netTimer) openWS(); return; }
   if(Date.now()-lastNetAt>24000){ netShow(true); try{ ws.close(); }catch(e){} return; }
-  try{ ws.send(JSON.stringify({t:'ping'})); }catch(e){}
+  try{ ws.send(JSON.stringify({t:'ping', k:Date.now()})); }catch(e){}
 },8000);
 // Сторож исходящих: он и есть гарантия. Молчание сервера дольше ACK_WAIT значит,
 // что нажатие не дошло — рвём сокет и переподключаемся, а не ждём, пока оклик
@@ -1928,7 +2029,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-48';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-49';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -3155,7 +3256,8 @@ function pushGuideArrows(V){
   const pulse=0.9+0.12*Math.sin(performance.now()/280);   // на самой цели — рамка, а не заплатка
   pushRing(V, onbTarget.x, y, onbTarget.z, 0.5*pulse, 0.07, CY);
 }
-setInterval(()=>{ syncMenuClass(); gardenHud(); mobileGarden(); updateMicBtn(); voiceBanner(); onbTick(); },400);
+setInterval(()=>{ syncMenuClass(); gardenHud(); mobileGarden(); updateMicBtn(); voiceBanner(); onbTick();
+  if(netLost) netRender(); netMenuLine(); },400);
 setInterval(()=>{ if(holdFruit) pickTagShow(holdFruit, listening?'rec':(holdMiss?'miss':(gameTalking()?'wait':''))); },90);
 setInterval(actRender,3000);   // подсветка «свежее/старое» обновляется сама // подпись микрофона тоже держим свежей
 // ---- разговор с жителем: сначала слово, потом дело ----
@@ -3627,6 +3729,7 @@ function openMenu(){ // единый выход: работает в лобби,
   $('pmGarden').style.display=(ws&&roomCode!=='GARDEN')?'block':'none';
   $('pmMyPlot').style.display=(roomKind==='garden'&&myPlotIndex()>=0)?'block':'none';
   pixiMenuLabel();
+  netMenuLine();
   $('pmBuild').innerHTML = !serverBuild
     ? `версия игры ${BUILD} · сервер старый (сборку не сообщает)`
     : (serverBuild===BUILD ? `версия ${BUILD} ✓`
@@ -5079,6 +5182,7 @@ $('navBag').onclick=e=>{ e.stopPropagation(); openBag(); };
 for(const ev of ['gesturestart','gesturechange','gestureend'])
   document.addEventListener(ev, e=>e.preventDefault(), {passive:false});
 document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
+$('pmNetFix').onclick=e=>{ e.stopPropagation(); netNow(); toast('📡 Переподключаюсь…'); };
 $('pmReset').onclick=e=>{ e.stopPropagation();
   if(!confirm('Начать сад заново? Грядки, монеты и купленные семена пропадут — вернёшься к самому первому шагу.')) return;
   sendWS({t:'garden',act:'reset'});

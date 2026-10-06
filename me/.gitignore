@@ -10,3 +10,4 @@ sweep.txt
 *.zip
 *.png
 package-lock.json
+shots/

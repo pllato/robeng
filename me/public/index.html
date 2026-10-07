@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <title>Pixel English</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- «Добавить на экран»: иконка на домашнем экране и запуск без адресной строки -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#13203c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pixel English">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:'Segoe UI',system-ui,sans-serif;user-select:none;-webkit-user-select:none}
   #c{width:100%;height:100%;display:block}
@@ -1300,6 +1309,11 @@ const setMsg=s=>{ msgEl.textContent=s||''; };
 // Теперь обрыв виден, связь восстанавливается сама, и сеанс собирается заново.
 let netLost=false, netTries=0, netTimer=0, rejoining=false;
 const netUp=()=>!!ws && ws.readyState===1 && !rejoining;
+// Служебный скрипт включаем только на настоящем сайте по HTTPS: локально он
+// мешал бы тестам, а пользы там никакой. Версия в адресе — чтобы новая сборка
+// гарантированно заменила старого служебного работника.
+if('serviceWorker' in navigator && location.protocol==='https:')
+  addEventListener('load',()=>navigator.serviceWorker.register('sw.js?v='+BUILD).catch(()=>{}));
 let pingMs=0, pingAt=0;            // задержка до сервера: по ней видно, связь живая или еле дышит
 let netSig='';                     // плашку перерисовываем только когда есть что менять
 function netShow(on){
@@ -1546,6 +1560,7 @@ function handleNet(m){
     if(worldReady) resetWorld(); // переход между мирами (лобби ↔ класс)
     myId=m.id; myName=m.name||myName; roomCode=m.code; myRole=m.role; serverBuild=m.build||null;
     if(m.ack) ackSeen=true;   // гарантия доставки работает с первого же нажатия, а не со второго
+    if(Array.isArray(m.ice) && m.ice.length) RTC_CFG={iceServers:m.ice};
     // роль в комнате может быть общей, поэтому смотрим на аккаунт: учителю лента нужна сразу
     if(USER && (USER.role==='teacher'||USER.role==='owner')){ let sv=null;
       try{ sv=localStorage.getItem('me_actlog'); }catch(e){}
@@ -1724,8 +1739,8 @@ function handleNet(m){
   else if(m.t==='voice'){
     const p=peers.get(m.id);
     if(p){ p.voiceOn=m.on; refreshTag(p); }
-    if(m.on && voiceOn && myId<m.id) makeOffer(m.id);
-    if(!m.on) closeVoicePeer(m.id);
+    if(m.on) voiceMesh();            // соединимся, только если он рядом
+    else closeVoicePeer(m.id);
   }
   else if(m.t==='talk'){
     const p=peers.get(m.id);
@@ -2029,7 +2044,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-49';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-50';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -4705,7 +4720,10 @@ function setVoiceR(v){
   if(hint) hint.textContent=`сосед через огород (28 блоков) — ${Math.round(voiceVol(28)*100)}% громкости`;
 }
 const pcs=new Map();
-const RTC_CFG={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+// Список серверов для пробивания сети присылает игра при входе: если у школы
+// поднят ретранслятор (TURN), голос пройдёт даже за строгим Wi-Fi. Нет — остаётся
+// прежний публичный STUN, как было.
+let RTC_CFG={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 function micFailMsg(){
   return (!navigator.mediaDevices || (location.protocol==='http:' && location.hostname!=='localhost'))
     ? 'Микрофон недоступен по этому адресу. Зайди по HTTPS-ссылке урока.'
@@ -4744,9 +4762,36 @@ function joinVoice(){ // автоматически после входа в к�
   ptt=!micMuted;
   sendWS({t:'voice',on:true});
   sendWS({t:'talk',on:!micMuted});
-  for(const p of peers.values()) if(p.voiceOn && myId<p.id) makeOffer(p.id);
+  voiceMesh();                 // соединимся только с теми, кто рядом (см. ниже)
   updateMicBtn();
 }
+// ── голосовые соединения держим только с соседями ──────────────────────────
+// Раньше каждый ребёнок соединялся с каждым в мире и не разрывал соединение
+// никогда: при двадцати детях телефон кодировал свой микрофон девятнадцать раз
+// и декодировал девятнадцать потоков, из которых слышал два. Отсюда и «тормозит»,
+// и «голос булькает». Теперь соединение живёт, только пока сосед в пределах
+// слышимости, и поднимается заново, когда он подходит.
+const MESH_LEAD=6;     // соединяемся чуть раньше, чем станет слышно: ICE не мгновенный
+const MESH_DROP=22;    // и рвём заметно позже — чтобы на границе не дёргалось
+const MESH_MAX=8;      // больше восьми живых соединений телефон всё равно не тянет
+const peerDist=p=>Math.hypot((p.x||0)-P.x,(p.z||0)-P.z);
+function voiceMesh(){
+  if(!voiceOn || !micStream) return;
+  // 1) рвём тех, кто ушёл далеко, вышел из мира или выключил голос
+  for(const id of [...pcs.keys()]){
+    const p=peers.get(id);
+    if(!p || !p.voiceOn || peerDist(p)>voiceR+MESH_DROP) closeVoicePeer(id);
+  }
+  // 2) поднимаем соединения с ближайшими, кого ещё нет
+  const near=[...peers.values()]
+    .filter(p=>p.voiceOn && !pcs.has(p.id) && peerDist(p)<=voiceR+MESH_LEAD)
+    .sort((a,b)=>peerDist(a)-peerDist(b));
+  for(const p of near){
+    if(pcs.size>=MESH_MAX) break;
+    if(myId<p.id) makeOffer(p.id);   // предлагает всегда младший номер, иначе столкнёмся
+  }
+}
+setInterval(voiceMesh,1200);
 function setTalk(on){
   if(!voiceOn || !micStream) return;
   if(openMic && !on) on=true; // свободный микрофон учителя не глушим отпусканием C
@@ -4760,7 +4805,9 @@ function setTalk(on){
 const voicePeers=()=>{
   const live=new Set();
   for(const [id,pc] of pcs) if(pc.connectionState==='connected'||pc.iceConnectionState==='connected'||pc.iceConnectionState==='completed') live.add(id);
-  for(const [id,p] of peers) if(p.voiceOn) live.add(id);
+  // флаг из комнаты приходит раньше соединения — но считаем только соседей:
+  // далёкие дети голос не передают, и писать «на связи: 19» было бы неправдой
+  for(const [id,p] of peers) if(p.voiceOn && peerDist(p)<=voiceR+MESH_LEAD) live.add(id);
   return live.size;
 };
 function voiceBanner(){          // пока голоса нет — это должно быть видно, а не угадываться

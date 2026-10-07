@@ -99,13 +99,29 @@ for(const pg of [A,B]){
 }
 await A.waitForTimeout(3000);
 ok((await A.evaluate(()=>window.game.voiceState().on)), 'в саду голос тоже включается');
+
+// На своих участках игроки стоят примерно в 48 блоках друг от друга, а слышно на 40 —
+// то есть не слышно совсем. Раньше соединение всё равно держалось и зря грузило телефон.
+const far=await A.evaluate(()=>{
+  const me=window.game.P, p=[...eval('peers').values()][0];
+  return p ? Math.round(Math.hypot(p.x-me.x, p.z-me.z)) : -1;
+});
+ok(far>40, `на своих участках между ними ${far} блоков — дальше слышимости (40)`);
+await A.waitForTimeout(3000);
+ok((await A.evaluate(()=>eval('pcs').size))===0,
+   'и соединения с ним нет: далёкого соседа телефон не кодирует');
+
+// подошли друг к другу — голос должен появиться сам
+await B.evaluate(()=>{ const a=[...eval('peers').values()][0]; if(!a) return;
+  const P=window.game.P; P.x=a.x+2; P.z=a.z; P.vx=P.vy=P.vz=0; });
 let gst=null;
 for(let i=0;i<24;i++){
   gst=await A.evaluate(()=>window.game.voiceState().conns);
   if(gst.some(c=>c.ice==='connected'||c.ice==='completed')) break;
   await A.waitForTimeout(500);
 }
-ok(gst&&gst.some(c=>c.ice==='connected'||c.ice==='completed'), 'в саду соседи слышат друг друга: '+JSON.stringify(gst));
+ok(gst&&gst.some(c=>c.ice==='connected'||c.ice==='completed'),
+   'подошёл вплотную — соседи слышат друг друга: '+JSON.stringify(gst));
 // подпись на кнопке больше не пугает «нет связи»
 const label = await A.evaluate(()=>document.getElementById('micBtn').textContent);
 ok(!/нет связи/.test(label), `подпись на кнопке: «${label}»`);

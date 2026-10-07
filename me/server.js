@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-49';
+const BUILD = '2026-09-15-50';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -18,6 +18,7 @@ const PUB = path.join(__dirname, 'public');
 const DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DBF = path.join(DATA, 'db.json');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
+               '.webmanifest': 'application/manifest+json; charset=utf-8',
                '.png': 'image/png', '.json': 'application/json',
                '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.wav': 'audio/wav' };
 const isMedia = f => /\.(mp3|ogg|m4a|wav)$/i.test(f);
@@ -923,7 +924,7 @@ function initPayload(room, me) {
   const race = room.race
     ? { words: room.race.words, progress: [...room.clients.values()].map(c => [c.id, (c.raceGot || new Set()).size]) }
     : null;
-  const p = { t: 'init', build: BUILD, ack: 1, id: me.id, name: me.name, code: room.code, kind: room.kind || null, seed: room.seed, role: me.role, ava: me.ava, players, edits, task: room.task, dones: [...room.dones.values()], words: room.words, race, lesson: room.lesson || null };
+  const p = { t: 'init', build: BUILD, ack: 1, ice: iceServers(), id: me.id, name: me.name, code: room.code, kind: room.kind || null, seed: room.seed, role: me.role, ava: me.ava, players, edits, task: room.task, dones: [...room.dones.values()], words: room.words, race, lesson: room.lesson || null };
   if (room.kind === 'garden') p.plots = plotsOf(room); // чьи грядки где — чтобы нарисовать всю улицу
   if (room.code === 'LOBBY') p.lobby = lobbyPayload();
   return p;
@@ -993,6 +994,33 @@ function checkFinale(room) {
   const studentsIn = [...room.clients.values()].filter(c => c.role !== 'teacher').length;
   if (studentsIn > 0 && room.dones.size >= studentsIn) bcast(room, { t: 'celebrate' });
 }
+// ── TURN: голос за строгим NAT ───────────────────────────────────────────────
+// Школьный и офисный Wi-Fi часто не дают двум браузерам соединиться напрямую:
+// кнопка горит зелёным, а конкретного соседа не слышно совсем. Тогда звук идёт
+// через ретранслятор. Ключи к нему временные и считаются по общему секрету
+// (coturn, режим use-auth-secret) — постоянного пароля в браузере не держим.
+const TURN_HOST = String(process.env.TURN_HOST || '').trim();
+const TURN_SECRET = String(process.env.TURN_SECRET || '');
+const TURN_PORT = (process.env.TURN_PORT | 0) || 3478;
+const TURN_TLS_PORT = process.env.TURN_TLS_PORT | 0;
+const TURN_TTL = 12 * 3600;            // ключ живёт полсуток: занятие в него укладывается
+function iceServers() {
+  const list = [{ urls: 'stun:stun.l.google.com:19302' }];
+  if (!TURN_HOST || !TURN_SECRET) return list;   // не настроен — работаем как раньше
+  const user = String(Math.floor(Date.now() / 1000) + TURN_TTL);
+  const cred = crypto.createHmac('sha1', TURN_SECRET).update(user).digest('base64');
+  list.push({ urls: `stun:${TURN_HOST}:${TURN_PORT}` });
+  list.push({ urls: [`turn:${TURN_HOST}:${TURN_PORT}?transport=udp`,
+                     `turn:${TURN_HOST}:${TURN_PORT}?transport=tcp`],
+              username: user, credential: cred });
+  // порт 443 по TLS проходит там, где режут всё остальное
+  if (TURN_TLS_PORT) list.push({ urls: `turns:${TURN_HOST}:${TURN_TLS_PORT}?transport=tcp`,
+                                 username: user, credential: cred });
+  return list;
+}
+if (TURN_HOST && TURN_SECRET) console.log(`TURN включён: ${TURN_HOST}:${TURN_PORT}`);
+else console.log('TURN не настроен — за строгим NAT голос может не пройти (см. turn-setup.sh)');
+
 const authUser = u => ({ id: u.id, name: u.name, role: u.role, status: u.status || null, code: u.code || null, stars: u.stars || 0, avatar: u.avatar || null, schedule: u.schedule || '' });
 
 // ================= WS =================

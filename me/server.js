@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-52';
+const BUILD = '2026-09-15-53';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -491,18 +491,41 @@ function nextLevelFirst(level) {
   const nx = TIERS[i + 1];
   return nx ? (levelList(nx.level)[0] || null) : null;
 }
+// Тема считается пройденной двумя путями, и оба настоящие: ребёнок либо посадил
+// набор «вся тема» и снял с него урожай, либо — и так играют почти все — прошёл её
+// по словам, собрав каждое хотя бы раз. Раньше засчитывался только первый путь, и
+// обычный игрок не открывал следующий уровень НИКОГДА: учителя писали, что до
+// «необычных» не дойти. Счётчик g.crops при игре по словам просто не растёт.
+function themeDone(g, lessonId) {
+  if ((g.crops[lessonId] | 0) > 0) return true;
+  const les = loadLesson(lessonId); if (!les) return false;
+  const ws = les.words || [];
+  return ws.length > 0 && ws.every(w => (g.cropsW[wordSeedId(lessonId, w.word)] | 0) > 0);
+}
 function doneInLevel(g, level) {       // сколько разных тем уровня уже собрано хотя бы раз
-  return levelList(level).filter(x => (g.crops[x.id] | 0) > 0).length;
+  return levelList(level).filter(x => themeDone(g, x.id)).length;
+}
+// Открытие следующего УРОВНЯ — в одном месте: его проверяют все три пути (сбор темы
+// целиком, сбор по словам, выполненный заказ), и раньше они расходились.
+function unlockLevel(g, level, opened) {
+  if (doneInLevel(g, level) < LEVEL_GATE) return;
+  const nl = nextLevelFirst(level);
+  if (!nl || g.open[nl.id]) return;
+  g.open[nl.id] = 1;
+  // вместе с темой открываем её первое слово: набор целиком новичку не по карману
+  const first = (loadLesson(nl.id) || {}).words || [];
+  if (first[0]) {
+    const wid = wordSeedId(nl.id, first[0].word);
+    if (!g.openW[wid]) g.openW[wid] = 1;
+  }
+  opened.push({ id: nl.id, theme: nl.theme || nl.title, level: nl.level, newLevel: true });
 }
 function unlockAfter(g, id) {          // собрал тему целиком — открывается следующая
   const les = loadLesson(id); if (!les) return [];
   const opened = [];
   const nx = nextLesson(id);
   if (nx && !g.open[nx.id]) { g.open[nx.id] = 1; opened.push(nx); }
-  if (doneInLevel(g, les.level) >= LEVEL_GATE) {
-    const nl = nextLevelFirst(les.level);
-    if (nl && !g.open[nl.id]) { g.open[nl.id] = 1; opened.push(nl); }
-  }
+  unlockLevel(g, les.level, opened);
   return opened;
 }
 function wordSeedId(lessonId, word) { return lessonId + '#' + word; }
@@ -542,6 +565,7 @@ function unlockAfterWord(g, lessonId, word) {   // собрал слово — �
     // ЗАКАЗ на станции. Следующая тема откроется, когда заказ будет выполнен:
     // так практика фраз становится обязательной ступенью, а не необязательным кружком.
     if (!g.open[lessonId]) { g.open[lessonId] = 1; opened.push({ id: lessonId, theme: les.theme || les.title, level: les.level }); }
+    unlockLevel(g, les.level, opened);
     if (!g.order) {
       const o = makeOrder(g, lessonId);
       if (o) { g.order = o; opened.push({ order: true, kind: o.kind, theme: o.theme }); }
@@ -703,6 +727,8 @@ function orderFinish(g) {
       if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: first[0].word, level: nl.level }); }
     }
   }
+  const les = loadLesson(o.lesson);
+  if (les) unlockLevel(g, les.level, opened);
   const res = { kind: o.kind, theme: o.theme, prize, opened,
                 trophy: trophy ? { emoji: trophy.emoji, name: trophy.name, desc: trophy.desc } : null,
                 next: nl ? (loadLesson(nl.id) || {}).theme || nl.id : '' };
@@ -751,8 +777,15 @@ function shopWords(g) {                 // что лежит на прилавк
     out.push({ id, lesson: les.id, level: les.level, theme: les.theme || les.title,
       word: ws.word, price: (g.freeSeed === id) ? 0 : wordSeedPrice(les, ws.word), free: g.freeSeed === id,
       fruit: fruitPrice(les), done: g.cropsW[id] | 0,
+      themeDone: themeDone(g, les.id),      // тема уже пройдена: это повтор, а не движение вперёд
+      num: les.num | 0, at: wordIndex(les, ws.word),
       planted: Object.values(g.beds || {}).some(b => b.lesson === les.id && (b.words || []).some(w => w.word === ws.word)) });
   }
+  // Учителя писали: «тема Природа заканчивается, а дальше заново идут orange и pear
+  // из первой темы». Прилавок складывался в порядке открытия слов, и пройденные темы
+  // вперемешку с текущей читались как откат назад. Теперь сперва то, что ребёнок
+  // проходит сейчас, и только потом — старое, которое можно пересадить.
+  out.sort((a, b) => (a.themeDone - b.themeDone) || (a.num - b.num) || (a.at - b.at));
   return out;
 }
 function hintNext(g) {                 // что откроется дальше — чтобы цель была видна

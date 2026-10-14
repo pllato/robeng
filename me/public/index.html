@@ -199,6 +199,7 @@
   html.touch #avaCanvas{width:118px;height:196px}
   html.touch #avaCtl{min-width:0}
   /* ── киоск: пакетики семян на прилавке, а не список строк ── */
+  .seedCard.past{opacity:.72}
   #shopGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;
     max-height:46vh;overflow:auto;padding:2px}
   .seedCard{position:relative;border-radius:12px;padding:10px 8px 9px;text-align:center;cursor:pointer;
@@ -2065,7 +2066,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-52';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-53';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -3425,7 +3426,7 @@ function renderShop(level){
       ${poor?'':`<button class="seedMore" data-more="${o.id}">+ ${o.free?'ещё':nfmt(o.price)+' 🪙'}</button>`}
       <div class="em">${o.em}</div><div class="nm">${o.name}</div>
       <div class="pr">в рюкзаке</div><div class="sub">нажми — возьмёшь в руку</div></div>`;
-    return `<div class="seedCard${poor?' poor':''}${o.free?' own':''}${o.planted?' planted':''}" data-buy="${o.id}">
+    return `<div class="seedCard${poor?' poor':''}${o.free?' own':''}${o.planted?' planted':''}${o.old?' past':''}" data-buy="${o.id}">
       ${o.planted?'<div class="badge" style="background:#2f7d4f;left:-5px;right:auto">посажено</div>':''}
       <div class="em">${growing?'🌿':o.em}</div><div class="nm">${o.name}</div>
       <div class="pr">${o.free?'бесплатно':nfmt(o.price)+' 🪙'}</div>
@@ -3434,9 +3435,13 @@ function renderShop(level){
 
   // 1) отдельные слова — то, с чего начинают
   const mineW=(shopWords||[]).filter(w=>w.level===level);
+  // Пройденные темы показываем после текущей и подписываем, что это повтор:
+  // иначе длинный список читается как «игра пошла назад».
   const wordCards=mineW.map(w=>card({ id:w.id, name:w.word, em:w.free?'🎁':emojiFor(w.lesson,w.word),
-    price:w.price, free:w.free, planted:w.planted,
-    sub:w.free?'первое — в подарок':(w.planted?'растёт на грядке':`урожай ~${nfmt(w.fruit*3)} 🪙`) })).join('');
+    price:w.price, free:w.free, planted:w.planted, old:w.themeDone,
+    sub:w.free?'первое — в подарок'
+       :(w.planted?'растёт на грядке'
+       :(w.themeDone?`тема «${w.theme}» пройдена · ~${nfmt(w.fruit*3)} 🪙`:`урожай ~${nfmt(w.fruit*3)} 🪙`)) })).join('');
   // 2) наборы «вся тема» — открываются, когда тема собрана по словам
   const mineT=(shopIndex||[]).filter(x=>x.level===level&&open[x.id]);
   const themeCards=mineT.map(x=>card({ id:x.id, name:'вся тема: '+(x.theme||x.title), em:'📦',

@@ -1389,7 +1389,7 @@ function flushWS(){
 // не подтвердит его номером. Не подтвердил за ACK_WAIT — сокет мёртвый: рвём его сами
 // и после переподключения отправляем всё неподтверждённое заново.
 const ACT_SURE=new Set(['buy','sell','plant','pick','uproot','clear','gift','reset',
-                        'orderGive','orderTake','phraseSaid','buyWeapon']);
+                        'orderGive','orderTake','phraseSaid','feed']);
 // «restore» в исходящие не кладём намеренно: его отправляет сама сборка сеанса при
 // каждом переподключении. Иначе повтор старого снимка сада догонит уже применённую
 // продажу и затрёт её — ровно это и съедало монеты.
@@ -1627,6 +1627,8 @@ function handleNet(m){
     if(typeof m.priceStep==='number') priceStep=m.priceStep;
     nextUp=m.nextUp||null;
     if(m.shopWords) shopWords=m.shopWords;
+    if(typeof m.feedPrice==='number') feedPrice=m.feedPrice;
+    if(typeof m.wearMax==='number') wearMax=m.wearMax;
     if(talkOn && 'order' in m && !m.order && !m.orderDone) talkNoOrder(m);
     if(m.order) talkOrderShow(m.order);
     if(m.orderGave) { toast(`📦 Сдал ${fruitsWord(m.orderGave)} в заказ`); snd(680,.1,'triangle',.15); }
@@ -1670,6 +1672,12 @@ function handleNet(m){
       snd(700,.12,'triangle',.18); setTimeout(()=>snd(1050,.12,'triangle',.18),120);
       setTimeout(()=>snd(1400,.3,'triangle',.18),250);
       setTimeout(()=>toast('🌱 Семя диковинки уже в сумке — посади его на грядке'),1800);
+    }
+    if(m.fed) toast(`🌾 Грядка подкормлена за ${coinsWord(m.fed.price)} — земля снова плодоносит`);
+    if(m.garden && m.garden.upkeep && m.garden.upkeep.day!==upkeepSeen){
+      upkeepSeen=m.garden.upkeep.day;
+      const u=m.garden.upkeep;
+      toast(`🧾 Содержание огорода за день: ${coinsWord(u.sum)}. Монеты сверх ${nfmt(u.free)} 🪙 не лежат без дела`);
     }
     if(m.sold){
       const sd=m.sold;
@@ -1972,6 +1980,8 @@ function lobbyDecor(sx,sz,H,R){
 // урожай на той же грядке зреет дольше — это и есть интервальное повторение.
 let myGarden={beds:{},coins:0,seeds:{},basket:{},done:{},open:{},crops:{}}, gardenNow=0, seedInHand=null, shopIndex=null, shopWords=[];
 let nextUp=null;   // какая тема откроется следующей — показываем цель в киоске
+let feedPrice=0, wearMax=4;   // цена подкормки и запас кругов грядки — приходят с сервера
+let upkeepSeen='';            // про какой день содержания уже сказали — чтобы не повторяться
 // редкость семян: то же, что на сервере — чтобы киоск был осмысленным ещё до первого ответа
 let TIERS=[{level:'Starter',name:'обычное',emoji:'🌱',seed:14,fruit:2},
            {level:'A1',name:'необычное',emoji:'🌿',seed:60,fruit:7},
@@ -1996,7 +2006,9 @@ const nfmt=n=>{ n=Math.round(+n||0);
 const bedAt=i=>{ const g=myGarden.beds||{}; return g[i]||g[String(i)]||null; };
 const isMyPlot=pi=>pi===myPlotIndex();
 const nowMs=()=>Date.now();
-const bedRipe=b=>!!b && (b.ripe.length>0 || nowMs()>=b.readyAt); // созрело по часам — сервер подтвердит
+const bedTired=b=>!!b && (b.wear|0)>=wearMax;                   // земля выдохлась, плодов больше не будет
+// созрело по часам — сервер подтвердит; у уставшей земли считаем только то, что уже лежит
+const bedRipe=b=>!!b && (b.ripe.length>0 || (!bedTired(b) && nowMs()>=b.readyAt));
 const wordHash=w=>{ let h=0; for(let i=0;i<w.length;i++) h=(h*31+w.charCodeAt(i))>>>0; return h; };
 const fruitsOf=w=>2+wordHash(String(w))%2;      // в наборе «вся тема» на кусте 2–3 плода
 const WORD_FRUITS=[3,2,2];                      // новый куст — сразу 3 плода, на повторении по 2
@@ -2053,7 +2065,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-51';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-52';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -3522,9 +3534,25 @@ function renderBed(){
       <small style="color:#9fb6d4"> · кустов ${k}${ripe?` · созрело ${ripe}`:''}</small></span>
       <span><button class="ghost" data-cut="${w}" style="padding:4px 9px;font-size:13px">✂️ убрать</button></span></div>`;
   }).join('');
-  $('bedHint').innerHTML = busy<slots
-    ? `Свободно ${slots-busy} мест — одно и то же слово можно сажать сколько угодно раз, урожай будет больше.`
-    : 'Грядка полная — выкорчуй что-нибудь или посади на соседнюю.';
+  // Уставшая земля — главное, что нужно сказать про эту грядку: плодов не будет,
+  // пока её не подкормят. И сразу честно: выкорчевать и посадить новое — дешевле.
+  if(bedTired(bd)){
+    const can=(myGarden.coins|0)>=feedPrice;
+    $('bedHint').innerHTML =
+      `🥀 <b>Земля устала</b> — после ${wearMax} кругов она больше не плодоносит.<br>`
+      +`Подкормить — <b>${nfmt(feedPrice)}</b> 🪙${can?'':' (пока не хватает)'}, `
+      +`или выкорчуй кусты и посади новую тему — так заметно дешевле.`
+      +`<div style="margin-top:8px"><button class="ghost" id="bedFeed"${can?'':' disabled'}
+          style="padding:7px 14px;font-size:14px">🌾 Подкормить за ${nfmt(feedPrice)} 🪙</button></div>`;
+  } else {
+    const left=Math.max(0,wearMax-(bd.wear|0));
+    $('bedHint').innerHTML = (busy<slots
+      ? `Свободно ${slots-busy} мест — одно и то же слово можно сажать сколько угодно раз, урожай будет больше.`
+      : 'Грядка полная — выкорчуй что-нибудь или посади на соседнюю.')
+      + `<br><small style="opacity:.7">земли хватит ещё на ${left} ${left===1?'круг':left<5?'круга':'кругов'}</small>`;
+  }
+  const fb=$('bedFeed');
+  if(fb) fb.onclick=e=>{ e.stopPropagation(); sendWS({t:'garden',act:'feed',bed:bedNow}); fb.textContent='…'; };
   $('bedList').querySelectorAll('[data-cut]').forEach(b=>b.onclick=e=>{
     e.stopPropagation();
     sendWS({t:'garden',act:'uproot',bed:bedNow,word:b.dataset.cut});

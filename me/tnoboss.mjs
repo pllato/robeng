@@ -49,7 +49,11 @@ try{
     {send:{t:'join',code:'GARDEN',name:'Тестик'}, want:'init'},
     {send:{t:'garden',act:'get'}, want:'gardenData'},
   ]);
-  ok(g1.garden.coins===1620, `за кирку возвращено: было 100, стало ${g1.garden.coins} (ждём 1620)`);
+  // В тот же день с запаса берут содержание огорода, поэтому на счету меньше
+  // возврата ровно на эту сумму — проверяем сумму, а не остаток.
+  const up1=(g1.garden.upkeep && g1.garden.upkeep.sum)|0;
+  ok(g1.garden.coins+up1===1620,
+     `за кирку возвращено 1520: было 100, стало ${g1.garden.coins} + ${up1} содержания = ${g1.garden.coins+up1}`);
   ok(g1.garden.weapon===undefined, 'поле weapon из сада убрано');
   ok(g1.garden.bossDone===undefined && g1.garden.boss===undefined, 'поля боссов из сада убраны');
   ok(/возврат за кирку: Тестик — 1520 монет/.test(log), 'возврат записан в журнал сервера');
@@ -60,7 +64,8 @@ try{
     {send:{t:'join',code:'GARDEN',name:'Тестик'}, want:'init'},
     {send:{t:'garden',act:'get'}, want:'gardenData'},
   ]);
-  ok(g2.garden.coins===1620, `повторного возврата нет: ${g2.garden.coins}`);
+  ok(g2.garden.coins===g1.garden.coins,
+     `повторного возврата нет и содержание второй раз за день не берут: ${g2.garden.coins}`);
 
   // боевые действия сервер больше не понимает
   for(const act of ['bossHit','bossWord','bossMove','bossFlee','buyWeapon']){

@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-51';
+const BUILD = '2026-09-15-52';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -298,6 +298,27 @@ function bestFruit(g) {
   return best;
 }
 const rareFruitPrice = g => Math.max(20, Math.round(bestFruit(g) * RARE_MULT));
+const feedPrice = g => Math.max(20, Math.round(bestFruit(g) * FEED_MULT));
+// 4) СОДЕРЖАНИЕ ОГОРОДА. Копить впрок бессмысленно: раз в день, когда ребёнок
+//    работает на огороде, с запаса сверх UPKEEP_FREE списывается UPKEEP_RATE.
+//    Доля, а не твёрдая сумма, — поэтому мера сама подстраивается: у новичка с
+//    парой тысяч она почти незаметна, а старый запас в полсотни тысяч тает за
+//    неделю. Свободный остаток привязан к уровню ребёнка, чтобы копить на
+//    дорогое семя было можно.
+const UPKEEP_RATE = 0.10;
+const UPKEEP_FREE_MULT = 25;
+const upkeepFree = g => Math.max(500, Math.round(bestFruit(g) * UPKEEP_FREE_MULT));
+function chargeUpkeep(g) {
+  if (g.upKey === dayKey()) return 0;        // за сегодня уже брали
+  g.upKey = dayKey();
+  const free = upkeepFree(g);
+  const over = (g.coins | 0) - free;
+  if (over <= 0) { g.upkeep = null; return 0; }
+  const sum = Math.max(1, Math.round(over * UPKEEP_RATE));
+  g.coins = Math.max(0, (g.coins | 0) - sum);
+  g.upkeep = { sum, free, day: dayKey() };
+  return sum;
+}
 function rareDrop(g) {                 // что именно выпало — выбираем из ещё не найденных
   const les = loadLesson(RARE_LESSON); if (!les) return null;
   const all = (les.words || []).map(w => w.word);
@@ -345,6 +366,14 @@ const FARM_FLOOR = 0.03;   // ниже трёх процентов не пада
 const DAY_FREE   = 80;     // за сутки столько плодов продаётся без подкормки
 const DAY_SPAN   = 70;     // ещё столько — и подкормка сравнивается с ценой плода
 const DAY_MAX    = 1.6;    // дальше она дороже плода: сидеть и фармить становится убыточно
+// 3) ЗЕМЛЯ УСТАЁТ. После WEAR_MAX полных кругов грядка перестаёт плодоносить
+//    совсем. Оживить её можно подкормкой, и она намеренно дорогая — дороже
+//    десятка семян: держать старую грядку должно быть невыгоднее, чем посадить
+//    новую тему. Цена считается от лучшего плода ребёнка, поэтому растёт вместе
+//    с ним и не превращается в копейки к середине курса.
+const WEAR_MAX  = 4;       // столько полных кругов грядка выдерживает
+const FEED_MULT = 60;      // подкормка стоит столько лучших плодов игрока
+const bedTired = b => (b && (b.wear | 0) >= WEAR_MAX);
 const themeFactor = n => Math.max(FARM_FLOOR, Math.pow(0.5, Math.max(0, n - FARM_FULL) / FARM_HALF));
 const dayFee = n => Math.min(DAY_MAX, Math.max(0, n - DAY_FREE) / DAY_SPAN);
 const tierOf = level => Math.max(0, TIERS.findIndex(t => t.level === level));
@@ -531,7 +560,9 @@ function unlockAfterWord(g, lessonId, word) {   // собрал слово — �
   return opened;
 }
 function helpingHand(g) {               // тупика быть не должно: застрял — дадим семя даром
-  if (Object.keys(g.beds || {}).length || Object.keys(g.seeds || {}).length) return;
+  // уставшая земля — это не рабочая грядка: с ней ребёнок тоже в тупике
+  if (Object.values(g.beds || {}).some(b => !bedTired(b))) return;
+  if (Object.keys(g.seeds || {}).length) return;
   if (Object.values(g.basket || {}).some(n => n > 0)) return;
   let best = null, bp = Infinity;
   for (const id of Object.keys(g.openW || {})) {
@@ -788,7 +819,7 @@ function migrateTrees(u) {             // сады старой версии: д
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
 function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0, rares: 0,
-  pets: [], items: {}, seen: [], soldN: {}, dayK: '', dayN: 0 }; }
+  pets: [], items: {}, seen: [], soldN: {}, dayK: '', dayN: 0, upKey: '' }; }
 // ── Гарантия доставки действий ──
 // Телефон умеет держать «живой» сокет, через который уже ничего не ходит: send()
 // не падает, а до сервера не доходит ничего. Раньше нажатие просто исчезало молча —
@@ -797,7 +828,7 @@ function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done:
 // во-вторых, не применять одно и то же действие дважды: повтор не должен продать
 // корзину второй раз.
 const ACT_ONCE = new Set(['buy', 'sell', 'plant', 'pick', 'uproot', 'clear', 'gift', 'reset',
-                          'orderGive', 'orderTake', 'phraseSaid']);
+                          'orderGive', 'orderTake', 'phraseSaid', 'feed']);
 const SEEN_KEEP = 64;                  // помним последние номера — больше для повтора не нужно
 const aidOf = m => { const s = String((m && m.aid) || ''); return /^[a-z0-9]{1,24}:\d{1,16}$/.test(s) ? s : ''; };
 function actSeen(g, aid) { return Array.isArray(g.seen) && g.seen.includes(aid); }
@@ -814,6 +845,7 @@ function sanitizeBed(b) {              // грядка из чужих рук (�
   const lesson = loadLesson(String(b.lesson || ''));
   if (!lesson) return null;
   const seed = String(b.seed || '');
+  const wear = Math.min(99, Math.max(0, b.wear | 0));   // сколько кругов земля уже отработала
   const ws = parseSeed(seed);
   const picked = Array.isArray(b.words) ? b.words.map(w => w && w.word).filter(Boolean) : null;
   const byWord = new Map(lesson.words.map(w => [w.word, w]));
@@ -837,7 +869,7 @@ function sanitizeBed(b) {              // грядка из чужих рук (�
                  k: count[word] };
   }
   return { seed: seed || lesson.id, lesson: lesson.id, title: lesson.title,
-    theme: ws ? ws.word : lesson.theme, tier: lesson.tier, words, ripe, cycle, readyAt, st };
+    theme: ws ? ws.word : lesson.theme, tier: lesson.tier, words, ripe, cycle, readyAt, st, wear };
 }
 function sanitizeGarden(src) {
   const g = newGarden();
@@ -865,6 +897,7 @@ function sanitizeGarden(src) {
   // сколько плодов каждой темы уже продано: на этом держится «тема выдыхается»
   for (const [id, n] of Object.entries(src.soldN || {})) if (loadLesson(id)) g.soldN[id] = Math.min(1e9, Math.max(0, n | 0));
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(src.dayK || ''))) { g.dayK = String(src.dayK); g.dayN = Math.min(1e6, Math.max(0, src.dayN | 0)); }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(src.upKey || ''))) g.upKey = String(src.upKey);
   if (Array.isArray(src.seen))   // номера применённых действий: без них повтор применится дважды
     g.seen = src.seen.filter(x => typeof x === 'string' && x.length <= 42).slice(-SEEN_KEEP);
   g.gifted = !!src.gifted;
@@ -908,7 +941,9 @@ function ripenGarden(g) {              // каждый куст зреет са�
   for (const b of Object.values(g.beds || {})) {
     if (!b || !b.words) continue;
     const kinds = bedKinds(b);
-    for (const word of kinds) {
+    // Уставшая земля новых плодов не даёт. Уже созревшее не отнимаем — иначе
+    // ребёнок потеряет урожай, который видел на экране секунду назад.
+    if (!bedTired(b)) for (const word of kinds) {
       const st = plantState(b, word);
       if (st.n > 0 || now < st.r) continue;
       st.n = bedFruits(b, word, st.c) * (st.k | 0 || 1);   // каждый куст даёт свой урожай
@@ -1311,9 +1346,13 @@ wss.on('connection', (ws, req) => {
       const deny = (why) => { send(ws, { t: 'err', msg: why }); send(ws, { t: 'gardenDeny', act: String(m.act || ''), bed: m.bed | 0, why }); };
       const reply = (extra) => {
         grantStarter(g); // пустому саду — стартовые семена; после restore, иначе подарок затрётся
+        // Содержание огорода берём здесь, а не в начале обработки: restore приносит
+        // монеты из браузера и затёр бы списание, сделанное до него.
+        chargeUpkeep(g);
         ripenGarden(g);
         send(ws, Object.assign({ t: 'gardenData', garden: wireGarden(g), tiers: TIERS, priceStep: 0.12, nextUp: hintNext(g),
-          shopWords: shopWords(g),
+          shopWords: shopWords(g), feedPrice: feedPrice(g), wearMax: WEAR_MAX,
+          upkeepFree: upkeepFree(g), upkeepRate: UPKEEP_RATE,
           bag: bagList(g),
           near: room ? [...room.clients.values()].filter(c => c.id !== me.id
                   && Math.hypot((c.x || 0) - (me.x || 0), (c.z || 0) - (me.z || 0)) <= 12)
@@ -1344,6 +1383,7 @@ wss.on('connection', (ws, req) => {
         // усталость темы и дня тоже живут в браузере гостя: иначе возврат в игру
         // обнулял бы их и фарм снова становился бы бесконечным
         guestGarden.soldN = src.soldN; guestGarden.dayK = src.dayK; guestGarden.dayN = src.dayN;
+        guestGarden.upKey = src.upKey;
         return reply();
       }
       if (m.act === 'buy') { // семя из киоска: сперва по одному слову, тема целиком — позже
@@ -1627,7 +1667,9 @@ wss.on('connection', (ws, req) => {
         if (!pst.n) {   // этот куст обобран — он один и уходит на следующий круг
           pst.c++;
           pst.r = Date.now() + growMs(pst.c, g, wordSeedId(b.lesson, word));
+          const wasCycle = b.cycle | 0;
           b.cycle = Math.min(...bedKinds(b).map(w => b.st[w].c));
+          if ((b.cycle | 0) > wasCycle) b.wear = (b.wear | 0) + 1;   // грядка прошла полный круг
           g.done[String(b.tier)] = (g.done[String(b.tier)] | 0) + 1;
           const wordSeed = parseSeed(String(b.seed || ''));
           const sid = wordSeed ? wordSeedId(b.lesson, word) : null;
@@ -1643,6 +1685,18 @@ wss.on('connection', (ws, req) => {
             opened: opened.map(x => ({ id: x.id, theme: x.theme || x.title, level: x.level, order: !!x.order, kind: x.kind })) });
         }
         return reply({ rare });          // куст ещё плодоносит, но находку показать надо
+      } else if (m.act === 'feed') {  // подкормить уставшую землю — платно и дорого
+        if (!b) return deny('Здесь нет грядки');
+        if (!bedTired(b)) return deny('Эта грядка ещё в силе — подкормка ей не нужна');
+        const price = feedPrice(g);
+        if (g.coins < price) return deny(
+          `Подкормка стоит ${price} 🪙, а у тебя ${g.coins | 0}. Выкорчуй грядку и посади новую тему — так дешевле`);
+        g.coins -= price;
+        b.wear = 0;
+        for (const w of bedKinds(b)) { const st = plantState(b, w); st.r = Date.now() + growMs(st.c, g, null); }
+        console.log(`подкормка: ${u ? u.name : 'гость'} — грядка ${bed} за ${price}`);
+        logAct(room, me, `подкормил грядку за ${price} 🪙`, 'buy');
+        return reply({ fed: { bed: +bed, price } });
       } else if (m.act === 'clear') { // выкорчевать, чтобы посадить другое
         if (!b) return deny('Грядка и так пустая');
         delete g.beds[bed];

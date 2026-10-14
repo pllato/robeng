@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-50';
+const BUILD = '2026-09-15-51';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -323,6 +323,30 @@ const bedFruits = (b, w, cyc) => parseSeed(String(b.seed || ''))
   ? WORD_FRUITS[Math.min(WORD_FRUITS.length - 1, (cyc === undefined ? b.cycle : cyc) | 0)]
   : fruitsOf(w);
 const fruitPrice = les => Math.max(1, Math.round(TIERS[0].fruit * lessonMul(les)));
+// ── Фарм не должен быть дорогой к деньгам ────────────────────────────────────
+// Куст отрастает каждые 15–20 минут и плодоносит вечно. Ребёнок с двенадцатью
+// грядками мог сидеть и собирать одно и то же слово бесконечно, не выучив ни
+// одного нового, — так и набралось 51 000 монет. Поэтому два тормоза, оба на
+// продаже, и оба видимые игроку:
+//
+// 1) ТЕМА ВЫДЫХАЕТСЯ. Первые FARM_FULL плодов темы идут по полной цене, дальше
+//    цена падает вдвое каждые FARM_HALF и упирается в пол FARM_FLOOR. Одна тема
+//    отдаёт примерно 66 полных плодов и больше ничего. Новая тема снова платит
+//    целиком: зарабатывает тот, кто идёт вперёд, а не тот, кто сидит на месте.
+// 2) ОГОРОД УСТАЁТ ЗА ДЕНЬ. Сверх DAY_FREE плодов за сутки каждый следующий
+//    требует подкормки, и она растёт: к DAY_FREE+DAY_SPAN съедает всю цену,
+//    дальше стоит дороже плода — и продажа честно уводит монеты в минус.
+//
+// Числа подобраны так, чтобы обычное занятие (два-три полных прохода по теме,
+// это около 70 плодов) не задевало ни один из тормозов.
+const FARM_FULL  = 30;     // столько плодов темы продаётся по полной цене
+const FARM_HALF  = 25;     // и каждые столько следующих цена уполовинивается
+const FARM_FLOOR = 0.03;   // ниже трёх процентов не падаем: плод не должен стать мусором
+const DAY_FREE   = 80;     // за сутки столько плодов продаётся без подкормки
+const DAY_SPAN   = 70;     // ещё столько — и подкормка сравнивается с ценой плода
+const DAY_MAX    = 1.6;    // дальше она дороже плода: сидеть и фармить становится убыточно
+const themeFactor = n => Math.max(FARM_FLOOR, Math.pow(0.5, Math.max(0, n - FARM_FULL) / FARM_HALF));
+const dayFee = n => Math.min(DAY_MAX, Math.max(0, n - DAY_FREE) / DAY_SPAN);
 const tierOf = level => Math.max(0, TIERS.findIndex(t => t.level === level));
 const lessonCache = new Map();
 function loadLesson(id) {              // словарь урока берём из каталога, магазин семян = список уроков
@@ -764,7 +788,7 @@ function migrateTrees(u) {             // сады старой версии: д
 }
 const BEDS_MAX = 12;                   // грядок на участке — хватает на дюжину тем сразу
 function newGarden() { return { beds: {}, coins: 0, seeds: {}, basket: {}, done: {}, open: {}, crops: {}, openW: {}, cropsW: {}, freeSeed: '', soldOnce: 0, days: {}, said: {}, phrases: 0, order: null, orders: 0, rares: 0,
-  pets: [], items: {}, seen: [] }; }
+  pets: [], items: {}, seen: [], soldN: {}, dayK: '', dayN: 0 }; }
 // ── Гарантия доставки действий ──
 // Телефон умеет держать «живой» сокет, через который уже ничего не ходит: send()
 // не падает, а до сервера не доходит ничего. Раньше нажатие просто исчезало молча —
@@ -838,6 +862,9 @@ function sanitizeGarden(src) {
   if (Array.isArray(src.pets))
     g.pets = src.pets.filter(x => typeof x === 'string' && x.length <= 40).slice(0, 24);
   for (const [id, n] of Object.entries(src.items || {})) if (artById(id)) g.items[id] = Math.min(999, Math.max(0, n | 0));
+  // сколько плодов каждой темы уже продано: на этом держится «тема выдыхается»
+  for (const [id, n] of Object.entries(src.soldN || {})) if (loadLesson(id)) g.soldN[id] = Math.min(1e9, Math.max(0, n | 0));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(src.dayK || ''))) { g.dayK = String(src.dayK); g.dayN = Math.min(1e6, Math.max(0, src.dayN | 0)); }
   if (Array.isArray(src.seen))   // номера применённых действий: без них повтор применится дважды
     g.seen = src.seen.filter(x => typeof x === 'string' && x.length <= 42).slice(-SEEN_KEEP);
   g.gifted = !!src.gifted;
@@ -1314,6 +1341,9 @@ wss.on('connection', (ws, req) => {
         guestGarden.pets = src.pets;
         guestGarden.items = src.items; guestGarden.soldOnce = src.soldOnce;
         guestGarden.days = src.days;
+        // усталость темы и дня тоже живут в браузере гостя: иначе возврат в игру
+        // обнулял бы их и фарм снова становился бы бесконечным
+        guestGarden.soldN = src.soldN; guestGarden.dayK = src.dayK; guestGarden.dayN = src.dayN;
         return reply();
       }
       if (m.act === 'buy') { // семя из киоска: сперва по одному слову, тема целиком — позже
@@ -1458,28 +1488,44 @@ wss.on('connection', (ws, req) => {
             (n, w) => n + Math.max(0, (o.need[w] | 0) - ((o.gave && o.gave[w]) | 0)), 0);
           if (left > 0) keep[o.lesson] = left;
         }
-        let coins = 0, fruits = 0, held = 0;
+        g.soldN = g.soldN || {};
+        if (g.dayK !== dayKey()) { g.dayK = dayKey(); g.dayN = 0; }   // счёт за сутки
+        let gross = 0, feeSum = 0, fruits = 0, held = 0;
         const rest = {};
         for (const [id, n] of Object.entries(g.basket)) {
           const lesson = loadLesson(id);
           if (!lesson || !(n > 0)) continue;
           const back = Math.min(n, keep[id] | 0), sellN = n - back;
           if (back) { held += back; rest[id] = back; }
-          const price = isRare(id) ? rareFruitPrice(g) : fruitPrice(lesson);
-          if (sellN > 0) { coins += price * sellN; fruits += sellN; }
+          const base = isRare(id) ? rareFruitPrice(g) : fruitPrice(lesson);
+          // считаем каждый плод отдельно: и усталость темы, и усталость дня растут по ходу
+          let done = g.soldN[id] | 0;
+          for (let k = 0; k < sellN; k++) {
+            gross  += base * themeFactor(done);
+            feeSum += base * dayFee((g.dayN | 0) + fruits);
+            done++; fruits++;
+          }
+          if (sellN > 0) g.soldN[id] = Math.min(done, 1e9);
         }
         // Трофеи с эффектом coin обещают «за плоды дают на 15% больше» — вот эта прибавка.
         // Считаем её от всей выручки, а не от каждого плода: на старте плод стоит 2 монеты,
         // и +15% к двойке округление съедало без остатка — обещание оставалось пустым.
         const bonus = Math.min(1.5, artBonus(g, 'coin'));
-        if (bonus > 0 && coins > 0) coins = Math.round(coins * (1 + bonus));
+        const earned = Math.round(gross * (1 + (bonus > 0 ? bonus : 0)));
+        const fee = Math.round(feeSum);
         if (!fruits) return deny(held
           ? `Эти ${held} плодов нужны для заказа — отнеси их на станцию, а не сюда`
           : 'Корзина пуста — сначала собери урожай');
-        g.basket = rest; g.coins += coins; g.soldOnce = 1;   // первый круг замкнут: вырастил → продал
-        console.log(`продано плодов: ${u ? u.name : 'гость'} — ${fruits} шт. за ${coins} монет${held ? `, отложено ${held}` : ''}`);
-        logAct(room, me, `продал ${fruits} плодов за ${coins} 🪙`, 'sell');
-        return reply({ sold: { fruits, coins, held } });
+        const coins = earned - fee;                        // может быть и отрицательным
+        g.basket = rest;
+        g.dayN = (g.dayN | 0) + fruits;
+        g.coins = Math.max(0, g.coins + coins);            // в долг ребёнка не загоняем
+        g.soldOnce = 1;                                    // первый круг замкнут: вырастил → продал
+        console.log(`продано плодов: ${u ? u.name : 'гость'} — ${fruits} шт., выручка ${earned}` +
+                    `${fee ? `, подкормка ${fee}` : ''}${held ? `, отложено ${held}` : ''}`);
+        logAct(room, me, coins >= 0 ? `продал ${fruits} плодов за ${coins} 🪙`
+                                    : `продал ${fruits} плодов, но огород съел ${-coins} 🪙`, 'sell');
+        return reply({ sold: { fruits, coins, earned, fee, held, dayN: g.dayN | 0, dayFree: DAY_FREE } });
       }
       const bed = String(m.bed | 0);
       if (+bed < 0 || +bed >= BEDS_MAX) return deny(`Грядка №${bed} вне участка`);

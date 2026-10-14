@@ -1671,10 +1671,19 @@ function handleNet(m){
       setTimeout(()=>snd(1400,.3,'triangle',.18),250);
       setTimeout(()=>toast('🌱 Семя диковинки уже в сумке — посади его на грядке'),1800);
     }
-    if(m.sold){ toast(`🪙 Сдал ${fruitsWord(m.sold.fruits)} за ${coinsWord(m.sold.coins)}`);
-      coinRain(m.sold.coins);
-      if(m.sold.held) setTimeout(()=>toast(
-        `🧺 ${fruitsWord(m.sold.held)} оставил в корзине — они нужны для заказа на станции`),1400); }
+    if(m.sold){
+      const sd=m.sold;
+      // Деньги не должны убывать молча: если огород взял за подкормку, об этом говорим
+      // прямо и объясняем, что делать — иначе ребёнок решит, что игра его обсчитала.
+      if(sd.coins>=0) toast(`🪙 Сдал ${fruitsWord(sd.fruits)} за ${coinsWord(sd.coins)}`);
+      else toast(`🥀 Сдал ${fruitsWord(sd.fruits)}, но огород устал и забрал ${coinsWord(-sd.coins)} на подкормку`);
+      if(sd.fee>0) setTimeout(()=>toast(
+        sd.coins>=0
+          ? `🌾 Огород устал: ${coinsWord(sd.fee)} ушло на подкормку. Завтра он отдохнёт — или посади новую тему`
+          : `🌾 Сегодня ты сдал уже ${sd.dayN} плодов. Дальше собирать невыгодно — лучше открыть новое слово`),1400);
+      coinRain(Math.max(0,sd.coins));
+      if(sd.held) setTimeout(()=>toast(
+        `🧺 ${fruitsWord(sd.held)} оставил в корзине — они нужны для заказа на станции`),2600); }
     if(m.harvested){ toast(`🧺 Тема «${m.harvested.theme}» собрана целиком! Следующий урожай — круг ${m.harvested.cycle+1}`);
       snd(700,.1,'triangle',.15); setTimeout(()=>snd(1050,.2,'triangle',.15),130); }
     if(!$('mShop').hidden) renderShop(shopLevelNow());
@@ -2044,7 +2053,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-50';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-51';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);

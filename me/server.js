@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-53';
+const BUILD = '2026-09-15-54';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -1116,6 +1116,32 @@ function iceServers() {
 if (TURN_HOST && TURN_SECRET) console.log(`TURN включён: ${TURN_HOST}:${TURN_PORT}`);
 else console.log('TURN не настроен — за строгим NAT голос может не пройти (см. turn-setup.sh)');
 
+// ── Стойка администратора на ресепшене ──────────────────────────────────────
+// Ребёнок теряет сад вместе с браузером: аккаунт заводится молча, пароля у него
+// нет, ключом служит номер в памяти телефона. Почистили — доказать нечем, хотя
+// сам сад цел и лежит на сервере. Родители пишут в школу, и до сих пор ответить
+// на это было нечем, кроме ручной возни в базе через ssh.
+//
+// Теперь это делает сотрудник на ресепшене: вводит свой PIN, находит ребёнка и
+// отдаёт ссылку возврата. Отдельный PIN, не владельческий: разбирать такие
+// просьбы должен администратор, а не владелец лично.
+const STAFF_PIN = String(process.env.STAFF_PIN || '');
+if (STAFF_PIN.length >= 6) console.log('стойка администратора включена (STAFF_PIN задан)');
+else console.log('стойка администратора выключена: задай STAFF_PIN (минимум 6 знаков) в /etc/mineenglish.env');
+
+function staffCard(u) {                // приметы сада, чтобы не перепутать однофамильцев
+  const g = u.garden || {};
+  const days = Object.keys(g.days || {}).sort();
+  return { id: u.id, name: u.name,
+           made: u.createdAt || 0,
+           last: days.length ? days[days.length - 1] : '',
+           days: days.length,
+           beds: Object.keys(g.beds || {}).length,
+           words: Object.keys(g.cropsW || {}).length,
+           coins: Math.round(+g.coins || 0),
+           key: u.token || '' };     // это и есть ключ от сада — отдаём только после PIN
+}
+
 const authUser = u => ({ id: u.id, name: u.name, role: u.role, status: u.status || null, code: u.code || null, stars: u.stars || 0, avatar: u.avatar || null, schedule: u.schedule || '' });
 
 // ================= WS =================
@@ -1137,6 +1163,7 @@ wss.on('connection', (ws, req) => {
     (req && req.socket && req.socket.remoteAddress) || '?').split(',')[0].trim();
   let room = null, me = null, authed = null;
   const guestGarden = newGarden(); let guestStars = 0; // сад гостя живёт в этом соединении
+  let staff = false;                 // сотрудник открыл стойку администратора в этом сеансе
   // перенос этого игрока в другой мир по чужой команде (групповой старт из зоны сбора)
   const moveMe = (target, role) => {
     if (!target || !me || target === room) return;
@@ -1234,6 +1261,37 @@ wss.on('connection', (ws, req) => {
     }
 
     // ---------- админ (владелец) ----------
+    else if (m.t === 'staffAuth') {   // сотрудник открыл стойку: проверяем PIN
+      if (STAFF_PIN.length < 6)
+        return send(ws, { t: 'staffErr', msg: 'Стойка не настроена: владелец должен задать STAFF_PIN на сервере' });
+      const key = failKey(ip, 'staff');
+      const wait = lockedFor(key);
+      if (wait) return send(ws, { t: 'staffErr',
+        msg: `Слишком много попыток. Подожди ${wait > 60 ? Math.ceil(wait / 60) + ' мин.' : wait + ' сек.'}` });
+      if (String(m.pin || '') !== STAFF_PIN) {
+        noteFail(key);
+        console.log(`стойка администратора: неверный PIN (${ip})`);
+        return send(ws, { t: 'staffErr', msg: 'Неверный PIN' });
+      }
+      noteOk(key);
+      staff = true;
+      console.log('стойка администратора: вход');
+      send(ws, { t: 'staffOk' });
+    }
+    else if (m.t === 'staffFind') {   // поиск сада ученика по имени или по свежести
+      if (!staff) return send(ws, { t: 'staffErr', msg: 'Сначала введи PIN' });
+      const q = String(m.q || '').toLowerCase().trim().slice(0, 40);
+      let list = Object.values(db.users).filter(u => u && u.role === 'student');
+      if (q) list = list.filter(u => String(u.name || '').toLowerCase().includes(q));
+      // без запроса показываем тех, кто играл недавно: так находят ребёнка,
+      // который не вписал своё имя и лежит в базе как «Игрок-K3F9»
+      const lastOf = u => { const d = Object.keys((u.garden || {}).days || {}).sort(); return d.length ? d[d.length - 1] : ''; };
+      list.sort((a, b) => String(lastOf(b)).localeCompare(String(lastOf(a))) || (b.createdAt || 0) - (a.createdAt || 0));
+      const total = list.length;
+      const out = list.slice(0, 40).map(staffCard);
+      console.log(`стойка администратора: поиск «${q || 'последние'}» — найдено ${total}`);
+      send(ws, { t: 'staffList', list: out, total, q });
+    }
     else if (m.t === 'adminList') {
       if (!authed || authed.role !== 'owner') return;
       const teachers = Object.values(db.users).filter(u => u.role === 'teacher')

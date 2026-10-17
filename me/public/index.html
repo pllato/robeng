@@ -611,6 +611,25 @@
       <button class="ghost mBack">← Назад</button>
     </div>
 
+    <div id="mStaff" class="mview" hidden>
+      <p class="hint">🛟 Вернуть сад ученику — для сотрудников школы</p>
+      <div id="stLock">
+        <input id="stPin" placeholder="PIN сотрудника" maxlength="32" type="password" autocomplete="off">
+        <button id="stGo">Открыть</button>
+      </div>
+      <div id="stWork" hidden>
+        <input id="stQ" placeholder="Имя ребёнка (или оставь пустым — покажу тех, кто играл недавно)" maxlength="40" autocomplete="off">
+        <button id="stFind">Найти</button>
+        <p class="hint" id="stCount" style="margin:6px 0"></p>
+        <div id="stList"></div>
+        <p class="hint" style="margin-top:10px;opacity:.75">Ссылка — это ключ от сада.
+          Отправляйте её только родителю этого ребёнка. Попросите сразу вынести игру
+          на домашний экран — тогда сад больше не потеряется.</p>
+      </div>
+      <p class="hint" id="stMsg" style="color:#ff9a90"></p>
+      <button class="ghost mBack">← Назад</button>
+    </div>
+
     <div id="mLeadT" class="mview" hidden>
       <p class="hint">Заявка преподавателя — после одобрения вы получите свой класс</p>
       <input id="ltName" placeholder="Ваше имя" maxlength="24" autocomplete="off">
@@ -1531,6 +1550,24 @@ setInterval(()=>{
 
 function handleNet(m){
   if(m.t==='ack'){ ackSeen=true; outDone(String(m.aid||'')); return; }
+  if(m.t==='staffOk'){ staffOn=true; $('stMsg').textContent='';
+    $('stLock').hidden=true; $('stWork').hidden=false; staffFind(); return; }
+  if(m.t==='staffErr'){ $('stMsg').textContent=m.msg||'Не вышло'; return; }
+  if(m.t==='staffList'){
+    const n=m.total|0;
+    $('stCount').textContent = n
+      ? (n>m.list.length ? `Нашлось ${n}, показываю первых ${m.list.length} — уточни имя`
+                         : `Нашлось ${n}`)
+      : 'Никого не нашёл. Попробуй часть имени или оставь поле пустым.';
+    $('stList').innerHTML=(m.list||[]).map(staffRow).join('');
+    $('stList').querySelectorAll('[data-key]').forEach(b=>b.onclick=ev=>{
+      ev.stopPropagation();
+      const link=b.dataset.key;
+      (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject())
+        .then(()=>{ b.textContent='✓ Скопирована'; setTimeout(()=>b.textContent='📋 Ссылка',1800); })
+        .catch(()=>{ $('stMsg').style.color=''; $('stMsg').textContent=link; });
+    });
+    return; }
   if(m.t==='err'){ setMsg(m.msg); if(worldReady && !paused) toast('⚠️ '+m.msg); return; }
   if(m.t==='authok'){
     if(m.user && (m.user.role==='teacher'||m.user.role==='owner')){ let sv=null;
@@ -1874,6 +1911,10 @@ function buildLobbyWorld(lob){
   kiosk(sx+8,sz+10,LOG);
   addWorldTag(sx+9,H+3.4,sz+10.5,'🧑‍🏫 СТАТЬ ПРЕПОДАВАТЕЛЕМ<br><small>заявка для учителей</small>');
   interactables.push({x:sx+9,y:H+1,z:sz+10.5,r:2.4,label:'заявка преподавателя',act:'teach'});
+  // служебная стойка — у стены, в стороне от детских: сюда подходит администратор
+  kiosk(sx-15,sz+10,BRICK);
+  addWorldTag(sx-14,H+3.4,sz+10.5,'🛟 ВЕРНУТЬ САД<br><small>для сотрудников · нужен PIN</small>');
+  interactables.push({x:sx-14,y:H+1,z:sz+10.5,r:2.4,label:'стойка сотрудника — вернуть сад ученику',act:'staff'});
   // 🚀 зона сбора: кто внутри — улетает на занятие вместе
   partyZone={x0:sx+4, z0:sz+3, x1:sx+10, z1:sz+9};
   for(let x=partyZone.x0;x<=partyZone.x1;x++) for(let z=partyZone.z0;z<=partyZone.z1;z++){
@@ -2066,7 +2107,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-53';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-54';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -3825,6 +3866,7 @@ function doInteract(){
   else if(a.act==='teach') overlayView('mLeadT');
   else if(a.act==='account'){ renderAuthView(); overlayView('mHome'); }
   else if(a.act==='code') overlayView('mGuest');
+  else if(a.act==='staff') openStaff();
   else if(a.act==='board') showBoard();
   else if(a.act==='wordday') toast('Скажи слово дня в микрофон — кнопка 🎙 внизу');
   else if(a.act==='party'){
@@ -5278,6 +5320,39 @@ $('pmReset').onclick=e=>{ e.stopPropagation();
   onbOff=false; onbSold=false; onbCongrats=false; onbCelebrated=false; onbSave();
   try{ localStorage.removeItem(GARDEN_LS); }catch(_){}
   resumeGame(); toast('♻️ Сад обнулён — начинаем сначала'); };
+// ── стойка сотрудника: вернуть ребёнку сад ──────────────────────────────────
+// Сад цел и лежит на сервере, теряется только ключ от него. Здесь сотрудник
+// находит ребёнка и отдаёт родителю ссылку возврата.
+let staffOn=false;
+function openStaff(){
+  overlayView('mStaff');
+  $('stMsg').textContent='';
+  $('stLock').hidden=staffOn; $('stWork').hidden=!staffOn;
+  if(staffOn) staffFind(); else setTimeout(()=>{ try{ $('stPin').focus(); }catch(_){} },120);
+}
+function staffFind(){ sendWS({t:'staffFind', q:$('stQ').value.trim()}); $('stCount').textContent='Ищу…'; }
+function staffRow(c){
+  const link=location.origin+location.pathname+'#k='+encodeURIComponent(c.key||'');
+  const last=c.last?`играл ${c.last}`:'ни разу не играл';
+  return `<div class="shopRow" style="align-items:flex-start">
+    <span><b>${esc(c.name)}</b>
+      <small style="color:#9fb6d4;display:block;line-height:1.45">
+        ${last} · дней в огороде ${c.days|0}<br>
+        грядок ${c.beds|0} · слов ${c.words|0} · монет ${nfmt(c.coins|0)}</small></span>
+    <span><button class="ghost" data-key="${esc(link)}"
+      style="padding:6px 11px;font-size:13px;white-space:nowrap">📋 Ссылка</button></span></div>`;
+}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('stGo').onclick=e=>{ e.stopPropagation();
+  const pin=$('stPin').value.trim();
+  if(pin.length<4) return $('stMsg').textContent='Введи PIN сотрудника';
+  $('stMsg').textContent='Проверяю…';
+  sendWS({t:'staffAuth', pin}); };
+$('stPin').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') $('stGo').click(); });
+$('stPin').addEventListener('keyup',e=>e.stopPropagation());
+$('stQ').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') staffFind(); });
+$('stQ').addEventListener('keyup',e=>e.stopPropagation());
+$('stFind').onclick=e=>{ e.stopPropagation(); staffFind(); };
 $('pmSave').onclick=e=>{ e.stopPropagation(); openSave(); };
 $('pmAva').onclick=e=>{ e.stopPropagation(); openAva(); };
 $('svCopy').onclick=e=>{ e.stopPropagation(); const el=$('svLink'); el.select();

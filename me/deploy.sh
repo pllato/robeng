@@ -40,6 +40,10 @@ rsync -az --delete \
   "$PROJ/server.js" "$PROJ/package.json" "$SRV:$APPDIR/" 2>/dev/null \
   || rsync -az "$PROJ/server.js" "$PROJ/package.json" "$SRV:$APPDIR/" || fail "не удалось скопировать server.js"
 rsync -az --delete "$PROJ/public/" "$SRV:$APPDIR/public/" || fail "не удалось скопировать public/"
+# служебные скрипты нужны НА СЕРВЕРЕ: PIN сотрудника и поиск сада запускаются там
+for s in staff-pin.sh find-garden.sh turn-setup.sh; do
+  [ -f "$PROJ/$s" ] && rsync -az "$PROJ/$s" "$SRV:$APPDIR/$s" >/dev/null 2>&1
+done
 
 say "4/5 Ставлю зависимости и переношу базу, если её там ещё нет"
 ssh "$SRV" "cd $APPDIR && npm install --omit=dev --silent >/dev/null 2>&1; chown -R mineenglish:mineenglish $APPDIR" \

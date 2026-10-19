@@ -234,10 +234,18 @@ curl -s localhost:8642/version
 PIN, находит сад ребёнка и копирует ссылку возврата. Пока PIN не задан, стойка
 выключена и так и говорит.
 
+Скрипт работает **на сервере**, не на Маке. С Мака — одной строкой (адрес
+сервера возьмётся из `.deploy`, который запомнил `deploy.sh`):
+
 ```bash
-sudo bash ~/Projects/mineenglish/staff-pin.sh 1212     # поставить свой PIN
-sudo bash ~/Projects/mineenglish/staff-pin.sh          # или пусть придумает сам
-sudo bash ~/Projects/mineenglish/staff-pin.sh новый    # сменить, если забыли
+. ~/Projects/mineenglish/.deploy && ssh "$SRV" 'bash /opt/mineenglish/staff-pin.sh 1212'
+```
+
+Вместо `1212` можно `новый` — придумает длинный сам, или ничего — покажет,
+задан ли PIN. Прямо на сервере (`ssh "$SRV"`) это просто:
+
+```bash
+bash /opt/mineenglish/staff-pin.sh 1212
 ```
 
 PIN от четырёх знаков. Короткий удобно диктовать сотрудникам, но платим

@@ -5,7 +5,10 @@
 # ссылку возврата. Ссылка — это ключ от сада, поэтому стойка открывается только по
 # PIN. PIN живёт на сервере, в игру и в браузер не попадает.
 #
-# Запускается на самом сервере под root, после server-setup.sh:
+# Запускается НА СЕРВЕРЕ, а не на Маке. С Мака — одной строкой:
+#   . ~/Projects/mineenglish/.deploy && ssh "$SRV" 'bash /opt/mineenglish/staff-pin.sh 1212'
+#
+# На самом сервере, после server-setup.sh:
 #   bash staff-pin.sh              # завести PIN (придумает сам и покажет один раз)
 #   bash staff-pin.sh новый        # сменить PIN (старый перестанет работать)
 #   bash staff-pin.sh 1212         # поставить свой (минимум 4 знака)
@@ -56,6 +59,8 @@ esac
 if [ -n "$HAVE" ]; then
   sed -i '/^STAFF_PIN=/d' "$ENVF"
 fi
+# если файл не кончается переводом строки, допишем его: иначе склеим две настройки
+if [ -s "$ENVF" ] && [ -n "$(tail -c1 "$ENVF")" ]; then printf '\n' >> "$ENVF"; fi
 printf 'STAFF_PIN=%s\n' "$PIN" >> "$ENVF"
 chmod 600 "$ENVF"
 

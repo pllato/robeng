@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-56';
+const BUILD = '2026-09-15-57';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -1128,6 +1128,7 @@ else console.log('TURN не настроен — за строгим NAT гол�
 // просьбы должен администратор, а не владелец лично.
 const STAFF_PIN = String(process.env.STAFF_PIN || '');
 const STAFF_MIN = 4;                   // школа просила короткий PIN, который легко продиктовать
+const STAFF_SHOW = 200;                // сколько детей отдаём за раз: список в стойке листается
 // Чем короче PIN, тем меньше попыток подряд: «1212» подбирается за вечер, если не мешать.
 const STAFF_TRY = STAFF_PIN.length >= 8 ? 5 : 3;
 if (STAFF_PIN.length >= STAFF_MIN) {
@@ -1295,7 +1296,7 @@ wss.on('connection', (ws, req) => {
       const lastOf = u => { const d = Object.keys((u.garden || {}).days || {}).sort(); return d.length ? d[d.length - 1] : ''; };
       list.sort((a, b) => String(lastOf(b)).localeCompare(String(lastOf(a))) || (b.createdAt || 0) - (a.createdAt || 0));
       const total = list.length;
-      const out = list.slice(0, 40).map(staffCard);
+      const out = list.slice(0, STAFF_SHOW).map(staffCard);
       console.log(`стойка администратора: поиск «${q || 'последние'}» — найдено ${total}`);
       send(ws, { t: 'staffList', list: out, total, q });
     }

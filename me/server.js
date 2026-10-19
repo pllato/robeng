@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-54';
+const BUILD = '2026-09-15-55';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -48,19 +48,20 @@ const findByName = name => Object.values(db.users).find(u => u.name.toLowerCase(
 // ---------- защита от перебора PIN ----------
 // Четырёхзначный PIN подбирается за секунды, если пробовать без ограничений. Считаем неудачные
 // попытки по адресу и по имени: после пяти — пауза, которая растёт.
+// Где пароль короткий (стойка сотрудника), вызывающий задаёт свой порог попыток.
 const FAILS = new Map();
 const FAIL_MAX = 5, FAIL_WINDOW = 10 * 60 * 1000;
 function failKey(ip, name) { return ip + '|' + String(name || '').toLowerCase(); }
-function lockedFor(key) {
+function lockedFor(key, max = FAIL_MAX) {
   const f = FAILS.get(key);
   if (!f) return 0;
   if (Date.now() > f.until) { FAILS.delete(key); return 0; }
-  return f.n >= FAIL_MAX ? Math.ceil((f.until - Date.now()) / 1000) : 0;
+  return f.n >= max ? Math.ceil((f.until - Date.now()) / 1000) : 0;
 }
-function noteFail(key) {
+function noteFail(key, max = FAIL_MAX) {
   const f = FAILS.get(key) || { n: 0, until: 0 };
   f.n++;
-  const pause = f.n < FAIL_MAX ? FAIL_WINDOW : Math.min(60, 2 ** (f.n - FAIL_MAX)) * 60 * 1000;
+  const pause = f.n < max ? FAIL_WINDOW : Math.min(60, 2 ** (f.n - max)) * 60 * 1000;
   f.until = Date.now() + pause;
   FAILS.set(key, f);
 }
@@ -1126,8 +1127,14 @@ else console.log('TURN не настроен — за строгим NAT гол�
 // отдаёт ссылку возврата. Отдельный PIN, не владельческий: разбирать такие
 // просьбы должен администратор, а не владелец лично.
 const STAFF_PIN = String(process.env.STAFF_PIN || '');
-if (STAFF_PIN.length >= 6) console.log('стойка администратора включена (STAFF_PIN задан)');
-else console.log('стойка администратора выключена: задай STAFF_PIN (минимум 6 знаков) в /etc/mineenglish.env');
+const STAFF_MIN = 4;                   // школа просила короткий PIN, который легко продиктовать
+// Чем короче PIN, тем меньше попыток подряд: «1212» подбирается за вечер, если не мешать.
+const STAFF_TRY = STAFF_PIN.length >= 8 ? 5 : 3;
+if (STAFF_PIN.length >= STAFF_MIN) {
+  console.log(`стойка администратора включена (STAFF_PIN задан, попыток подряд: ${STAFF_TRY})`);
+  if (STAFF_PIN.length < 8)
+    console.log('  PIN короткий: ссылка из стойки — ключ от сада ребёнка, не вводи его при детях');
+} else console.log(`стойка администратора выключена: задай STAFF_PIN (минимум ${STAFF_MIN} знака) в /etc/mineenglish.env`);
 
 function staffCard(u) {                // приметы сада, чтобы не перепутать однофамильцев
   const g = u.garden || {};
@@ -1262,14 +1269,14 @@ wss.on('connection', (ws, req) => {
 
     // ---------- админ (владелец) ----------
     else if (m.t === 'staffAuth') {   // сотрудник открыл стойку: проверяем PIN
-      if (STAFF_PIN.length < 6)
+      if (STAFF_PIN.length < STAFF_MIN)
         return send(ws, { t: 'staffErr', msg: 'Стойка не настроена: владелец должен задать STAFF_PIN на сервере' });
       const key = failKey(ip, 'staff');
-      const wait = lockedFor(key);
+      const wait = lockedFor(key, STAFF_TRY);
       if (wait) return send(ws, { t: 'staffErr',
         msg: `Слишком много попыток. Подожди ${wait > 60 ? Math.ceil(wait / 60) + ' мин.' : wait + ' сек.'}` });
       if (String(m.pin || '') !== STAFF_PIN) {
-        noteFail(key);
+        noteFail(key, STAFF_TRY);
         console.log(`стойка администратора: неверный PIN (${ip})`);
         return send(ws, { t: 'staffErr', msg: 'Неверный PIN' });
       }

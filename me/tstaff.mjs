@@ -115,4 +115,46 @@ srv.kill(); await new Promise(r=>setTimeout(r,400));
   ok(/стойка администратора выключена/.test(log2), 'и сервер сказал об этом при запуске');
   S.close(); s2.kill();
 }
+// ── 7. короткий PIN «1212»: работает, но попыток дают только три ──
+{
+  let log3=''; const s3=run({ STAFF_PIN:'1212' });
+  s3.stdout.on('data',d=>log3+=d); s3.stderr.on('data',d=>log3+=d);
+  await new Promise(r=>setTimeout(r,1800));
+  const S=session(); await S.ready;
+
+  const p1=S.until(m=>m.t==='staffErr'||m.t==='staffOk');
+  S.send({t:'staffAuth', pin:'1212'});
+  ok((await p1).t==='staffOk', 'короткий PIN 1212 открывает стойку');
+  ok(/попыток подряд: 3/.test(log3), 'сервер предупредил при старте: попыток подряд три');
+  ok(/не вводи его при детях/.test(log3), 'и напомнил не вводить короткий PIN при детях');
+  S.close();
+
+  // подбор: три промаха — и стойка молчит даже на верный PIN
+  const B=session(); await B.ready;
+  for(const bad of ['1111','1234','0000']){
+    const p=B.until(m=>m.t==='staffErr'||m.t==='staffOk');
+    B.send({t:'staffAuth', pin:bad});
+    await p;
+  }
+  const p4=B.until(m=>m.t==='staffErr'||m.t==='staffOk');
+  B.send({t:'staffAuth', pin:'1212'});
+  const r4=await p4;
+  ok(r4.t==='staffErr' && /Слишком много попыток/.test(r4.msg||''),
+     `после трёх промахов стойка закрыта даже для верного PIN: «${r4.msg||''}»`);
+  B.close(); s3.kill(); await new Promise(r=>setTimeout(r,400));
+}
+
+// ── 8. совсем короткий PIN стойку не включает ──
+{
+  let log4=''; const s4=run({ STAFF_PIN:'12' });
+  s4.stdout.on('data',d=>log4+=d); s4.stderr.on('data',d=>log4+=d);
+  await new Promise(r=>setTimeout(r,1800));
+  const S=session(); await S.ready;
+  const p=S.until(m=>m.t==='staffErr'||m.t==='staffOk');
+  S.send({t:'staffAuth', pin:'12'});
+  const r=await p;
+  ok(r.t==='staffErr' && /не настроена/.test(r.msg||''), 'PIN из двух знаков стойку не включает');
+  S.close(); s4.kill(); await new Promise(r=>setTimeout(r,400));
+}
+
 fs.rmSync(DIR,{recursive:true,force:true});

@@ -235,9 +235,14 @@ PIN, находит сад ребёнка и копирует ссылку во�
 выключена и так и говорит.
 
 ```bash
-sudo bash ~/Projects/mineenglish/staff-pin.sh          # завести PIN
+sudo bash ~/Projects/mineenglish/staff-pin.sh 1212     # поставить свой PIN
+sudo bash ~/Projects/mineenglish/staff-pin.sh          # или пусть придумает сам
 sudo bash ~/Projects/mineenglish/staff-pin.sh новый    # сменить, если забыли
 ```
+
+PIN от четырёх знаков. Короткий удобно диктовать сотрудникам, но платим
+попытками: PIN короче восьми знаков даёт три промаха подряд, дальше пауза
+минута, две, четыре. И вводить такой PIN при детях не нужно.
 
 Скрипт печатает PIN один раз на экране сервера, кладёт его в
 `/etc/mineenglish.env` (права 600) и перезапускает игру. PIN выдают сотрудникам

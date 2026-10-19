@@ -9,7 +9,7 @@ const { WebSocketServer } = require('ws');
 
 // ВЕРСИЯ СБОРКИ. Меняется с каждой присланной правкой — по ней видно,
 // какой именно код сейчас работает (в игре, в /version и в update.sh).
-const BUILD = '2026-09-15-57';
+const BUILD = '2026-09-15-58';
 // последний рубеж: даже неучтённая ошибка не должна гасить мир, где сейчас играют дети
 process.on('uncaughtException', e => console.error('НЕПЕРЕХВАЧЕННАЯ ОШИБКА:', (e && e.stack) || e));
 process.on('unhandledRejection', e => console.error('НЕОБРАБОТАННЫЙ ОТКАЗ:', (e && e.stack) || e));
@@ -736,6 +736,52 @@ function orderFinish(g) {
   g.order = null;
   return res;
 }
+// Учителя написали: «дед Семён не даёт новые темы, а заказы в разговорном квартале
+// выполняют — и там тоже пусто». Так и было: заказ выдавался ровно в тот миг, когда
+// собрано последнее слово темы, и только если другого заказа нет. Ребёнок, у которого
+// в этот миг висел заказ по прошлой теме (а так бывает, когда уровневый замок открыл
+// вторую ветку), оставался без продолжения навсегда: слова кончились, заказа по этой
+// теме нет и больше не будет, а следующая тема открывается только из её заказа.
+// Поэтому перед каждым ответом проверяем простую вещь: ребёнку есть чем заняться?
+function ensureNext(g) {
+  if (g.order) return [];                      // заказ и есть следующий шаг
+  for (const id of Object.keys(g.openW || {})) {
+    const ws = parseSeed(id); if (!ws || isRare(ws.lesson)) continue;
+    if (!(g.cropsW[id] > 0)) return [];        // есть несобранное слово — не тупик
+  }
+  // Тупик. Берём самую дальнюю пройденную тему, у которой нет продолжения.
+  let stuck = null;
+  const openedFirst = id => {
+    const nx = nextLesson(id);
+    const first = nx ? ((loadLesson(nx.id) || {}).words || [])[0] : null;
+    return (nx && first) ? !!g.openW[wordSeedId(nx.id, first.word)] : false;
+  };
+  for (const t of TIERS) for (const it of levelList(t.level)) {
+    if (!themeDone(g, it.id) || openedFirst(it.id)) continue;
+    stuck = it;
+  }
+  if (!stuck) return [];
+  // у последней темы курса продолжения нет и не будет — бесконечный заказ не выдаём
+  if (!nextLesson(stuck.id) && !nextLevelFirst((loadLesson(stuck.id) || {}).level)) return [];
+  const opened = [];
+  const o = makeOrder(g, stuck.id);            // ступень «скажи фразы» не пропускаем
+  if (o) { g.order = o; opened.push({ order: true, kind: o.kind, theme: o.theme }); }
+  else {                                       // для темы нет шаблона фраз — открываем следующую
+    const nx = nextLesson(stuck.id);
+    const first = nx ? ((loadLesson(nx.id) || {}).words || [])[0] : null;
+    if (first) {
+      const id = wordSeedId(nx.id, first.word);
+      if (!g.openW[id]) { g.openW[id] = 1; opened.push({ id, theme: first.word, level: nx.level }); }
+    }
+  }
+  const les = loadLesson(stuck.id);
+  if (les) unlockLevel(g, les.level, opened);
+  if (opened.length) {
+    console.log(`тупик расчищен: тема «${(les || {}).theme || stuck.id}» получила продолжение`);
+    saveSoon();
+  }
+  return opened;
+}
 const saidKey = (kind, lesson, word) => talkKind(kind) + ':' + lesson + '#' + word;
 function phraseTask(g, kind) {          // что сказать прямо сейчас на этой станции
   const k = talkKind(kind);
@@ -1449,6 +1495,14 @@ wss.on('connection', (ws, req) => {
         // монеты из браузера и затёр бы списание, сделанное до него.
         chargeUpkeep(g);
         ripenGarden(g);
+        // Застрявшим — продолжение. Список «что открылось» склеиваем с тем, что принесло
+        // само действие, иначе ребёнок не увидит, откуда у него взялся новый заказ.
+        const healed = ensureNext(g);
+        if (healed.length) {
+          extra = Object.assign({}, extra || {});
+          extra.opened = (extra.opened || []).concat(
+            healed.map(x => ({ id: x.id, theme: x.theme, level: x.level, order: !!x.order, kind: x.kind })));
+        }
         send(ws, Object.assign({ t: 'gardenData', garden: wireGarden(g), tiers: TIERS, priceStep: 0.12, nextUp: hintNext(g),
           shopWords: shopWords(g), feedPrice: feedPrice(g), wearMax: WEAR_MAX,
           upkeepFree: upkeepFree(g), upkeepRate: UPKEEP_RATE,

@@ -2067,7 +2067,9 @@ function ripeWords(b){                          // у каждого слова 
   for(const w of bedKinds(b)){
     const st=pst(b,w);
     const k=(st.k|0)||bedCount(b,w);
-    const n=(st.n|0)>0 ? (st.n|0) : (nowMs()>=st.r ? bedFruits(b,w,st.c)*k : 0);
+    // Уставшая земля новых плодов не даёт — ровно как на сервере. Без этой проверки
+    // игра рисовала плоды, ребёнок жал на них, слышал щелчок, а сервер отказывал.
+    const n=(st.n|0)>0 ? (st.n|0) : ((!bedTired(b) && nowMs()>=st.r) ? bedFruits(b,w,st.c)*k : 0);
     for(let i=0;i<n;i++) out.push(w);
   }
   return out;
@@ -2100,6 +2102,20 @@ const waitText=b=>{ const s=secsLeft(b);
               : `через ${Math.round(m/60)} ${plural(Math.round(m/60),['час','часа','часов'])}`; };
 const tierInfo=t=>TIERS[t]||{name:'',emoji:'🌱',seed:0,fruit:0};
 const emojiOf=(b,w)=>{ const it=(b.words||[]).find(v=>v.word===w); return it?it.emoji:'🌱'; };
+// Что написано над грядкой, когда к ней подошли. Отдельной функцией — чтобы
+// подсказка и правда сходились: раньше на уставшей земле висело «урожай через N с»,
+// и ребёнок ждал того, чего не будет.
+function bedHintText(bd){
+  if(!bd) return '';
+  const left=ripeWords(bd);
+  if(left.length){
+    const kinds=ripeUniq(bd).slice(0,4)
+      .map(w=>`${emojiOf(bd,w)}${ripeLeft(bd,w)>1?'×'+ripeLeft(bd,w):''}`).join(' ');
+    return `Нажми на плод и скажи его слово · ${kinds}`;
+  }
+  if(bedTired(bd)) return `🥀 Земля устала — подкорми за ${feedPrice} 🪙 или выкорчуй и посади новое`;
+  return `«${bd.theme||bd.title}» — урожай ${waitText(bd)}`;
+}
 function gardenOrigin(){ // улица длинная — держим её целиком внутри мира, иначе у крайних участков срежет забор
   const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
   return {sx:cl(Math.floor(spawnPt.x),46,WX-46), sz:cl(Math.floor(spawnPt.z),59,WZ-59), H:Math.floor(spawnPt.y)-1};
@@ -2107,7 +2123,7 @@ function gardenOrigin(){ // улица длинная — держим её це
 // ---- улица огородов: у каждого участок 19×19 на двенадцать грядок ----
 const PLOT_MAX=8, PLOT_BEDS=12;            // восемь участков на улице, по двенадцать грядок на каждом
 const PLOT_RX=18, PLOT_RZ=13;              // участок 37×27 — грядки крупные, между ними ходят
-const BUILD='2026-09-15-58';   // версия этого файла; должна совпадать со сборкой сервера
+const BUILD='2026-09-15-59';   // версия этого файла; должна совпадать со сборкой сервера
 let serverBuild=null; // что ответил сервер — расхождение значит, что обновилась только половина
 let roomKind=null, plots=[], plotTags=[], bedTags=[], gardenPlaced=false, plantWait=null;
 const myPlotIndex=()=>plots.findIndex(p=>p.id===myId);
@@ -5698,12 +5714,7 @@ function update(dt){
         const bd=bedAt(hintNear.bed), left=bd?ripeWords(bd):[];
         const room=bd&&(bd.words||[]).length<BED_SLOTS.length;
         if(bd && seedInHand && room) hl=`Досадить «${seedInHand.theme||seedInHand.title}» — станет ${(bd.words||[]).length+1}`;
-        else if(left.length){
-          const kinds=ripeUniq(bd).slice(0,4)
-            .map(w=>`${emojiOf(bd,w)}${ripeLeft(bd,w)>1?'×'+ripeLeft(bd,w):''}`).join(' ');
-          hl=`Нажми на плод и скажи его слово · ${kinds}`;
-        }
-        else if(bd) hl=`«${bd.theme||bd.title}» — урожай ${waitText(bd)}`;
+        else if(bd) hl=bedHintText(bd);
         else hl=seedInHand?`Посадить «${seedInHand.theme||seedInHand.title}»`:'Пустая грядка — нужно семя';
       }
       hb.innerHTML = IS_TOUCH ? `👉 ${hl}` : `<b>[E]</b> ${hl}`;
